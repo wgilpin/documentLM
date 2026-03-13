@@ -19,7 +19,7 @@
 
 **Language/Version**: Python 3.12+
 **Package Manager**: uv
-**Primary Dependencies**: FastAPI (or Flask — confirm), Pydantic v2, SQLAlchemy 2.x / asyncpg
+**Primary Dependencies**: google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
 **Storage**: PostgreSQL (Docker container)
 **Testing**: pytest (backend services only — TDD; no tests for frontend components or API endpoints)
 **Type Checking**: mypy (strict), ruff (linting + formatting)
@@ -44,6 +44,7 @@ Verify each principle before proceeding:
 - [ ] **VII. Ruff**: ruff check + ruff format will be run before every save
 - [ ] **VIII. Containers**: PostgreSQL + server run in Docker; docker-compose provided
 - [ ] **IX. Logging**: Every except block logs; all significant operations emit log entries
+- [ ] **ADK architecture**: Any new agent types confirmed against `docs/agents.md`; no undocumented agents introduced
 
 ## Project Structure
 

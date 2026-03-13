@@ -1,22 +1,20 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (none) → 1.0.0 (initial ratification)
+Version change: 1.1.0 → 1.2.0 (MINOR — FastAPI confirmed; HTMX added as
+  frontend framework; minimize-JS constraint codified in Technology Stack)
 
-Modified principles: N/A (initial creation)
+Modified principles: None
 
 Added sections:
-- Core Principles (I–IX)
-- Technology Stack
-- Development Workflow
-- Governance
+- Technology Stack: FastAPI (confirmed), HTMX, minimize-JS rule
 
-Removed sections: N/A
+Removed sections: None
 
 Templates reviewed:
-- .specify/templates/plan-template.md       ✅ updated (Technical Context defaults + Constitution Check gates)
+- .specify/templates/plan-template.md       ✅ updated (Primary Dependencies confirmed + HTMX)
 - .specify/templates/spec-template.md       ✅ no changes required
-- .specify/templates/tasks-template.md      ✅ updated (test guidance reflects TDD-for-services policy)
+- .specify/templates/tasks-template.md      ✅ no changes required
 - .specify/templates/agent-file-template.md ✅ no changes required
 
 Deferred items: None
@@ -131,7 +129,12 @@ correct behaviour; logs are the primary debugging tool.
 
 - **Language**: Python 3.12+
 - **Package manager**: uv
-- **Web framework**: FastAPI (preferred) or Flask — confirm per feature
+- **Agent framework**: Google ADK (`google-adk`), running locally
+- **Agent architecture**: Root coordinator + specialist sub-agents (Drafter,
+  Researcher) + SequentialAgent for ripple-effect pipeline — see `docs/agents.md`
+- **Web framework**: FastAPI
+- **Frontend**: HTMX — JavaScript MUST be minimised; custom JS MUST NOT be
+  written when an HTMX attribute achieves the same result
 - **Database**: PostgreSQL (Docker container)
 - **ORM / DB access**: SQLAlchemy 2.x or raw `asyncpg` — confirm per feature
 - **Validation**: Pydantic v2
@@ -149,6 +152,10 @@ correct behaviour; logs are the primary debugging tool.
 5. Run `pytest` to confirm all tests pass.
 6. Commit using Conventional Commits format.
 
+**Agent work**: All ADK agent definitions MUST follow the architecture in
+`docs/agents.md`. New agent types MUST NOT be introduced without explicit user
+confirmation (Principle IV).
+
 **Feature gate**: No new feature work begins without an updated spec and explicit
 user approval of scope.
 
@@ -162,4 +169,4 @@ This constitution supersedes all other project conventions. Amendments require:
 All implementation plans MUST include a Constitution Check section that
 explicitly gates each principle before Phase 0 research begins.
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-13 | **Last Amended**: 2026-03-13
+**Version**: 1.2.0 | **Ratified**: 2026-03-13 | **Last Amended**: 2026-03-13
