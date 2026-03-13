@@ -17,21 +17,33 @@
   the iteration process.
 -->
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Version**: Python 3.12+
+**Package Manager**: uv
+**Primary Dependencies**: FastAPI (or Flask — confirm), Pydantic v2, SQLAlchemy 2.x / asyncpg
+**Storage**: PostgreSQL (Docker container)
+**Testing**: pytest (backend services only — TDD; no tests for frontend components or API endpoints)
+**Type Checking**: mypy (strict), ruff (linting + formatting)
+**Target Platform**: Docker containers (app server + PostgreSQL)
+**Project Type**: [e.g., web-service/cli/library or NEEDS CLARIFICATION]
+**Performance Goals**: N/A — prototype/demo
+**Constraints**: No remote API calls in tests; no plain dicts; no Any type; ruff must pass before save
+**Scale/Scope**: Demo/prototype — YAGNI; no new features without explicit user confirmation
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Verify each principle before proceeding:
+
+- [ ] **I. Python + uv**: All new code is Python; uv used for deps
+- [ ] **II. TDD scope**: Tests planned for service layer only (not endpoints, not frontend)
+- [ ] **III. No remote APIs in tests**: All external calls mocked
+- [ ] **IV. Simplicity**: Feature scope confirmed with user; no unrequested extras
+- [ ] **V. Strong typing**: All function signatures use Pydantic/TypedDict; no plain dicts; no Any
+- [ ] **VI. Functional style**: No unnecessary classes or inheritance
+- [ ] **VII. Ruff**: ruff check + ruff format will be run before every save
+- [ ] **VIII. Containers**: PostgreSQL + server run in Docker; docker-compose provided
+- [ ] **IX. Logging**: Every except block logs; all significant operations emit log entries
 
 ## Project Structure
 
