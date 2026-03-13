@@ -4,7 +4,6 @@ Run with: docker-compose up -d postgres && uv run pytest tests/integration/
 Requires DATABASE_URL env var pointing to a test-ready PostgreSQL instance.
 """
 
-
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine

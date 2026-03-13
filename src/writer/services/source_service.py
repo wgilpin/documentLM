@@ -20,6 +20,10 @@ class SourceNotFoundError(Exception):
         self.source_id = source_id
 
 
+class PdfParseError(Exception):
+    pass
+
+
 def _extract_pdf_text(file_bytes: bytes) -> str:
     from pypdf import PdfReader
 
@@ -56,7 +60,7 @@ async def add_source_pdf(
         content = _extract_pdf_text(file_bytes)
     except Exception as exc:
         logger.exception("PDF extraction failed: %s", exc)
-        content = ""
+        raise PdfParseError("Failed to parse PDF") from exc
     source = Source(
         document_id=document_id,
         source_type=SourceType.pdf,

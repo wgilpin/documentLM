@@ -136,9 +136,7 @@ async def list_suggestions(
     if request.headers.get("HX-Request"):
         tmpl = get_templates()
         html = "".join(
-            tmpl.get_template("partials/suggestion.html").render(
-                {"s": s, "request": request}
-            )
+            tmpl.get_template("partials/suggestion.html").render({"s": s, "request": request})
             for s in suggestions
         )
         return HTMLResponse(html)

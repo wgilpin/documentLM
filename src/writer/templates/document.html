@@ -36,7 +36,7 @@
     <div class="sidebar">
         <!-- Sources section -->
         <div class="sidebar-section">
-            <h3>Core Bucket</h3>
+            <h3>Sources</h3>
             <ul id="source-list"
                 hx-get="/api/documents/{{ doc.id }}/sources"
                 hx-trigger="load"
@@ -51,6 +51,7 @@
             </div>
 
             <div id="tab-note" class="tab-panel active">
+                <div id="source-error-note" class="source-error-container"></div>
                 <form hx-post="/api/documents/{{ doc.id }}/sources"
                       hx-target="#source-list"
                       hx-swap="beforeend"
@@ -69,6 +70,7 @@
             </div>
 
             <div id="tab-url" class="tab-panel">
+                <div id="source-error-url" class="source-error-container"></div>
                 <form hx-post="/api/documents/{{ doc.id }}/sources"
                       hx-target="#source-list"
                       hx-swap="beforeend"
@@ -91,6 +93,7 @@
             </div>
 
             <div id="tab-pdf" class="tab-panel">
+                <div id="source-error-pdf" class="source-error-container"></div>
                 <form hx-post="/api/documents/{{ doc.id }}/sources"
                       hx-target="#source-list"
                       hx-swap="beforeend"

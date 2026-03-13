@@ -202,9 +202,7 @@ class TestAcceptRejectSuggestion:
         from writer.services.document_service import accept_suggestion
 
         doc_id = uuid.uuid4()
-        suggestion = self._make_suggestion(
-            original_text="old", suggested_text="NEW TEXT"
-        )
+        suggestion = self._make_suggestion(original_text="old", suggested_text="NEW TEXT")
         comment = self._make_comment(
             id=suggestion.comment_id,
             document_id=doc_id,
@@ -248,9 +246,7 @@ class TestAcceptRejectSuggestion:
             r.scalar_one_or_none.return_value = val
             return r
 
-        db.execute = AsyncMock(
-            side_effect=[make_result(suggestion), make_result(comment)]
-        )
+        db.execute = AsyncMock(side_effect=[make_result(suggestion), make_result(comment)])
 
         result = await reject_suggestion(db, suggestion.id)
         assert isinstance(result, SuggestionResponse)

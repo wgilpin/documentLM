@@ -78,6 +78,25 @@ class TestAddSource:
 
 
 class TestAddSourcePdf:
+    async def test_add_pdf_raises_parse_error_on_invalid_bytes(self) -> None:
+        from writer.services.source_service import PdfParseError, add_source_pdf
+
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+
+        doc_id = uuid.uuid4()
+
+        with (
+            patch(
+                "writer.services.source_service._extract_pdf_text",
+                side_effect=Exception("bad pdf"),
+            ),
+            pytest.raises(PdfParseError),
+        ):
+            await add_source_pdf(db, doc_id, "Bad PDF", b"not-a-pdf")
+
     async def test_add_pdf_extracts_text(self) -> None:
         from writer.services.source_service import add_source_pdf
 

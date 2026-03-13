@@ -12,7 +12,7 @@ from writer.core.database import get_db
 from writer.models.enums import SourceType
 from writer.models.schemas import SourceCreate, SourceResponse
 from writer.services import source_service
-from writer.services.source_service import SourceNotFoundError
+from writer.services.source_service import PdfParseError, SourceNotFoundError
 
 router = APIRouter()
 
@@ -34,11 +34,11 @@ async def list_sources(
 ) -> HTMLResponse | list[SourceResponse]:
     sources = await source_service.list_sources(db, doc_id)
     if request.headers.get("HX-Request"):
+        if not sources:
+            return HTMLResponse('<li class="source-empty-state">No sources added yet.</li>')
         tmpl = get_templates()
         html = "".join(
-            tmpl.get_template("partials/sources.html").render(
-                {"source": s, "request": request}
-            )
+            tmpl.get_template("partials/sources.html").render({"source": s, "request": request})
             for s in sources
         )
         return HTMLResponse(html)
@@ -60,7 +60,20 @@ async def add_source(
 
     if stype == SourceType.pdf and file is not None:
         file_bytes = await file.read()
-        source = await source_service.add_source_pdf(db, doc_id, title, file_bytes)
+        try:
+            source = await source_service.add_source_pdf(db, doc_id, title, file_bytes)
+        except PdfParseError as exc:
+            if request.headers.get("HX-Request"):
+                error_html = '<div class="source-error">Invalid PDF file.</div>'
+                return HTMLResponse(
+                    error_html,
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    headers={"HX-Retarget": "#source-error-pdf", "HX-Reswap": "innerHTML"},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Could not parse PDF.",
+            ) from exc
     else:
         data = SourceCreate(
             document_id=doc_id,

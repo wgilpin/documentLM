@@ -1,12 +1,12 @@
 <li class="source-item" id="source-{{ source.id }}">
-    <span>
-        <span class="type-badge">{{ source.source_type.value }}</span>
-        {{ source.title }}
-    </span>
-    <button class="btn btn-danger"
-            style="padding:0.2rem 0.4rem;font-size:0.75rem"
-            hx-delete="/api/documents/{{ source.document_id }}/sources/{{ source.id }}"
-            hx-target="#source-{{ source.id }}"
-            hx-swap="outerHTML"
-            hx-confirm="Remove this source?">×</button>
+  <div class="source-meta">
+    <span class="type-badge">{{ source.source_type.value }}</span>
+    <span class="source-title">{{ source.title }}</span>
+    <span class="source-date">{{ source.created_at.strftime('%b %d, %Y') }}</span>
+  </div>
+  <button class="btn btn-danger btn-xs"
+          hx-delete="/api/documents/{{ source.document_id }}/sources/{{ source.id }}"
+          hx-target="#source-{{ source.id }}"
+          hx-swap="outerHTML"
+          hx-confirm="Remove this source?">×</button>
 </li>

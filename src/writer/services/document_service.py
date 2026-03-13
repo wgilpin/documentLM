@@ -86,9 +86,7 @@ async def delete_document(db: AsyncSession, doc_id: uuid.UUID) -> None:
     logger.info("Deleted document id=%s", doc_id)
 
 
-def is_selection_valid(
-    document_content: str, start: int, end: int, selected_text: str
-) -> bool:
+def is_selection_valid(document_content: str, start: int, end: int, selected_text: str) -> bool:
     """Check whether the stored selection still matches the current document content."""
     if start < 0 or end <= start or end > len(document_content):
         return False
@@ -96,23 +94,17 @@ def is_selection_valid(
 
 
 async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> DocumentResponse:
-    result = await db.execute(
-        select(Suggestion).where(Suggestion.id == suggestion_id)
-    )
+    result = await db.execute(select(Suggestion).where(Suggestion.id == suggestion_id))
     suggestion = result.scalar_one_or_none()
     if suggestion is None:
         raise SuggestionNotFoundError(suggestion_id)
 
-    comment_result = await db.execute(
-        select(Comment).where(Comment.id == suggestion.comment_id)
-    )
+    comment_result = await db.execute(select(Comment).where(Comment.id == suggestion.comment_id))
     comment = comment_result.scalar_one_or_none()
     if comment is None:
         raise DocumentNotFoundError(suggestion.comment_id)
 
-    doc_result = await db.execute(
-        select(Document).where(Document.id == comment.document_id)
-    )
+    doc_result = await db.execute(select(Document).where(Document.id == comment.document_id))
     doc = doc_result.scalar_one_or_none()
     if doc is None:
         raise DocumentNotFoundError(comment.document_id)
@@ -138,16 +130,12 @@ async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> Docum
 
 
 async def reject_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> SuggestionResponse:
-    result = await db.execute(
-        select(Suggestion).where(Suggestion.id == suggestion_id)
-    )
+    result = await db.execute(select(Suggestion).where(Suggestion.id == suggestion_id))
     suggestion = result.scalar_one_or_none()
     if suggestion is None:
         raise SuggestionNotFoundError(suggestion_id)
 
-    comment_result = await db.execute(
-        select(Comment).where(Comment.id == suggestion.comment_id)
-    )
+    comment_result = await db.execute(select(Comment).where(Comment.id == suggestion.comment_id))
     comment = comment_result.scalar_one_or_none()
 
     suggestion.status = SuggestionStatus.rejected

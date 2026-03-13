@@ -47,9 +47,7 @@ async def get_document(db: DbDep, doc_id: uuid.UUID) -> DocumentResponse:
 
 
 @router.put("/{doc_id}", response_model=DocumentResponse)
-async def update_document(
-    db: DbDep, doc_id: uuid.UUID, data: DocumentUpdate
-) -> DocumentResponse:
+async def update_document(db: DbDep, doc_id: uuid.UUID, data: DocumentUpdate) -> DocumentResponse:
     try:
         result = await document_service.update_document(db, doc_id, data)
         await db.commit()

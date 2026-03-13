@@ -28,9 +28,7 @@ async def invoke_drafter(
     surrounding_start = max(0, comment.selection_start - 500)
     surrounding_end = min(len(document.content), comment.selection_end + 500)
     surrounding_context = document.content[surrounding_start:surrounding_end]
-    core_sources = "\n\n---\n\n".join(
-        f"[{s.title}]\n{s.content}" for s in sources if s.content
-    )
+    core_sources = "\n\n---\n\n".join(f"[{s.title}]\n{s.content}" for s in sources if s.content)
 
     session_state = {
         "selected_text": comment.selected_text,
@@ -55,9 +53,7 @@ async def invoke_drafter(
         parts=[genai_types.Part(text=comment.body)],
     )
 
-    logger.info(
-        "Invoking drafter for comment=%s doc=%s", comment.id, comment.document_id
-    )
+    logger.info("Invoking drafter for comment=%s doc=%s", comment.id, comment.document_id)
 
     suggested_text: str | None = None
     try:

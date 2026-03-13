@@ -28,6 +28,8 @@ The workspace prioritizes the document over the conversational interface.
 
 ## 4. Source Management & Grounding
 
+> **Current Implementation (MVP):** The source management panel is live. Users can add URL, PDF, and note sources to a document; each appears in the sidebar list showing title, type, and date added. PDF text is extracted at upload time. Sources can be removed with a confirmation prompt. Invalid PDFs surface an inline error. The distinction between Core (trusted) and General Research (untrusted) sources, and all grounding/citation behaviour below, is planned for a future phase.
+
 Information is strictly categorized to prevent AI hallucinations and maintain a single source of truth.
 
 * **The Core Bucket (Gospel):** Trusted, user-uploaded source materials. The AI treats these as absolute truth.
