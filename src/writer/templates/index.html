@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Documents — AI Document Workbench{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Documents</h1>
+    <a href="/documents/new" class="btn btn-primary">New Document</a>
+</div>
+
+{% if documents %}
+<div class="doc-list">
+    {% for doc in documents %}
+    <div class="doc-item">
+        <a href="/documents/{{ doc.id }}">{{ doc.title }}</a>
+        <span class="meta">{{ doc.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p>No documents yet. <a href="/documents/new">Create one</a>.</p>
+{% endif %}
+{% endblock %}

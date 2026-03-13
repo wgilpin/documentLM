@@ -50,3 +50,5 @@ disallow_any_generics = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "--ignore=tests/integration"
+markers = ["integration: requires a live PostgreSQL database (run with docker-compose up -d postgres)"]

@@ -3,7 +3,11 @@
     "allow": [
       "Bash(bash .specify/scripts/bash/setup-plan.sh --json)",
       "Bash(bash .specify/scripts/bash/update-agent-context.sh claude)",
-      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json)"
+      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json)",
+      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)",
+      "Bash(bash uv run alembic *)",
+      "Bash(bash uv run pytest *)",
+      "Bash(bash grep *)",
     ]
   }
 }

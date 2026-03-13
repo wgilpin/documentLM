@@ -1,0 +1,65 @@
+"""FastAPI application entry point."""
+
+import uuid
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from writer.core.database import engine, get_db
+from writer.core.logging import configure_logging
+from writer.services import document_service
+from writer.services.document_service import DocumentNotFoundError
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    configure_logging()
+    yield
+    await engine.dispose()
+
+
+app = FastAPI(title="AI Document Workbench", lifespan=lifespan)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+templates = Jinja2Templates(directory="src/writer/templates")
+
+DbDep = Annotated[AsyncSession, Depends(get_db)]
+
+# Import and register routers
+from writer.api import documents as doc_router  # noqa: E402
+from writer.api import sources as src_router  # noqa: E402
+from writer.api import suggestions as sug_router  # noqa: E402
+
+app.include_router(doc_router.router, prefix="/api/documents", tags=["documents"])
+app.include_router(src_router.router, prefix="/api/documents", tags=["sources"])
+app.include_router(sug_router.router, tags=["suggestions"])
+
+
+# UI routes
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request, db: DbDep) -> HTMLResponse:
+    documents = await document_service.list_documents(db)
+    return templates.TemplateResponse("index.html", {"request": request, "documents": documents})
+
+
+@app.get("/documents/new", response_class=HTMLResponse)
+async def new_document(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse("document.html", {"request": request, "doc": None})
+
+
+@app.get("/documents/{doc_id}", response_class=HTMLResponse)
+async def view_document(request: Request, db: DbDep, doc_id: uuid.UUID) -> HTMLResponse:
+    try:
+        doc = await document_service.get_document(db, doc_id)
+    except DocumentNotFoundError:
+        return templates.TemplateResponse(
+            "index.html", {"request": request, "documents": [], "error": "Document not found"}
+        )
+    return templates.TemplateResponse("document.html", {"request": request, "doc": doc})
