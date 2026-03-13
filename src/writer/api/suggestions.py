@@ -118,7 +118,7 @@ async def submit_comment(
     return suggestion
 
 
-@router.get("/api/documents/{doc_id}/suggestions")
+@router.get("/api/documents/{doc_id}/suggestions", response_model=None)
 async def list_suggestions(
     request: Request, db: DbDep, doc_id: uuid.UUID
 ) -> HTMLResponse | list[SuggestionResponse]:
@@ -145,7 +145,7 @@ async def list_suggestions(
     return suggestions  # type: ignore[return-value]
 
 
-@router.post("/api/suggestions/{suggestion_id}/accept")
+@router.post("/api/suggestions/{suggestion_id}/accept", response_model=None)
 async def accept(
     request: Request, db: DbDep, suggestion_id: uuid.UUID
 ) -> HTMLResponse | DocumentResponse:
@@ -162,7 +162,7 @@ async def accept(
     return doc
 
 
-@router.post("/api/suggestions/{suggestion_id}/reject")
+@router.post("/api/suggestions/{suggestion_id}/reject", response_model=None)
 async def reject(
     request: Request, db: DbDep, suggestion_id: uuid.UUID
 ) -> HTMLResponse | SuggestionResponse:

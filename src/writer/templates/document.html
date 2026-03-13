@@ -9,16 +9,18 @@
         {% if doc %}
         <input type="text" id="doc-title" value="{{ doc.title }}"
                hx-put="/api/documents/{{ doc.id }}"
+               hx-ext="json-enc"
                hx-trigger="change"
                hx-vals='js:{"title": document.getElementById("doc-title").value, "content": document.getElementById("document-content").value}'
                hx-swap="none">
         <textarea id="document-content"
                   hx-put="/api/documents/{{ doc.id }}"
+                  hx-ext="json-enc"
                   hx-trigger="keyup delay:1s"
                   hx-vals='js:{"content": document.getElementById("document-content").value, "title": document.getElementById("doc-title").value}'
                   hx-swap="none">{{ doc.content }}</textarea>
         {% else %}
-        <form hx-post="/api/documents" hx-target="body" hx-push-url="true">
+        <form action="/api/documents/form" method="post">
             <div class="form-group">
                 <label for="doc-title">Title</label>
                 <input type="text" id="doc-title" name="title" placeholder="Document title" required>

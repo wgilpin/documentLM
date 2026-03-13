@@ -82,9 +82,7 @@ async def add_source(
     return source
 
 
-@router.delete(
-    "/{doc_id}/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/{doc_id}/sources/{source_id}", response_model=None)
 async def delete_source(
     request: Request, db: DbDep, doc_id: uuid.UUID, source_id: uuid.UUID
 ) -> HTMLResponse | None:
