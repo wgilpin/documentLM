@@ -13,8 +13,7 @@ handoffs:
 ## User Input
 
 ```text
-$ARGUMENTS
-```
+$ARGUMENTSi
 
 You **MUST** consider the user input before proceeding (if not empty).
 
