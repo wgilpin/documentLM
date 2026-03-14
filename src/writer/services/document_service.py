@@ -37,7 +37,7 @@ class SuggestionNotFoundError(Exception):
 
 async def create_document(db: AsyncSession, data: DocumentCreate) -> DocumentResponse:
     logger.info("Creating document title=%r", data.title)
-    doc = Document(title=data.title, content=data.content)
+    doc = Document(title=data.title, content=data.content, overview=data.overview)
     db.add(doc)
     await db.flush()
     await db.refresh(doc)

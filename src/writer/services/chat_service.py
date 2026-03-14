@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.logging import get_logger
 from writer.models.db import ChatMessage
-from writer.models.enums import ChatRole
-from writer.models.schemas import ChatMessageResponse
+from writer.models.enums import ChatRole, SourceType
+from writer.models.schemas import ChatMessageResponse, SourceCreate
 
 logger = get_logger(__name__)
 
@@ -103,3 +103,61 @@ async def process_chat(
         raise
 
     return await create_chat_message(db, document_id, reply_text, ChatRole.assistant)
+
+
+async def initialize_chat_with_overview(
+    db: AsyncSession,
+    document_id: uuid.UUID,
+    overview: str,
+) -> list[ChatMessageResponse]:
+    """Seed the chat on first open.
+
+    1. Invokes the research agent to find relevant sources.
+    2. Fetches real content from each URL and saves them as Source records.
+    3. Invokes the planner agent (overview + sources) to produce an overview paragraph + ToC.
+    4. Persists the overview as a user message and the plan as the assistant reply.
+    """
+    from writer.services import agent_service, source_service
+    from writer.services.content_fetcher import fetch_url_content
+
+    # 1. Research
+    logger.info("Initializing chat with overview for document=%s", document_id)
+    raw_sources = await agent_service.invoke_research_agent(overview)
+
+    # 2. Fetch content + save sources
+    saved_sources = []
+    for s in raw_sources:
+        url = s.get("url")
+        if url:
+            try:
+                content = await fetch_url_content(url)
+                logger.info("Fetched content for url=%s (len=%d)", url, len(content))
+            except Exception as exc:
+                logger.warning("Failed to fetch %s: %s — using agent summary", url, exc)
+                content = s.get("summary", "")
+        else:
+            content = s.get("summary", "")
+
+        source = await source_service.add_source(
+            db,
+            SourceCreate(
+                document_id=document_id,
+                source_type=SourceType.url,
+                title=s.get("title", "Source"),
+                content=content,
+                url=url,
+            ),
+        )
+        saved_sources.append(source)
+
+    logger.info("Saved %d research sources for document=%s", len(saved_sources), document_id)
+
+    # 3. Plan
+    plan_text = await agent_service.invoke_planner(overview, saved_sources)
+
+    # 4. Persist chat messages
+    user_msg = await create_chat_message(db, document_id, overview, ChatRole.user)
+    assistant_msg = await create_chat_message(db, document_id, plan_text, ChatRole.assistant)
+
+    logger.info("Chat initialized for document=%s", document_id)
+    return [user_msg, assistant_msg]

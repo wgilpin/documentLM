@@ -33,7 +33,11 @@
                 <label for="doc-title">Title</label>
                 <input type="text" id="doc-title" name="title" placeholder="Document title" required>
             </div>
-            <textarea id="document-content" name="content" placeholder="Start writing…"></textarea>
+            <div class="form-group">
+                <label for="doc-overview">Overview</label>
+                <textarea id="doc-overview" name="overview" rows="4"
+                          placeholder="Describe what this document is about — the AI will research and plan it for you…"></textarea>
+            </div>
             <button type="submit" class="btn btn-primary" style="margin-top:0.5rem">Create Document</button>
         </form>
         {% endif %}

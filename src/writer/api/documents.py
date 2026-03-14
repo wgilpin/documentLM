@@ -31,9 +31,11 @@ async def create_document_endpoint(db: DbDep, data: DocumentCreate) -> DocumentR
 async def create_document_form(
     db: DbDep,
     title: Annotated[str, Form()],
-    content: Annotated[str, Form()] = "",
+    overview: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
-    doc = await document_service.create_document(db, DocumentCreate(title=title, content=content))
+    doc = await document_service.create_document(
+        db, DocumentCreate(title=title, overview=overview or None)
+    )
     await db.commit()
     return RedirectResponse(url=f"/documents/{doc.id}", status_code=status.HTTP_303_SEE_OTHER)
 

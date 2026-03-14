@@ -11,6 +11,7 @@ from writer.models.enums import ChatRole, CommentStatus, SourceType, SuggestionS
 class DocumentCreate(BaseModel):
     title: str
     content: str = ""
+    overview: str | None = None
 
 
 class DocumentUpdate(BaseModel):
@@ -24,6 +25,7 @@ class DocumentResponse(BaseModel):
     id: uuid.UUID
     title: str
     content: str
+    overview: str | None
     created_at: datetime
     updated_at: datetime
 

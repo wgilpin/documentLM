@@ -4,14 +4,14 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.database import get_db
 from writer.core.logging import get_logger
-from writer.models.enums import ChatRole
-from writer.models.schemas import ChatMessageCreate, ChatMessageResponse
+from writer.models.enums import ChatRole, SourceType
+from writer.models.schemas import ChatMessageCreate, ChatMessageResponse, SourceCreate
 from writer.services import chat_service, document_service
 from writer.services.document_service import DocumentNotFoundError
 
@@ -30,6 +30,15 @@ def get_templates() -> Jinja2Templates:
     return _templates
 
 
+def _sse(html: str) -> str:
+    """Format HTML as an SSE data event, collapsing internal newlines."""
+    return "data: " + html.replace("\n", " ").replace("\r", "") + "\n\n"
+
+
+def _status_html(message: str) -> str:
+    return f'<div class="chat-status-msg">{message}</div>'
+
+
 @router.get("/api/documents/{doc_id}/chat", response_model=None)
 async def get_chat_history(
     request: Request,
@@ -37,11 +46,24 @@ async def get_chat_history(
     doc_id: uuid.UUID,
 ) -> HTMLResponse | list[ChatMessageResponse]:
     try:
-        await document_service.get_document(db, doc_id)
+        doc = await document_service.get_document(db, doc_id)
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
 
     messages = await chat_service.list_chat_messages(db, doc_id)
+
+    # First-open: no messages yet and document has an overview.
+    # Return an SSE wrapper immediately — the /stream endpoint does the heavy work.
+    if not messages and doc.overview and request.headers.get("HX-Request"):
+        wrapper = (
+            f'<div id="chat-stream-wrapper"'
+            f' hx-ext="sse"'
+            f' sse-connect="/api/documents/{doc_id}/chat/stream"'
+            f' sse-swap="message">'
+            f'<div class="chat-status-msg">Starting up\u2026</div>'
+            f"</div>"
+        )
+        return HTMLResponse(wrapper)
 
     if request.headers.get("HX-Request"):
         tmpl = get_templates()
@@ -51,6 +73,99 @@ async def get_chat_history(
         )
         return HTMLResponse(html)
     return messages  # type: ignore[return-value]
+
+
+@router.get("/api/documents/{doc_id}/chat/stream")
+async def stream_chat_init(
+    request: Request,
+    db: DbDep,
+    doc_id: uuid.UUID,
+) -> StreamingResponse:
+    """SSE stream that runs research → fetch → plan and pushes stage updates."""
+    try:
+        doc = await document_service.get_document(db, doc_id)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Document not found") from exc
+
+    if not doc.overview:
+        raise HTTPException(status_code=400, detail="Document has no overview")
+
+    overview = doc.overview
+    tmpl = get_templates()
+
+    async def generate() -> None:  # type: ignore[return]
+        from writer.services import agent_service, source_service
+        from writer.services.content_fetcher import fetch_url_content
+
+        try:
+            yield _sse(_status_html("Researching relevant sources\u2026"))
+            logger.info("Stream: researching for doc=%s", doc_id)
+            raw_sources = await agent_service.invoke_research_agent(overview)
+
+            yield _sse(_status_html(f"Fetching content from {len(raw_sources)} source(s)\u2026"))
+            logger.info("Stream: fetching %d sources for doc=%s", len(raw_sources), doc_id)
+            saved_sources = []
+            for s in raw_sources:
+                url = s.get("url")
+                try:
+                    content = await fetch_url_content(url) if url else s.get("summary", "")
+                except Exception as exc:
+                    logger.warning("Stream: failed to fetch %s: %s", url, exc)
+                    content = s.get("summary", "")
+                source = await source_service.add_source(
+                    db,
+                    SourceCreate(
+                        document_id=doc_id,
+                        source_type=SourceType.url,
+                        title=s.get("title", "Source"),
+                        content=content,
+                        url=url,
+                    ),
+                )
+                saved_sources.append(source)
+
+            yield _sse(_status_html("Generating your document plan\u2026"))
+            logger.info("Stream: planning for doc=%s", doc_id)
+            plan_text = await agent_service.invoke_planner(overview, saved_sources)
+
+            user_msg = await chat_service.create_chat_message(
+                db, doc_id, overview, ChatRole.user
+            )
+            assistant_msg = await chat_service.create_chat_message(
+                db, doc_id, plan_text, ChatRole.assistant
+            )
+            await db.commit()
+            logger.info("Stream: complete for doc=%s", doc_id)
+
+            messages_html = "".join(
+                tmpl.get_template("partials/chat_message.html").render(
+                    {"msg": m, "request": request}
+                )
+                for m in [user_msg, assistant_msg]
+            )
+            # OOB swap refreshes the source list in the sidebar
+            oob = (
+                f'<ul id="source-list"'
+                f' hx-get="/api/documents/{doc_id}/sources"'
+                f' hx-trigger="load"'
+                f' hx-swap="innerHTML"'
+                f' hx-swap-oob="true"></ul>'
+            )
+            yield _sse(messages_html + oob)
+
+        except Exception as exc:
+            logger.exception("Stream init failed for doc=%s: %s", doc_id, exc)
+            yield _sse(
+                '<div class="chat-status-msg chat-status-error">'
+                "\u26a0 Initialization failed \u2014 please refresh to try again."
+                "</div>"
+            )
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/api/documents/{doc_id}/chat", response_model=None)
