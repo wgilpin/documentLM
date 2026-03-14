@@ -13,12 +13,17 @@
                hx-trigger="change"
                hx-vals='js:{"title": document.getElementById("doc-title").value, "content": document.getElementById("document-content").value}'
                hx-swap="none">
+        <div class="editor-view-toggle">
+            <button id="btn-raw" class="view-btn active" type="button" onclick="setEditorView('raw')">Raw</button>
+            <button id="btn-preview" class="view-btn" type="button" onclick="setEditorView('preview')">Preview</button>
+        </div>
         <textarea id="document-content"
                   hx-put="/api/documents/{{ doc.id }}"
                   hx-ext="json-enc"
                   hx-trigger="keyup delay:1s"
                   hx-vals='js:{"content": document.getElementById("document-content").value, "title": document.getElementById("doc-title").value}'
                   hx-swap="none">{{ doc.content }}</textarea>
+        <div id="document-preview" class="document-preview" style="display:none"></div>
 
         <!-- US3: Inline suggestions overlay -->
         <div id="inline-suggestions"
@@ -181,6 +186,25 @@
 </dialog>
 
 <script>
+function setEditorView(view) {
+    const textarea = document.getElementById('document-content');
+    const preview = document.getElementById('document-preview');
+    const btnRaw = document.getElementById('btn-raw');
+    const btnPreview = document.getElementById('btn-preview');
+    if (view === 'preview') {
+        preview.innerHTML = marked.parse(textarea.value || '');
+        textarea.style.display = 'none';
+        preview.style.display = 'block';
+        btnRaw.classList.remove('active');
+        btnPreview.classList.add('active');
+    } else {
+        textarea.style.display = 'block';
+        preview.style.display = 'none';
+        btnRaw.classList.add('active');
+        btnPreview.classList.remove('active');
+    }
+}
+
 function switchTab(name) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

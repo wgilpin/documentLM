@@ -10,6 +10,7 @@
       "Bash(uv run ruff *)",
       "Bash(git diff *)",
       "Bash(uv run mypy *)",
+      "Bash(find *)",
       "Bash(.specify/scripts/bash/check-prerequisites.sh --json)"
     ]
   }

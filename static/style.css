@@ -601,3 +601,98 @@ details[open] .source-add-summary::before {
 @keyframes chat-spin {
     to { transform: rotate(360deg); }
 }
+
+/* Editor view toggle */
+.editor-view-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    width: fit-content;
+    overflow: hidden;
+}
+
+.view-btn {
+    padding: 0.3rem 0.85rem;
+    font-size: 0.8rem;
+    background: #f9fafb;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    transition: background 0.15s, color 0.15s;
+}
+
+.view-btn + .view-btn {
+    border-left: 1px solid #d1d5db;
+}
+
+.view-btn.active {
+    background: #2563eb;
+    color: #fff;
+}
+
+.view-btn:not(.active):hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Markdown preview pane */
+.document-preview {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    overflow-y: auto;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    background: #fff;
+}
+
+.document-preview h1,
+.document-preview h2,
+.document-preview h3,
+.document-preview h4 {
+    margin: 1rem 0 0.4rem;
+    font-weight: 600;
+}
+
+.document-preview h1 { font-size: 1.5rem; }
+.document-preview h2 { font-size: 1.25rem; }
+.document-preview h3 { font-size: 1.1rem; }
+
+.document-preview p { margin: 0.5rem 0; }
+
+.document-preview code {
+    background: #f3f4f6;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    font-family: "Courier New", monospace;
+    font-size: 0.875em;
+}
+
+.document-preview pre {
+    background: #f3f4f6;
+    padding: 0.75rem;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.document-preview pre code {
+    background: none;
+    padding: 0;
+}
+
+.document-preview ul,
+.document-preview ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+}
+
+.document-preview blockquote {
+    border-left: 3px solid #d1d5db;
+    padding-left: 0.75rem;
+    color: #6b7280;
+    margin: 0.5rem 0;
+}
+
+.document-preview a { color: #2563eb; text-decoration: underline; }
