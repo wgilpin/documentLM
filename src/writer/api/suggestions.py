@@ -57,8 +57,9 @@ async def submit_comment(
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
 
-    # Validate selection is still current
-    if not document_service.is_selection_valid(
+    # Validate selection is still current (skip for global commands with no selection)
+    is_global = selection_start == 0 and selection_end == 0
+    if not is_global and not document_service.is_selection_valid(
         doc.content, selection_start, selection_end, selected_text
     ):
         raise HTTPException(

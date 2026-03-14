@@ -19,6 +19,14 @@
                   hx-trigger="keyup delay:1s"
                   hx-vals='js:{"content": document.getElementById("document-content").value, "title": document.getElementById("doc-title").value}'
                   hx-swap="none">{{ doc.content }}</textarea>
+
+        <!-- US3: Inline suggestions overlay -->
+        <div id="inline-suggestions"
+             hx-get="/api/documents/{{ doc.id }}/suggestions"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+        </div>
+
         {% else %}
         <form action="/api/documents/form" method="post">
             <div class="form-group">
@@ -36,114 +44,138 @@
     <div class="sidebar">
         <!-- Sources section -->
         <div class="sidebar-section">
-            <h3>Sources</h3>
-            <ul id="source-list"
-                hx-get="/api/documents/{{ doc.id }}/sources"
-                hx-trigger="load"
-                hx-swap="innerHTML">
-            </ul>
+            <details class="source-list-details">
+                <summary class="source-list-summary">Sources</summary>
+                <ul id="source-list"
+                    hx-get="/api/documents/{{ doc.id }}/sources"
+                    hx-trigger="load"
+                    hx-swap="innerHTML">
+                </ul>
+            </details>
 
-            <!-- Add source tabs -->
-            <div class="source-tabs">
-                <button class="tab-btn active" onclick="switchTab('note')">Note</button>
-                <button class="tab-btn" onclick="switchTab('url')">URL</button>
-                <button class="tab-btn" onclick="switchTab('pdf')">PDF</button>
-            </div>
+            <!-- US4: Collapsed source entry -->
+            <details class="source-add-details">
+                <summary class="source-add-summary">Add Source</summary>
 
-            <div id="tab-note" class="tab-panel active">
-                <div id="source-error-note" class="source-error-container"></div>
-                <form hx-post="/api/documents/{{ doc.id }}/sources"
-                      hx-target="#source-list"
-                      hx-swap="beforeend"
-                      hx-on::after-request="this.reset()">
-                    <input type="hidden" name="source_type" value="note">
-                    <div class="form-group">
-                        <label>Title</label>
-                        <input type="text" name="title" placeholder="Note title" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Content</label>
-                        <textarea name="content" rows="3" placeholder="Type your note…"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm">Add Note</button>
-                </form>
-            </div>
+                <div class="source-tabs">
+                    <button class="tab-btn active" onclick="switchTab('note')">Note</button>
+                    <button class="tab-btn" onclick="switchTab('url')">URL</button>
+                    <button class="tab-btn" onclick="switchTab('pdf')">PDF</button>
+                </div>
 
-            <div id="tab-url" class="tab-panel">
-                <div id="source-error-url" class="source-error-container"></div>
-                <form hx-post="/api/documents/{{ doc.id }}/sources"
-                      hx-target="#source-list"
-                      hx-swap="beforeend"
-                      hx-on::after-request="this.reset()">
-                    <input type="hidden" name="source_type" value="url">
-                    <div class="form-group">
-                        <label>Title</label>
-                        <input type="text" name="title" placeholder="Reference title" required>
-                    </div>
-                    <div class="form-group">
-                        <label>URL</label>
-                        <input type="url" name="url" placeholder="https://…" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Summary</label>
-                        <textarea name="content" rows="2" placeholder="Optional summary…"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm">Add URL</button>
-                </form>
-            </div>
+                <div id="tab-note" class="tab-panel active">
+                    <div id="source-error-note" class="source-error-container"></div>
+                    <form hx-post="/api/documents/{{ doc.id }}/sources"
+                          hx-target="#source-list"
+                          hx-swap="beforeend"
+                          hx-on::after-request="this.reset()">
+                        <input type="hidden" name="source_type" value="note">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" name="title" placeholder="Note title" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Content</label>
+                            <textarea name="content" rows="3" placeholder="Type your note…"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Add Note</button>
+                    </form>
+                </div>
 
-            <div id="tab-pdf" class="tab-panel">
-                <div id="source-error-pdf" class="source-error-container"></div>
-                <form hx-post="/api/documents/{{ doc.id }}/sources"
-                      hx-target="#source-list"
-                      hx-swap="beforeend"
-                      hx-encoding="multipart/form-data"
-                      hx-on::after-request="this.reset()">
-                    <input type="hidden" name="source_type" value="pdf">
-                    <div class="form-group">
-                        <label>Title</label>
-                        <input type="text" name="title" placeholder="PDF title" required>
-                    </div>
-                    <div class="form-group">
-                        <label>PDF file</label>
-                        <input type="file" name="file" accept=".pdf" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm">Upload PDF</button>
-                </form>
-            </div>
+                <div id="tab-url" class="tab-panel">
+                    <div id="source-error-url" class="source-error-container"></div>
+                    <form hx-post="/api/documents/{{ doc.id }}/sources"
+                          hx-target="#source-list"
+                          hx-swap="beforeend"
+                          hx-on::after-request="this.reset()">
+                        <input type="hidden" name="source_type" value="url">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" name="title" placeholder="Reference title" required>
+                        </div>
+                        <div class="form-group">
+                            <label>URL</label>
+                            <input type="url" name="url" placeholder="https://…" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Summary</label>
+                            <textarea name="content" rows="2" placeholder="Optional summary…"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Add URL</button>
+                    </form>
+                </div>
+
+                <div id="tab-pdf" class="tab-panel">
+                    <div id="source-error-pdf" class="source-error-container"></div>
+                    <form hx-post="/api/documents/{{ doc.id }}/sources"
+                          hx-target="#source-list"
+                          hx-swap="beforeend"
+                          hx-encoding="multipart/form-data"
+                          hx-on::after-request="this.reset()">
+                        <input type="hidden" name="source_type" value="pdf">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" name="title" placeholder="PDF title" required>
+                        </div>
+                        <div class="form-group">
+                            <label>PDF file</label>
+                            <input type="file" name="file" accept=".pdf" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Upload PDF</button>
+                    </form>
+                </div>
+            </details>
         </div>
 
-        <!-- AI Suggestions section -->
-        <div class="sidebar-section">
-            <h3>AI Suggestions</h3>
-            <div id="suggestion-panel"
-                 hx-get="/api/documents/{{ doc.id }}/suggestions"
+        <!-- Meta-chat panel -->
+        <div class="meta-chat-panel">
+            <div class="meta-chat-header">Meta Chat</div>
+            <div id="chat-history"
+                 hx-get="/api/documents/{{ doc.id }}/chat"
                  hx-trigger="load"
                  hx-swap="innerHTML">
             </div>
-        </div>
-
-        <!-- Margin comment form -->
-        <div class="sidebar-section">
-            <h3>Ask AI</h3>
-            <div class="selection-info" id="selection-info">Select text in the editor to annotate.</div>
-            <form id="comment-form" class="comment-form"
-                  hx-post="/api/documents/{{ doc.id }}/comments"
-                  hx-target="#suggestion-panel"
-                  hx-swap="innerHTML"
-                  hx-on::after-request="this.reset(); document.getElementById('selection-info').textContent='Select text in the editor to annotate.'">
-                <input type="hidden" name="selection_start" id="sel-start" value="0">
-                <input type="hidden" name="selection_end" id="sel-end" value="0">
-                <input type="hidden" name="selected_text" id="sel-text" value="">
-                <textarea name="body" placeholder="Instruction to the AI…" required></textarea>
-                <button type="submit" class="btn btn-primary">Submit</button>
+            <form class="chat-input-form"
+                  hx-post="/api/documents/{{ doc.id }}/chat"
+                  hx-target="#chat-history"
+                  hx-swap="beforeend"
+                  hx-on::after-request="this.reset()">
+                <textarea name="content" class="chat-input-textarea" rows="2" placeholder="Ask the AI anything about your document…" required></textarea>
+                <button type="submit" class="btn btn-primary btn-sm">Send</button>
             </form>
         </div>
     </div>
     {% endif %}
 </div>
 
+<!-- AI Instruction context menu -->
 {% if doc %}
+<div id="context-menu" style="display:none; position:fixed; z-index:300">
+    <button type="button" id="ctx-comment-btn">Comment</button>
+</div>
+
+<!-- AI Instruction modal -->
+<dialog id="command-modal">
+    <form method="dialog" class="modal-close-form">
+        <button type="submit" class="modal-close-btn" aria-label="Close">✕</button>
+    </form>
+    <h3 class="modal-title">AI Instruction</h3>
+    <form id="modal-comment-form"
+          hx-post="/api/documents/{{ doc.id }}/comments"
+          hx-target="#inline-suggestions"
+          hx-swap="beforeend"
+          hx-on::after-request="document.getElementById('command-modal').close(); this.reset()">
+        <input type="hidden" name="selection_start" id="modal-sel-start" value="0">
+        <input type="hidden" name="selection_end" id="modal-sel-end" value="0">
+        <input type="hidden" name="selected_text" id="modal-sel-text" value="">
+        <div id="modal-selection-info" class="modal-selection-info"></div>
+        <textarea name="body" class="modal-body-input" placeholder="Instruction to the AI…" required></textarea>
+        <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+    </form>
+</dialog>
+
 <script>
 function switchTab(name) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -152,15 +184,44 @@ function switchTab(name) {
     event.target.classList.add('active');
 }
 
-document.getElementById('document-content').addEventListener('mouseup', function() {
-    const start = this.selectionStart;
-    const end = this.selectionEnd;
-    if (start === end) return;
-    const text = this.value.substring(start, end);
-    document.getElementById('sel-start').value = start;
-    document.getElementById('sel-end').value = end;
-    document.getElementById('sel-text').value = text;
-    document.getElementById('selection-info').textContent = 'Selected: "' + text.substring(0, 50) + (text.length > 50 ? '…' : '') + '"';
+// Right-click on textarea → show custom context menu
+const ctxMenu = document.getElementById('context-menu');
+
+document.getElementById('document-content').addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    ctxMenu.style.display = 'block';
+    ctxMenu.style.left = e.clientX + 'px';
+    ctxMenu.style.top = e.clientY + 'px';
+    ctxMenu.dataset.selStart = this.selectionStart;
+    ctxMenu.dataset.selEnd = this.selectionEnd;
+    ctxMenu.dataset.selText = this.value.substring(this.selectionStart, this.selectionEnd);
+});
+
+// Hide context menu on outside click or Escape
+document.addEventListener('mousedown', function(e) {
+    if (!ctxMenu.contains(e.target)) ctxMenu.style.display = 'none';
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') ctxMenu.style.display = 'none';
+});
+
+// "Comment" opens the AI instruction modal with selection pre-filled
+document.getElementById('ctx-comment-btn').addEventListener('click', function() {
+    const start = ctxMenu.dataset.selStart || '0';
+    const end = ctxMenu.dataset.selEnd || '0';
+    const text = ctxMenu.dataset.selText || '';
+
+    document.getElementById('modal-sel-start').value = start;
+    document.getElementById('modal-sel-end').value = end;
+    document.getElementById('modal-sel-text').value = text;
+
+    const infoEl = document.getElementById('modal-selection-info');
+    infoEl.textContent = text
+        ? 'Selection: "' + text.substring(0, 60) + (text.length > 60 ? '…' : '') + '"'
+        : '';
+
+    ctxMenu.style.display = 'none';
+    document.getElementById('command-modal').showModal();
 });
 </script>
 {% endif %}

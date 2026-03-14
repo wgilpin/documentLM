@@ -8,9 +8,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from writer.core.database import Base
-from writer.models.enums import CommentStatus, SourceType, SuggestionStatus
+from writer.models.enums import ChatRole, CommentStatus, SourceType, SuggestionStatus
 
 __all__ = [
+    "ChatMessage",
+    "ChatRole",
     "CommentStatus",
     "Document",
     "Source",
@@ -85,6 +87,20 @@ class Suggestion(Base):
     status: Mapped[SuggestionStatus] = mapped_column(
         Enum(SuggestionStatus), nullable=False, default=SuggestionStatus.pending
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[ChatRole] = mapped_column(Enum(ChatRole), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

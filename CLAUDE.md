@@ -5,6 +5,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-13
 ## Active Technologies
 - Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, pypdf, Jinja2 (002-source-management)
 - PostgreSQL (Docker container) — no schema changes (002-source-management)
+- Python 3.13+ + google-adk (local), FastAPI, HTMX 2.0, Pydantic v2, SQLAlchemy 2.x / asyncpg (003-ux-improvements)
+- PostgreSQL (Docker container) — one new table: `chat_messages` (003-ux-improvements)
 
 - Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x (async), asyncpg, Alembic, Jinja2 (001-document-workbench-mvp)
 
@@ -45,6 +47,7 @@ docker-compose up --build                 # full stack
 Python 3.13+: Follow standard conventions
 
 ## Recent Changes
+- 003-ux-improvements: Added Python 3.13+ + google-adk (local), FastAPI, HTMX 2.0, Pydantic v2, SQLAlchemy 2.x / asyncpg
 - 002-source-management: Added Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, pypdf, Jinja2
 
 - 001-document-workbench-mvp: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x (async), asyncpg, Alembic, Jinja2

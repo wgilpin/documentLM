@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from writer.core.config import settings
 from writer.core.database import engine, get_db
 from writer.core.logging import configure_logging
 from writer.services import document_service
@@ -20,6 +21,12 @@ from writer.services.document_service import DocumentNotFoundError
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_logging()
+    import logging
+    log = logging.getLogger("writer.startup")
+    if settings.gemini_api_key:
+        log.info("GEMINI_API_KEY loaded (%d chars)", len(settings.gemini_api_key))
+    else:
+        log.warning("GEMINI_API_KEY is not set — chat agent will fail")
     yield
     await engine.dispose()
 
@@ -33,6 +40,7 @@ templates = Jinja2Templates(directory="src/writer/templates")
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
 # Import and register routers
+from writer.api import chat as chat_router  # noqa: E402
 from writer.api import documents as doc_router  # noqa: E402
 from writer.api import sources as src_router  # noqa: E402
 from writer.api import suggestions as sug_router  # noqa: E402
@@ -40,6 +48,7 @@ from writer.api import suggestions as sug_router  # noqa: E402
 app.include_router(doc_router.router, prefix="/api/documents", tags=["documents"])
 app.include_router(src_router.router, prefix="/api/documents", tags=["sources"])
 app.include_router(sug_router.router, tags=["suggestions"])
+app.include_router(chat_router.router, tags=["chat"])
 
 
 # UI routes

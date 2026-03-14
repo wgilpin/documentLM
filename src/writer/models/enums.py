@@ -19,3 +19,8 @@ class SuggestionStatus(enum.Enum):
     accepted = "accepted"
     rejected = "rejected"
     stale = "stale"
+
+
+class ChatRole(enum.Enum):
+    user = "user"
+    assistant = "assistant"

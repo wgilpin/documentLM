@@ -96,6 +96,7 @@ main {
 .editor-layout {
     display: grid;
     grid-template-columns: 1fr 320px;
+    grid-template-rows: 1fr;
     gap: 1.5rem;
     height: calc(100vh - 120px);
 }
@@ -127,10 +128,11 @@ main {
 
 /* Sidebar */
 .sidebar {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: auto 1fr;
     gap: 1rem;
-    overflow-y: auto;
+    overflow: hidden;
+    min-height: 0;
 }
 
 .sidebar-section {
@@ -149,12 +151,48 @@ main {
 }
 
 /* Sources */
+.source-list-summary {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.source-list-summary::marker,
+.source-list-summary::-webkit-details-marker {
+    display: none;
+}
+
+.source-list-summary::before {
+    content: '▶';
+    font-size: 0.6rem;
+    transition: transform 0.15s ease;
+    display: inline-block;
+}
+
+.source-list-details[open] .source-list-summary::before {
+    transform: rotate(90deg);
+}
+
+.source-list-details[open] .source-list-summary {
+    margin-bottom: 0.5rem;
+}
+
 #source-list {
     list-style: none;
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
     margin-bottom: 0.5rem;
+    max-height: 240px;
+    overflow-y: auto;
 }
 
 .source-item {
@@ -281,4 +319,250 @@ h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
+}
+
+/* AI Instruction context menu */
+#context-menu {
+    position: fixed;
+    z-index: 300;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    padding: 0.25rem 0;
+    min-width: 140px;
+}
+
+#context-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    color: #1a1a1a;
+}
+
+#context-menu button:hover {
+    background: #f3f4f6;
+}
+
+/* AI Instruction modal (native <dialog>) */
+dialog {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.25rem;
+    width: 480px;
+    max-width: 95vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+dialog::backdrop {
+    background: rgba(0,0,0,0.35);
+}
+
+.modal-close-form {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.5rem;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #6b7280;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close-btn:hover { color: #1a1a1a; }
+
+.modal-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.modal-selection-info {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+    min-height: 1rem;
+}
+
+.modal-body-input {
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 70px;
+    margin-bottom: 0.75rem;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Inline suggestions overlay */
+.editor-pane {
+    position: relative;
+}
+
+#inline-suggestions {
+    position: absolute;
+    top: 2.5rem;
+    right: 0;
+    width: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 50;
+    pointer-events: none;
+}
+
+.suggestion-card--inline {
+    pointer-events: all;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+/* US4: Source entry collapse (details/summary) */
+.source-add-details {
+    margin-top: 0.5rem;
+}
+
+.source-add-summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #2563eb;
+    font-weight: 500;
+    padding: 0.25rem 0;
+    user-select: none;
+    list-style: none;
+}
+
+.source-add-summary::-webkit-details-marker { display: none; }
+
+.source-add-summary::before {
+    content: '+ ';
+}
+
+details[open] .source-add-summary::before {
+    content: '− ';
+}
+
+/* US5: Hover-only delete button */
+.btn-ghost-danger {
+    visibility: hidden;
+    background: transparent;
+    color: #9ca3af;
+    border: none;
+    cursor: pointer;
+    padding: 0.1rem 0.3rem;
+    font-size: 0.85rem;
+    border-radius: 3px;
+}
+
+.source-item:hover .btn-ghost-danger {
+    visibility: visible;
+}
+
+.btn-ghost-danger:hover {
+    color: #dc2626;
+    background: #fee2e2;
+}
+
+/* Meta-chat panel */
+.meta-chat-panel {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.75rem;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.meta-chat-header {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    flex-shrink: 0;
+}
+
+#chat-history {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow-y: auto;
+}
+
+.chat-turn {
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.chat-turn--user {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    align-self: flex-end;
+    max-width: 90%;
+}
+
+.chat-turn--assistant {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    align-self: flex-start;
+    max-width: 90%;
+}
+
+.chat-role {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+    margin-bottom: 0.2rem;
+}
+
+.chat-content {
+    white-space: pre-wrap;
+}
+
+.chat-input-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    flex-shrink: 0;
+}
+
+.chat-input-textarea {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    resize: vertical;
+}
+
+.btn-sm {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
 }

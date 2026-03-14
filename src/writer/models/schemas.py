@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from writer.models.enums import CommentStatus, SourceType, SuggestionStatus
+from writer.models.enums import ChatRole, CommentStatus, SourceType, SuggestionStatus
 
 
 class DocumentCreate(BaseModel):
@@ -85,4 +85,18 @@ class SuggestionResponse(BaseModel):
     original_text: str
     suggested_text: str
     status: SuggestionStatus
+    created_at: datetime
+
+
+class ChatMessageCreate(BaseModel):
+    content: str
+
+
+class ChatMessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    role: ChatRole
+    content: str
     created_at: datetime
