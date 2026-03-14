@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.config import settings
-from writer.core.database import engine, get_db
+from writer.core.database import _get_engine, get_db
 from writer.core.logging import configure_logging
 from writer.services import document_service
 from writer.services.document_service import DocumentNotFoundError
@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     else:
         log.warning("GEMINI_API_KEY is not set — chat agent will fail")
     yield
-    await engine.dispose()
+    await _get_engine().dispose()
 
 
 app = FastAPI(title="AI Document Workbench", lifespan=lifespan)

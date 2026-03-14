@@ -46,24 +46,72 @@ async def list_chat_messages(
     return [ChatMessageResponse.model_validate(m) for m in result.scalars().all()]
 
 
-async def invoke_chat_agent(history: list[ChatMessageResponse]) -> str:
-    """Invoke the ChatAgent with the full conversation history and return the reply text."""
-    from writer.agents.chat_agent import chat_agent
+async def invoke_chat_agent(
+    history: list[ChatMessageResponse],
+    document_content: str = "",
+) -> tuple[str, str | None]:
+    """Invoke the ChatAgent with the full conversation history and return (reply_text, new_content).
+
+    new_content is non-None only when the agent called the edit_document tool.
+    """
+    from writer.agents.chat_agent import make_chat_agent
+
+    # Closure that captures the edit result
+    edited: list[str | None] = [None]
+
+    def edit_document(new_content: str) -> str:
+        """Replace the entire document content with new_content.
+
+        Args:
+            new_content: The complete new text for the document.
+
+        Returns:
+            Confirmation that the document was updated.
+        """
+        edited[0] = new_content
+        return "Document updated."
+
+    agent = make_chat_agent(tools=[edit_document])
 
     session_service = InMemorySessionService()
-    session = await session_service.create_session(app_name=_APP_NAME, user_id=_USER_ID)
+    session = await session_service.create_session(
+        app_name=_APP_NAME,
+        user_id=_USER_ID,
+        state={"document_content": document_content},
+    )
 
     runner = Runner(
-        agent=chat_agent,
+        agent=agent,
         app_name=_APP_NAME,
         session_service=session_service,
     )
 
-    # Build the latest user message (the last turn in history)
-    last_user_content = next((m.content for m in reversed(history) if m.role == ChatRole.user), "")
+    # Build a self-contained prompt with full context so the agent never loses history
+    prompt_parts: list[str] = []
+
+    if document_content:
+        prompt_parts.append(
+            f"--- CURRENT DOCUMENT ---\n{document_content}\n--- END DOCUMENT ---"
+        )
+
+    prior_turns = history[:-1]  # everything except the new user message at the end
+    if prior_turns:
+        formatted = "\n\n".join(
+            f"{'USER' if m.role == ChatRole.user else 'ASSISTANT'}: {m.content}"
+            for m in prior_turns
+        )
+        prompt_parts.append(
+            f"--- CONVERSATION HISTORY ---\n{formatted}\n--- END HISTORY ---"
+        )
+
+    last_user_content = next(
+        (m.content for m in reversed(history) if m.role == ChatRole.user), ""
+    )
+    prompt_parts.append(f"USER: {last_user_content}")
+
     user_message = genai_types.Content(
         role="user",
-        parts=[genai_types.Part(text=last_user_content)],
+        parts=[genai_types.Part(text="\n\n".join(prompt_parts))],
     )
 
     logger.info("Invoking ChatAgent with %d history turns", len(history))
@@ -86,23 +134,35 @@ async def invoke_chat_agent(history: list[ChatMessageResponse]) -> str:
     if reply_text is None:
         raise ValueError("ChatAgent returned no text response")
 
-    logger.info("ChatAgent response received")
-    return reply_text
+    logger.info("ChatAgent response received (edited=%s)", edited[0] is not None)
+    return reply_text, edited[0]
 
 
 async def process_chat(
     db: AsyncSession,
     document_id: uuid.UUID,
     history: list[ChatMessageResponse],
-) -> ChatMessageResponse:
-    """Call the ChatAgent with history and persist + return the assistant reply."""
+    document_content: str = "",
+) -> tuple[ChatMessageResponse, str | None]:
+    """Call the ChatAgent with history and persist + return (assistant_msg, new_content).
+
+    new_content is non-None when the agent edited the document.
+    """
+    from writer.models.schemas import DocumentUpdate
+    from writer.services import document_service
+
     try:
-        reply_text = await invoke_chat_agent(history)
+        reply_text, new_content = await invoke_chat_agent(history, document_content)
     except Exception as exc:
         logger.error("ChatAgent error for document=%s: %s", document_id, exc)
         raise
 
-    return await create_chat_message(db, document_id, reply_text, ChatRole.assistant)
+    if new_content is not None:
+        await document_service.update_document(db, document_id, DocumentUpdate(content=new_content))
+        logger.info("ChatAgent edited document=%s", document_id)
+
+    msg = await create_chat_message(db, document_id, reply_text, ChatRole.assistant)
+    return msg, new_content
 
 
 async def initialize_chat_with_overview(

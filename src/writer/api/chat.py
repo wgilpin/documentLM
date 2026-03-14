@@ -1,5 +1,6 @@
 """Chat API endpoints — GET and POST /api/documents/{doc_id}/chat."""
 
+import html as html_lib
 import uuid
 from typing import Annotated
 
@@ -176,7 +177,7 @@ async def post_chat_message(
     content: Annotated[str, Form()],
 ) -> HTMLResponse | list[ChatMessageResponse]:
     try:
-        await document_service.get_document(db, doc_id)
+        doc = await document_service.get_document(db, doc_id)
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
 
@@ -191,7 +192,9 @@ async def post_chat_message(
 
     # Invoke agent and persist assistant reply
     try:
-        assistant_msg = await chat_service.process_chat(db, doc_id, history)
+        assistant_msg, new_doc_content = await chat_service.process_chat(
+            db, doc_id, history, doc.content or ""
+        )
     except Exception as exc:
         logger.exception("ChatAgent error for doc=%s: %s", doc_id, exc)
         raise HTTPException(status_code=502, detail=f"AI agent error: {exc}") from exc
@@ -200,9 +203,22 @@ async def post_chat_message(
 
     if request.headers.get("HX-Request"):
         tmpl = get_templates()
-        html = "".join(
+        messages_html = "".join(
             tmpl.get_template("partials/chat_message.html").render({"msg": m, "request": request})
             for m in (user_msg, assistant_msg)
         )
-        return HTMLResponse(html)
+        # If the agent edited the document, push an OOB swap to update the textarea
+        oob = ""
+        if new_doc_content is not None:
+            escaped = html_lib.escape(new_doc_content)
+            oob = (
+                f'<textarea id="document-content" hx-swap-oob="outerHTML"'
+                f' hx-put="/api/documents/{doc_id}"'
+                f' hx-ext="json-enc"'
+                f' hx-trigger="keyup delay:1s"'
+                f' hx-vals=\'js:{{"content": document.getElementById("document-content").value,'
+                f' "title": document.getElementById("doc-title").value}}\''
+                f" hx-swap=\"none\">{escaped}</textarea>"
+            )
+        return HTMLResponse(messages_html + oob)
     return [user_msg, assistant_msg]  # type: ignore[return-value]
