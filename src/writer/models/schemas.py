@@ -72,6 +72,7 @@ class CommentCreate(BaseModel):
     selection_end: int
     selected_text: str
     selected_node_id: str | None = None
+    to_node_id: str | None = None
     body: str
 
 
@@ -84,6 +85,7 @@ class CommentResponse(BaseModel):
     selection_end: int
     selected_text: str
     selected_node_id: str | None
+    to_node_id: str | None = None
     body: str
     status: CommentStatus
     created_at: datetime

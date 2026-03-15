@@ -173,6 +173,7 @@
         <input type="hidden" name="selection_end" id="modal-sel-end" value="0">
         <input type="hidden" name="selected_text" id="modal-sel-text" value="">
         <input type="hidden" name="selected_node_id" id="modal-sel-node-id" value="">
+        <input type="hidden" name="to_node_id" id="modal-sel-to-node-id" value="">
         <div class="modal-input-wrap">
             <textarea name="body" class="modal-body-input" placeholder="Instruction to the AI…" required></textarea>
             <button type="submit" id="modal-submit-btn" class="modal-submit-btn" aria-label="Submit">&#9654;</button>
@@ -263,20 +264,24 @@ mountEl.addEventListener('contextmenu', (e) => {
         if (m) { mdIdx = raw.indexOf(m[0]); mdText = m[0]; }
     }
 
-    // Capture the node ID of the first block containing the selection
-    let capturedNodeId = null;
+    // Capture the top-level doc node IDs at each end of the selection.
+    // $pos.node(1) is the direct child of the doc (depth 1) — always a valid
+    // block-level replacement target regardless of how deeply nested the cursor is.
+    let capturedFromNodeId = null;
+    let capturedToNodeId = null;
     if (from !== to) {
-        editor.state.doc.nodesBetween(from, to, (node) => {
-            if (capturedNodeId) return false;
-            if (node.attrs?.id) { capturedNodeId = node.attrs.id; return false; }
-        });
+        const $from = editor.state.doc.resolve(from);
+        const $to   = editor.state.doc.resolve(to);
+        capturedFromNodeId = $from.node(1)?.attrs?.id ?? null;
+        capturedToNodeId   = $to.node(1)?.attrs?.id ?? null;
     }
 
     pendingSelection = {
-        start: mdIdx >= 0 ? mdIdx : 0,
-        end: mdIdx >= 0 ? mdIdx + mdText.length : 0,
-        text: mdText,
-        nodeId: capturedNodeId,
+        start:    mdIdx >= 0 ? mdIdx : 0,
+        end:      mdIdx >= 0 ? mdIdx + mdText.length : 0,
+        text:     mdText,
+        nodeId:   capturedFromNodeId,
+        toNodeId: capturedToNodeId,
     };
     pendingClickPos = { x: e.clientX, y: e.clientY };
     bubbleMenuEl.style.position = 'fixed';
@@ -297,6 +302,7 @@ document.getElementById('bubble-comment-btn').addEventListener('click', () => {
     document.getElementById('modal-sel-end').value = pendingSelection.end;
     document.getElementById('modal-sel-text').value = pendingSelection.text;
     document.getElementById('modal-sel-node-id').value = pendingSelection.nodeId || '';
+    document.getElementById('modal-sel-to-node-id').value = pendingSelection.toNodeId || '';
     const modal = document.getElementById('command-modal');
     modal.style.margin = '0';
     modal.style.position = 'fixed';
