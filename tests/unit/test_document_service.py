@@ -162,96 +162,6 @@ class TestDeleteDocument:
             await delete_document(db, uuid.uuid4())
 
 
-class TestUpdateNodeRange:
-    """Pure unit tests for _update_node_range (no DB needed)."""
-
-    def _doc(self, *nodes: dict) -> str:  # type: ignore[type-arg]
-        import json
-        return json.dumps({"type": "doc", "content": list(nodes)})
-
-    def _para(self, node_id: str, text: str = "hello") -> dict:  # type: ignore[type-arg]
-        return {
-            "type": "paragraph",
-            "attrs": {"id": node_id},
-            "content": [{"type": "text", "text": text}],
-        }
-
-    def _heading(self, node_id: str, text: str, level: int = 2) -> dict:  # type: ignore[type-arg]
-        return {
-            "type": "heading",
-            "attrs": {"id": node_id, "level": level},
-            "content": [{"type": "text", "text": text}],
-        }
-
-    def test_single_node_replaced_when_to_node_id_is_none(self) -> None:
-        import json
-
-        from writer.services.document_service import _update_node_range
-
-        content = self._doc(self._para("a", "old"), self._para("b", "keep"))
-        result = json.loads(_update_node_range(content, "a", None, "new text"))
-        texts = [n["content"][0]["text"] for n in result["content"] if n.get("content")]
-        assert "new text" in texts
-        assert "keep" in texts
-        assert "old" not in texts
-
-    def test_single_node_replaced_when_to_equals_from(self) -> None:
-        import json
-
-        from writer.services.document_service import _update_node_range
-
-        content = self._doc(self._para("a", "old"), self._para("b", "keep"))
-        result = json.loads(_update_node_range(content, "a", "a", "new text"))
-        texts = [n["content"][0]["text"] for n in result["content"] if n.get("content")]
-        assert "new text" in texts
-        assert "keep" in texts
-
-    def test_multi_node_range_removes_intermediate_nodes(self) -> None:
-        import json
-
-        from writer.services.document_service import _update_node_range
-
-        content = self._doc(
-            self._para("before", "before"),
-            self._heading("from", "Section"),
-            self._para("mid", "middle"),
-            self._para("to", "end of range"),
-            self._para("after", "after"),
-        )
-        result = json.loads(_update_node_range(content, "from", "to", "Replaced section."))
-        ids = [n.get("attrs", {}).get("id") for n in result["content"]]
-        assert "before" in ids
-        assert "after" in ids
-        assert "from" not in ids
-        assert "mid" not in ids
-        assert "to" not in ids
-        assert "Replaced section." in json.dumps(result)
-
-    def test_multi_block_new_content_all_inserted(self) -> None:
-        import json
-
-        from writer.services.document_service import _update_node_range
-
-        content = self._doc(self._para("a"), self._para("keep"))
-        new_text = "First para.\n\nSecond para."
-        result = json.loads(_update_node_range(content, "a", None, new_text))
-        assert len(result["content"]) == 3  # 2 new paras + "keep"
-
-    def test_raises_when_from_node_not_found(self) -> None:
-        from writer.services.document_service import _update_node_range
-
-        content = self._doc(self._para("a"))
-        with pytest.raises(ValueError, match="not found"):
-            _update_node_range(content, "missing", None, "x")
-
-    def test_raises_when_to_node_not_found(self) -> None:
-        from writer.services.document_service import _update_node_range
-
-        content = self._doc(self._para("a"), self._para("b"))
-        with pytest.raises(ValueError, match="not found"):
-            _update_node_range(content, "a", "missing", "x")
-
-
 class TestAcceptRejectSuggestion:
     def _make_suggestion(self, **kwargs: object) -> MagicMock:
         from writer.models.enums import SuggestionStatus
@@ -279,8 +189,6 @@ class TestAcceptRejectSuggestion:
             "selection_start": 0,
             "selection_end": 3,
             "selected_text": "old",
-            "selected_node_id": None,
-            "to_node_id": None,
             "body": "change it",
             "status": CommentStatus.open,
             "created_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc),
@@ -292,12 +200,9 @@ class TestAcceptRejectSuggestion:
         return obj
 
     async def test_accept_suggestion_replaces_text(self) -> None:
-        import json
-
         from writer.services.document_service import accept_suggestion
 
         doc_id = uuid.uuid4()
-        node_id = "test-node-1"
         suggestion = self._make_suggestion(original_text="old", suggested_text="NEW TEXT")
         comment = self._make_comment(
             id=suggestion.comment_id,
@@ -305,20 +210,8 @@ class TestAcceptRejectSuggestion:
             selection_start=0,
             selection_end=3,
             selected_text="old",
-            selected_node_id=node_id,
-            to_node_id=None,
         )
-        tiptap_content = json.dumps({
-            "type": "doc",
-            "content": [
-                {
-                    "type": "paragraph",
-                    "attrs": {"id": node_id},
-                    "content": [{"type": "text", "text": "old"}],
-                }
-            ],
-        })
-        doc_obj = _make_doc(id=doc_id, content=tiptap_content)
+        doc_obj = _make_doc(id=doc_id, content="old text here")
 
         db = AsyncMock()
         db.flush = AsyncMock()
@@ -335,53 +228,24 @@ class TestAcceptRejectSuggestion:
 
         result = await accept_suggestion(db, suggestion.id)
         assert isinstance(result, DocumentResponse)
-        # Content should have suggestion applied (stored as TipTap JSON)
         assert "NEW TEXT" in result.content
+        assert result.content == "NEW TEXT text here"
 
-    async def test_accept_suggestion_multi_node_range(self) -> None:
-        """Suggestion spanning two top-level nodes removes both and inserts new content."""
-        import json
-
+    async def test_accept_suggestion_stale_selection(self) -> None:
+        """ValueError raised when the selected text no longer matches the document."""
         from writer.services.document_service import accept_suggestion
 
         doc_id = uuid.uuid4()
-        from_id = "node-heading"
-        to_id = "node-list"
-        suggestion = self._make_suggestion(suggested_text="Expanded content here.")
+        suggestion = self._make_suggestion(suggested_text="replacement")
         comment = self._make_comment(
             id=suggestion.comment_id,
             document_id=doc_id,
-            selected_node_id=from_id,
-            to_node_id=to_id,
+            selection_start=0,
+            selection_end=3,
+            selected_text="old",
         )
-        tiptap_content = json.dumps({
-            "type": "doc",
-            "content": [
-                {
-                    "type": "heading",
-                    "attrs": {"id": from_id, "level": 2},
-                    "content": [{"type": "text", "text": "Speaker Management"}],
-                },
-                {
-                    "type": "bulletList",
-                    "attrs": {"id": to_id},
-                    "content": [
-                        {
-                            "type": "listItem",
-                            "content": [
-                                {"type": "paragraph", "content": [{"type": "text", "text": "Item"}]}
-                            ],
-                        }
-                    ],
-                },
-                {
-                    "type": "paragraph",
-                    "attrs": {"id": "node-after"},
-                    "content": [{"type": "text", "text": "After"}],
-                },
-            ],
-        })
-        doc_obj = _make_doc(id=doc_id, content=tiptap_content)
+        # Document has been edited — "old" is no longer at [0:3]
+        doc_obj = _make_doc(id=doc_id, content="completely different content")
 
         db = AsyncMock()
         db.flush = AsyncMock()
@@ -396,14 +260,8 @@ class TestAcceptRejectSuggestion:
             side_effect=[make_result(suggestion), make_result(comment), make_result(doc_obj)]
         )
 
-        result = await accept_suggestion(db, suggestion.id)
-        doc = json.loads(result.content)
-        ids = [n.get("attrs", {}).get("id") for n in doc["content"]]
-        # The two original nodes are gone; the "After" paragraph remains
-        assert from_id not in ids
-        assert to_id not in ids
-        assert "node-after" in ids
-        assert "Expanded content here." in result.content
+        with pytest.raises(ValueError, match="stale"):
+            await accept_suggestion(db, suggestion.id)
 
     async def test_reject_suggestion_sets_status(self) -> None:
         from writer.models.schemas import SuggestionResponse

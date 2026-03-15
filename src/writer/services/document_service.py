@@ -86,68 +86,6 @@ async def delete_document(db: AsyncSession, doc_id: uuid.UUID) -> None:
     logger.info("Deleted document id=%s", doc_id)
 
 
-def _update_node_range(
-    content_json: str,
-    from_node_id: str,
-    to_node_id: str | None,
-    new_text: str,
-) -> str:
-    """Replace all top-level doc nodes from from_node_id to to_node_id (inclusive)
-    with the blocks parsed from new_text markdown.
-
-    When to_node_id is None or equal to from_node_id, only the single node is replaced.
-    Raises ValueError if either node ID is not found at the top level.
-    """
-    import json
-
-    from writer.services.tiptap import markdown_to_tiptap
-
-    doc = json.loads(content_json)
-    new_doc = json.loads(markdown_to_tiptap(new_text))
-    new_nodes: list[dict] = new_doc.get("content") or [  # type: ignore[type-arg]
-        {"type": "paragraph", "content": []}
-    ]
-
-    effective_to = to_node_id if to_node_id else from_node_id
-    children: list[dict] = doc.get("content", [])  # type: ignore[type-arg]
-
-    result: list[dict] = []  # type: ignore[type-arg]
-    state = "before"  # before | in_range | after
-    found_start = False
-    found_end = False
-
-    for child in children:
-        child_id = child.get("attrs", {}).get("id")
-        if state == "before":
-            if child_id == from_node_id:
-                found_start = True
-                result.extend(new_nodes)
-                if effective_to == from_node_id:
-                    found_end = True
-                    state = "after"
-                else:
-                    state = "in_range"
-                # skip from_node itself
-            else:
-                result.append(child)
-        elif state == "in_range":
-            if child_id == effective_to:
-                found_end = True
-                state = "after"
-                # skip to_node (already replaced by new_nodes above)
-            # else: skip intermediate nodes
-        else:
-            result.append(child)
-
-    if not found_start or not found_end:
-        raise ValueError(
-            f"Range nodes {from_node_id!r}..{effective_to!r} not found in document"
-        )
-    doc["content"] = result
-    return json.dumps(doc)
-
-
-
 async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> DocumentResponse:
     result = await db.execute(select(Suggestion).where(Suggestion.id == suggestion_id))
     suggestion = result.scalar_one_or_none()
@@ -164,35 +102,19 @@ async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> Docum
     if doc is None:
         raise DocumentNotFoundError(comment.document_id)
 
-    # Node-ID path: fast and accurate, no text mismatch
-    node_replaced = False
-    if comment.selected_node_id and doc.content:
-        try:
-            doc.content = _update_node_range(
-                doc.content,
-                comment.selected_node_id,
-                comment.to_node_id,
-                suggestion.suggested_text,
-            )
-            node_replaced = True
-        except ValueError:
-            logger.warning(
-                "accept_suggestion=%s: node %r not found — marking stale",
-                suggestion_id,
-                comment.selected_node_id,
-            )
-            suggestion.status = SuggestionStatus.stale
-            await db.flush()
-            raise ValueError(
-                "Selection is stale — the target node was deleted"
-            ) from None
-
-    if not node_replaced:
+    content = doc.content or ""
+    if not is_selection_valid(
+        content, comment.selection_start, comment.selection_end, comment.selected_text
+    ):
         suggestion.status = SuggestionStatus.stale
         await db.flush()
-        raise ValueError(
-            "Selection is stale — document was edited after suggestion was created"
-        )
+        raise ValueError("Selection is stale — document was edited after suggestion was created")
+
+    doc.content = (
+        content[: comment.selection_start]
+        + suggestion.suggested_text
+        + content[comment.selection_end :]
+    )
     suggestion.status = SuggestionStatus.accepted
     comment.status = CommentStatus.resolved
     await db.flush()

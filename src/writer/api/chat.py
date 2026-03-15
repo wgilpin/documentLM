@@ -23,6 +23,7 @@ logger = get_logger(__name__)
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
+
 def get_templates() -> Jinja2Templates:
     return _shared_templates
 
@@ -145,9 +146,7 @@ async def stream_chat_init(
             logger.info("Stream: planning for doc=%s", doc_id)
             plan_text = await agent_service.invoke_planner(overview, saved_sources)
 
-            user_msg = await chat_service.create_chat_message(
-                db, doc_id, overview, ChatRole.user
-            )
+            user_msg = await chat_service.create_chat_message(db, doc_id, overview, ChatRole.user)
             assistant_msg = await chat_service.create_chat_message(
                 db, doc_id, plan_text, ChatRole.assistant
             )
@@ -228,7 +227,7 @@ async def post_chat_message(
                 f' hx-trigger="tiptap-changed delay:1s"'
                 f' hx-vals=\'js:{{"content": document.getElementById("document-content").value,'
                 f' "title": document.getElementById("doc-title").value}}\''
-                f" hx-swap=\"none\">{escaped}</textarea>"
+                f' hx-swap="none">{escaped}</textarea>'
             )
         return HTMLResponse(messages_html + oob)
     return [user_msg, assistant_msg]  # type: ignore[return-value]

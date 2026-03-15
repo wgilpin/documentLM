@@ -29,6 +29,7 @@ router = APIRouter()
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
+
 def get_templates() -> Jinja2Templates:
     return _shared_templates
 

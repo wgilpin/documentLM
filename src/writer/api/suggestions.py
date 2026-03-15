@@ -32,6 +32,7 @@ logger = get_logger(__name__)
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
+
 def get_templates() -> Jinja2Templates:
     return _shared_templates
 
@@ -45,8 +46,6 @@ async def submit_comment(
     selection_end: Annotated[int, Form()],
     selected_text: Annotated[str, Form()],
     body: Annotated[str, Form()],
-    selected_node_id: Annotated[str | None, Form()] = None,
-    to_node_id: Annotated[str | None, Form()] = None,
 ) -> HTMLResponse | SuggestionResponse:
     # Validate document exists
     try:
@@ -67,8 +66,6 @@ async def submit_comment(
         selection_start=comment_data.selection_start,
         selection_end=comment_data.selection_end,
         selected_text=comment_data.selected_text,
-        selected_node_id=selected_node_id,
-        to_node_id=to_node_id,
         body=comment_data.body,
     )
     db.add(comment_orm)

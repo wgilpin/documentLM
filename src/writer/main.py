@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_logging()
     import logging
     import os
+
     log = logging.getLogger("writer.startup")
     if settings.gemini_api_key:
         os.environ["GOOGLE_API_KEY"] = settings.gemini_api_key

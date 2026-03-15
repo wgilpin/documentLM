@@ -75,9 +75,7 @@ class TestQuerySources:
         with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
             result = query_sources("find something", top_k=5)
 
-        mock_collection.query.assert_called_once_with(
-            query_texts=["find something"], n_results=5
-        )
+        mock_collection.query.assert_called_once_with(query_texts=["find something"], n_results=5)
         assert result == ["chunk A", "chunk B"]
 
     def test_returns_flattened_documents_list(self) -> None:
@@ -102,6 +100,4 @@ class TestDeleteSourceChunks:
         with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
             delete_source_chunks(source_id)
 
-        mock_collection.delete.assert_called_once_with(
-            where={"source_id": str(source_id)}
-        )
+        mock_collection.delete.assert_called_once_with(where={"source_id": str(source_id)})

@@ -33,9 +33,7 @@ async def invoke_drafter(
     agent = make_drafter_agent(tools=[])
 
     session_service = InMemorySessionService()
-    session = await session_service.create_session(
-        app_name=_APP_NAME, user_id=_USER_ID, state={}
-    )
+    session = await session_service.create_session(app_name=_APP_NAME, user_id=_USER_ID, state={})
 
     runner = Runner(
         agent=agent,
@@ -43,13 +41,11 @@ async def invoke_drafter(
         session_service=session_service,
     )
 
-    from writer.services.tiptap import tiptap_to_markdown
-
     query_text = f"{comment.body} {comment.selected_text}"
     chunks = await asyncio.to_thread(vector_store.query_sources, query_text)
     logger.info("drafter: injecting %d source chunks into context", len(chunks))
 
-    doc_content = tiptap_to_markdown(document.content or "")
+    doc_content = document.content or ""
     source_block = "\n".join(chunks)
     message_text = (
         f"--- FULL DOCUMENT ---\n{doc_content}\n--- END DOCUMENT ---\n\n"

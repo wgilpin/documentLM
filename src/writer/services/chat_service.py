@@ -89,28 +89,20 @@ async def invoke_chat_agent(
     )
 
     # Build a self-contained prompt with full context so the agent never loses history
-    from writer.services.tiptap import tiptap_to_markdown
-
     prompt_parts: list[str] = []
-    md_content = tiptap_to_markdown(document_content)
+    md_content = document_content
 
     if md_content:
-        prompt_parts.append(
-            f"--- CURRENT DOCUMENT ---\n{md_content}\n--- END DOCUMENT ---"
-        )
+        prompt_parts.append(f"--- CURRENT DOCUMENT ---\n{md_content}\n--- END DOCUMENT ---")
 
-    last_user_content = next(
-        (m.content for m in reversed(history) if m.role == ChatRole.user), ""
-    )
+    last_user_content = next((m.content for m in reversed(history) if m.role == ChatRole.user), "")
 
     if last_user_content:
         chunks = await asyncio.to_thread(vector_store.query_sources, last_user_content)
         logger.info("chat: injecting %d source chunks into context", len(chunks))
         if chunks:
             source_block = "\n".join(chunks)
-            prompt_parts.append(
-                f"--- RELEVANT SOURCES ---\n{source_block}\n--- END SOURCES ---"
-            )
+            prompt_parts.append(f"--- RELEVANT SOURCES ---\n{source_block}\n--- END SOURCES ---")
 
     prior_turns = history[:-1]  # everything except the new user message at the end
     if prior_turns:
@@ -118,9 +110,7 @@ async def invoke_chat_agent(
             f"{'USER' if m.role == ChatRole.user else 'ASSISTANT'}: {m.content}"
             for m in prior_turns
         )
-        prompt_parts.append(
-            f"--- CONVERSATION HISTORY ---\n{formatted}\n--- END HISTORY ---"
-        )
+        prompt_parts.append(f"--- CONVERSATION HISTORY ---\n{formatted}\n--- END HISTORY ---")
 
     prompt_parts.append(f"USER: {last_user_content}")
 
@@ -165,7 +155,6 @@ async def process_chat(
     """
     from writer.models.schemas import DocumentUpdate
     from writer.services import document_service
-    from writer.services.tiptap import markdown_to_tiptap
 
     try:
         reply_text, new_content = await invoke_chat_agent(history, document_content)
@@ -173,14 +162,12 @@ async def process_chat(
         logger.error("ChatAgent error for document=%s: %s", document_id, exc)
         raise
 
-    new_json: str | None = None
     if new_content is not None:
-        new_json = markdown_to_tiptap(new_content)
-        await document_service.update_document(db, document_id, DocumentUpdate(content=new_json))
+        await document_service.update_document(db, document_id, DocumentUpdate(content=new_content))
         logger.info("ChatAgent edited document=%s", document_id)
 
     msg = await create_chat_message(db, document_id, reply_text, ChatRole.assistant)
-    return msg, new_json
+    return msg, new_content
 
 
 async def initialize_chat_with_overview(
