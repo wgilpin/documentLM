@@ -15,10 +15,10 @@ from fastapi import (
     status,
 )
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.database import get_db
+from writer.core.templates import templates as _shared_templates
 from writer.models.enums import SourceType
 from writer.models.schemas import SourceCreate, SourceResponse
 from writer.services import source_service
@@ -28,14 +28,8 @@ router = APIRouter()
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
-_templates: Jinja2Templates | None = None
-
-
-def get_templates() -> Jinja2Templates:
-    global _templates
-    if _templates is None:
-        _templates = Jinja2Templates(directory="src/writer/templates")
-    return _templates
+def get_templates():
+    return _shared_templates
 
 
 @router.get("/{doc_id}/sources", response_model=None)

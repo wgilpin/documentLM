@@ -6,11 +6,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.database import get_db
 from writer.core.logging import get_logger
+from writer.core.templates import templates as _shared_templates
 from writer.models.enums import ChatRole, SourceType
 from writer.models.schemas import ChatMessageCreate, ChatMessageResponse, SourceCreate
 from writer.services import chat_service, document_service
@@ -21,14 +21,8 @@ logger = get_logger(__name__)
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
-_templates: Jinja2Templates | None = None
-
-
-def get_templates() -> Jinja2Templates:
-    global _templates
-    if _templates is None:
-        _templates = Jinja2Templates(directory="src/writer/templates")
-    return _templates
+def get_templates():
+    return _shared_templates
 
 
 def _sse(html: str) -> str:

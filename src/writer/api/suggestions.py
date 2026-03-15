@@ -5,12 +5,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.database import get_db
 from writer.core.logging import get_logger
+from writer.core.templates import templates as _shared_templates
 from writer.models.db import Comment, Suggestion
 from writer.models.schemas import (
     CommentCreate,
@@ -31,14 +31,8 @@ logger = get_logger(__name__)
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
-_templates: Jinja2Templates | None = None
-
-
-def get_templates() -> Jinja2Templates:
-    global _templates
-    if _templates is None:
-        _templates = Jinja2Templates(directory="src/writer/templates")
-    return _templates
+def get_templates():
+    return _shared_templates
 
 
 @router.post("/api/documents/{doc_id}/comments", response_model=None)
