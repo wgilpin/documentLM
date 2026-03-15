@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from writer.models.enums import SourceType
+from writer.models.enums import IndexingStatus, SourceType
 from writer.models.schemas import SourceCreate, SourceResponse
 
 
@@ -18,6 +18,8 @@ def _make_source(**kwargs: object) -> MagicMock:
         "title": "Test Source",
         "content": "some text",
         "url": None,
+        "indexing_status": IndexingStatus.completed,
+        "error_message": None,
         "created_at": datetime.now(UTC),
     }
     defaults.update(kwargs)
@@ -164,3 +166,53 @@ class TestDeleteSource:
 
         with pytest.raises(SourceNotFoundError):
             await delete_source(db, uuid.uuid4())
+
+    async def test_delete_calls_vector_store_delete_before_db_delete(self) -> None:
+        """delete_source must call delete_source_chunks before deleting the DB record."""
+        from writer.services.source_service import delete_source
+
+        db = AsyncMock()
+        source_obj = _make_source()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = source_obj
+        db.execute = AsyncMock(return_value=mock_result)
+        db.delete = AsyncMock()
+        db.flush = AsyncMock()
+
+        call_order: list[str] = []
+
+        def track_vs_delete(sid: object) -> None:
+            call_order.append("vector_store")
+
+        db.delete.side_effect = lambda _: call_order.append("db_delete")
+
+        with patch(
+            "writer.services.source_service.vector_store.delete_source_chunks",
+            side_effect=track_vs_delete,
+        ):
+            await delete_source(db, source_obj.id)
+
+        assert call_order == ["vector_store", "db_delete"]
+
+    async def test_delete_propagates_vector_store_exception_without_db_delete(self) -> None:
+        """If delete_source_chunks raises, the DB record must NOT be deleted."""
+        from writer.services.source_service import delete_source
+
+        db = AsyncMock()
+        source_obj = _make_source()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = source_obj
+        db.execute = AsyncMock(return_value=mock_result)
+        db.delete = AsyncMock()
+        db.flush = AsyncMock()
+
+        with (
+            patch(
+                "writer.services.source_service.vector_store.delete_source_chunks",
+                side_effect=RuntimeError("chroma down"),
+            ),
+            pytest.raises(RuntimeError, match="chroma down"),
+        ):
+            await delete_source(db, source_obj.id)
+
+        db.delete.assert_not_called()

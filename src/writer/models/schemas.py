@@ -5,7 +5,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from writer.models.enums import ChatRole, CommentStatus, SourceType, SuggestionStatus
+from writer.models.enums import (
+    ChatRole,
+    CommentStatus,
+    IndexingStatus,
+    SourceType,
+    SuggestionStatus,
+)
 
 
 class DocumentCreate(BaseModel):
@@ -55,6 +61,8 @@ class SourceResponse(BaseModel):
     title: str
     content: str
     url: str | None
+    indexing_status: IndexingStatus
+    error_message: str | None
     created_at: datetime
 
 

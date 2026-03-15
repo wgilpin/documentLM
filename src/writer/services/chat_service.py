@@ -1,5 +1,6 @@
 """Chat service — create, list, and process chat messages for the meta-chat panel."""
 
+import asyncio
 import uuid
 
 from google.adk.runners import Runner
@@ -12,6 +13,7 @@ from writer.core.logging import get_logger
 from writer.models.db import ChatMessage
 from writer.models.enums import ChatRole, SourceType
 from writer.models.schemas import ChatMessageResponse, SourceCreate
+from writer.services import vector_store
 
 logger = get_logger(__name__)
 
@@ -97,6 +99,18 @@ async def invoke_chat_agent(
             f"--- CURRENT DOCUMENT ---\n{md_content}\n--- END DOCUMENT ---"
         )
 
+    last_user_content = next(
+        (m.content for m in reversed(history) if m.role == ChatRole.user), ""
+    )
+
+    if last_user_content:
+        chunks = await asyncio.to_thread(vector_store.query_sources, last_user_content)
+        if chunks:
+            source_block = "\n".join(chunks)
+            prompt_parts.append(
+                f"--- RELEVANT SOURCES ---\n{source_block}\n--- END SOURCES ---"
+            )
+
     prior_turns = history[:-1]  # everything except the new user message at the end
     if prior_turns:
         formatted = "\n\n".join(
@@ -107,9 +121,6 @@ async def invoke_chat_agent(
             f"--- CONVERSATION HISTORY ---\n{formatted}\n--- END HISTORY ---"
         )
 
-    last_user_content = next(
-        (m.content for m in reversed(history) if m.role == ChatRole.user), ""
-    )
     prompt_parts.append(f"USER: {last_user_content}")
 
     user_message = genai_types.Content(

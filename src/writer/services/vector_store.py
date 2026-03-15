@@ -1,0 +1,50 @@
+"""ChromaDB vector store service.
+
+All ChromaDB calls are synchronous (stable client).
+Call sites in async contexts must wrap with asyncio.to_thread().
+"""
+
+import uuid
+
+import chromadb
+
+from writer.core.config import settings
+from writer.core.logging import get_logger
+
+logger = get_logger(__name__)
+
+_collection: chromadb.Collection | None = None
+
+
+def get_collection() -> chromadb.Collection:
+    """Return the singleton ChromaDB 'sources' collection, creating it if needed."""
+    global _collection
+    if _collection is None:
+        client = chromadb.PersistentClient(path=settings.chroma_path)
+        _collection = client.get_or_create_collection("sources")
+    return _collection
+
+
+def index_source(source_id: uuid.UUID, chunks: list[str]) -> None:
+    """Add all chunks for a source to the ChromaDB collection."""
+    collection = get_collection()
+    ids = [f"{source_id}_{i}" for i in range(len(chunks))]
+    metadatas = [{"source_id": str(source_id)} for _ in chunks]
+    collection.add(ids=ids, documents=chunks, metadatas=metadatas)  # type: ignore[arg-type]
+    logger.info("Indexed %d chunks for source_id=%s", len(chunks), source_id)
+
+
+def query_sources(query_text: str, top_k: int = 5) -> list[str]:
+    """Return the top_k semantically relevant chunks for the given query."""
+    collection = get_collection()
+    result = collection.query(query_texts=[query_text], n_results=top_k)
+    docs: list[str] = result["documents"][0] if result["documents"] else []
+    logger.debug("query_sources query=%r returned %d chunks", query_text[:80], len(docs))
+    return docs
+
+
+def delete_source_chunks(source_id: uuid.UUID) -> None:
+    """Remove all ChromaDB chunks belonging to the given source."""
+    collection = get_collection()
+    collection.delete(where={"source_id": str(source_id)})
+    logger.info("Deleted chunks for source_id=%s", source_id)

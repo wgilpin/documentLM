@@ -1,5 +1,6 @@
 """ADK agent orchestration service."""
 
+import asyncio
 import json
 import re
 
@@ -9,6 +10,7 @@ from google.genai import types as genai_types
 
 from writer.core.logging import get_logger
 from writer.models.schemas import CommentResponse, DocumentResponse, SourceResponse
+from writer.services import vector_store
 
 logger = get_logger(__name__)
 
@@ -28,27 +30,7 @@ async def invoke_drafter(
     """
     from writer.agents.drafter_agent import make_drafter_agent
 
-    # Source tools — closures over the sources list for this request
-    source_index = {s.title: s.content or "" for s in sources}
-
-    def list_sources() -> list[str]:
-        """Return the titles of all available research sources."""
-        return list(source_index.keys())
-
-    def get_source(title: str) -> str:
-        """Return the full content of a research source by its title.
-
-        Args:
-            title: The exact title of the source as returned by list_sources.
-
-        Returns:
-            The source content, or an error message if not found.
-        """
-        if title in source_index:
-            return source_index[title]
-        return f"Source '{title}' not found. Call list_sources() to see available titles."
-
-    agent = make_drafter_agent(tools=[list_sources, get_source])
+    agent = make_drafter_agent(tools=[])
 
     session_service = InMemorySessionService()
     session = await session_service.create_session(
@@ -63,9 +45,14 @@ async def invoke_drafter(
 
     from writer.services.tiptap import tiptap_to_markdown
 
+    query_text = f"{comment.body} {comment.selected_text}"
+    chunks = await asyncio.to_thread(vector_store.query_sources, query_text)
+
     doc_content = tiptap_to_markdown(document.content or "")
+    source_block = "\n".join(chunks)
     message_text = (
         f"--- FULL DOCUMENT ---\n{doc_content}\n--- END DOCUMENT ---\n\n"
+        f"--- RELEVANT SOURCE CHUNKS ---\n{source_block}\n--- END SOURCE CHUNKS ---\n\n"
         f"Selected text:\n{comment.selected_text}\n\n"
         f"Instruction: {comment.body}"
     )
@@ -187,9 +174,8 @@ async def invoke_planner(overview: str, sources: list[SourceResponse]) -> str:
     """
     from writer.agents.planner_agent import planner_agent
 
-    research_sources = "\n\n".join(
-        f"[{s.title}]\n{s.content}" for s in sources if s.content
-    )
+    chunks = await asyncio.to_thread(vector_store.query_sources, overview, top_k=5)
+    research_sources = "\n".join(chunks)
 
     session_state = {
         "overview": overview,

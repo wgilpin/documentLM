@@ -1,5 +1,6 @@
 """Source management service."""
 
+import asyncio
 import uuid
 from io import BytesIO
 
@@ -10,6 +11,7 @@ from writer.core.logging import get_logger
 from writer.models.db import Source
 from writer.models.enums import SourceType
 from writer.models.schemas import SourceCreate, SourceResponse
+from writer.services import vector_store
 
 logger = get_logger(__name__)
 
@@ -88,6 +90,12 @@ async def delete_source(db: AsyncSession, source_id: uuid.UUID) -> None:
     source = result.scalar_one_or_none()
     if source is None:
         raise SourceNotFoundError(source_id)
+    try:
+        await asyncio.to_thread(vector_store.delete_source_chunks, source_id)
+        logger.info("Deleted ChromaDB chunks for source id=%s", source_id)
+    except Exception as exc:
+        logger.error("Failed to delete ChromaDB chunks for source id=%s: %s", source_id, exc)
+        raise
     await db.delete(source)
     await db.flush()
     logger.info("Deleted source id=%s", source_id)

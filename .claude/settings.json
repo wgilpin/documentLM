@@ -12,7 +12,7 @@
       "Bash(uv run mypy *)",
       "Bash(find *)",
       "Bash(ls *)",
-      "Bash(.specify/scripts/bash/check-prerequisites.sh --json)",
+      "Bash(.specify/scripts/bash/check-prerequisites.sh --json)"
     ]
   }
 }
