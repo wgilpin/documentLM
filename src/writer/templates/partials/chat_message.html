@@ -1,4 +1,8 @@
 <div class="chat-turn chat-turn--{{ msg.role.value }}" id="chat-{{ msg.id }}">
   <span class="chat-role">{{ msg.role.value }}</span>
+  {% if msg.role.value == "assistant" %}
+  <div class="chat-content chat-content--markdown">{{ msg.content | markdown }}</div>
+  {% else %}
   <div class="chat-content">{{ msg.content }}</div>
+  {% endif %}
 </div>
