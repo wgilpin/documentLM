@@ -105,6 +105,8 @@ main {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .editor-pane input[type="text"] {
@@ -170,11 +172,14 @@ main {
 .tiptap-editor .cm-scroller {
     font-family: inherit;
     line-height: 1.6;
+    overflow-x: hidden;
 }
 
 .tiptap-editor .cm-content {
     padding: 0.75rem;
     min-height: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .tiptap-editor .cm-focused {
@@ -211,6 +216,7 @@ main {
     gap: 1rem;
     overflow: hidden;
     min-height: 0;
+    min-width: 0;
 }
 
 .sidebar-section {
@@ -409,6 +415,7 @@ dialog {
     max-width: 95vw;
     box-shadow: 0 8px 32px rgba(0,0,0,0.18);
     overflow: hidden;
+    margin: auto;
 }
 
 dialog::backdrop {
@@ -711,6 +718,11 @@ details[open] .source-add-summary::before {
     padding: 0.375rem 0.5rem;
     border-bottom: 1px solid #e5e7eb;
     background: #f9fafb;
+    align-items: center;
+}
+
+.editor-toolbar .toolbar-btn--danger {
+    margin-left: auto;
 }
 
 .toolbar-btn {
@@ -732,5 +744,36 @@ details[open] .source-add-summary::before {
 .toolbar-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+.toolbar-btn--danger {
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+
+.toolbar-btn--danger:hover:not(:disabled) {
+    background: #fef2f2;
+    border-color: #dc2626;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: #fff;
+    border: 1px solid #b91c1c;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+}
+
+.dialog-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
 }
 

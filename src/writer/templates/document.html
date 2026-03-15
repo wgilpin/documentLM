@@ -24,7 +24,19 @@
         <div class="editor-toolbar">
             <button id="undo-btn" class="toolbar-btn" disabled title="Undo" aria-label="Undo">&#8630; Undo</button>
             <button id="redo-btn" class="toolbar-btn" disabled title="Redo" aria-label="Redo">Redo &#8631;</button>
+            <button id="delete-doc-btn" class="toolbar-btn toolbar-btn--danger" title="Delete document" aria-label="Delete document"
+                    onclick="document.getElementById('delete-confirm-dialog').showModal()">&#128465; Delete</button>
         </div>
+
+        <dialog id="delete-confirm-dialog" style="padding: 1.5rem;">
+            <p>Delete <strong>{{ doc.title }}</strong>? This cannot be undone.</p>
+            <div class="dialog-actions">
+                <button type="button" class="btn btn-danger"
+                        hx-delete="/api/documents/{{ doc.id }}"
+                        hx-on::after-request="window.location.href='/'">Delete</button>
+                <button type="button" class="btn" onclick="document.getElementById('delete-confirm-dialog').close()">Cancel</button>
+            </div>
+        </dialog>
 
         <div id="editor-mount" class="tiptap-editor tiptap-editor--loading"></div>
 
@@ -255,6 +267,7 @@ const view = new EditorView({
         extensions: [
             history({ newGroupDelay: 0 }),
             markdown(),
+            EditorView.lineWrapping,
             editableComp.of(EditorView.editable.of(true)),
             EditorView.updateListener.of((update) => {
                 if (update.docChanged) {

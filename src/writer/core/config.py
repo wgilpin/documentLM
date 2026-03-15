@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
     chroma_path: str = "./data/chroma"
     undo_buffer_size: int = 1000
+    dev_seed_doc: bool = False
 
     @field_validator("undo_buffer_size", mode="before")
     @classmethod

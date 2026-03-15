@@ -8,14 +8,52 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.config import settings
-from writer.core.database import _get_engine, get_db
+from writer.core.database import _get_engine, _get_session_factory, get_db
 from writer.core.logging import configure_logging
 from writer.core.templates import templates
+from writer.models.db import Document
 from writer.services import document_service
 from writer.services.document_service import DocumentNotFoundError
+
+# Fixed UUID for the dev seed document — stable across restarts
+_SEED_DOC_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+_SEED_TITLE = "Dev Sandbox"
+_SEED_CONTENT = """\
+# Dev Sandbox
+
+This document is **reset on every server start** so you always have a clean slate
+for testing the editor, suggestions, undo/redo, and chat features.
+
+## Section One
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque habitant
+morbi tristique senectus et netus et malesuada fames ac turpis egestas.
+
+- Item one — try editing this
+- Item two — select text and right-click to leave a comment
+- Item three — use the chat panel to ask the AI to rewrite a section
+
+## Section Two
+
+Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia
+curae; Donec velit neque, *auctor* sit amet aliquam vel, ullamcorper sit amet ligula.
+
+> A blockquote for variety.  Use Ctrl+Z / Ctrl+Y to test undo and redo.
+
+## Section Three
+
+Some `inline code` and a short numbered list:
+
+1. First step
+2. Second step
+3. Third step
+
+**Bold text** and _italic text_ and some plain prose to round things out.
+"""
 
 
 @asynccontextmanager
@@ -30,6 +68,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         log.info("GEMINI_API_KEY loaded (%d chars)", len(settings.gemini_api_key))
     else:
         log.warning("GEMINI_API_KEY is not set — chat agent will fail")
+
+    if settings.dev_seed_doc:
+        async with _get_session_factory()() as db:
+            async with db.begin():
+                result = await db.execute(select(Document).where(Document.id == _SEED_DOC_ID))
+                existing = result.scalar_one_or_none()
+                if existing:
+                    await db.delete(existing)
+                db.add(Document(id=_SEED_DOC_ID, title=_SEED_TITLE, content=_SEED_CONTENT))
+        port = os.environ.get("WRITER_PORT", "8000")
+        log.info("Dev seed doc reset → http://localhost:%s/documents/%s", port, _SEED_DOC_ID)
+
     yield
     await _get_engine().dispose()
 
