@@ -150,10 +150,10 @@
                   hx-post="/api/documents/{{ doc.id }}/chat"
                   hx-target="#chat-history"
                   hx-swap="beforeend"
-                  hx-on::before-request="lockEditor()"
-                  hx-on::after-request="unlockEditor(); this.reset()">
+                  hx-on::before-request="lockEditor(); document.getElementById('chat-send-btn').classList.add('btn--loading')"
+                  hx-on::after-request="unlockEditor(); document.getElementById('chat-send-btn').classList.remove('btn--loading'); this.reset()">
                 <textarea name="content" class="chat-input-textarea" rows="2" placeholder="Ask the AI anything about your document…" required></textarea>
-                <button type="submit" class="btn btn-primary btn-sm">Send</button>
+                <button type="submit" id="chat-send-btn" class="btn btn-primary btn-sm">Send</button>
             </form>
         </div>
     </div>
