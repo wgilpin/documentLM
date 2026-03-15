@@ -4,7 +4,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,22 +50,13 @@ async def submit_comment(
     selection_end: Annotated[int, Form()],
     selected_text: Annotated[str, Form()],
     body: Annotated[str, Form()],
+    selected_node_id: Annotated[str | None, Form()] = None,
 ) -> HTMLResponse | SuggestionResponse:
     # Validate document exists
     try:
         doc = await document_service.get_document(db, doc_id)
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
-
-    # Validate selection is still current (skip for global commands with no selection)
-    is_global = selection_start == 0 and selection_end == 0
-    if not is_global and not document_service.is_selection_valid(
-        doc.content, selection_start, selection_end, selected_text
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="Selection does not match current document content",
-        )
 
     # Persist comment
     comment_data = CommentCreate(
@@ -80,6 +71,7 @@ async def submit_comment(
         selection_start=comment_data.selection_start,
         selection_end=comment_data.selection_end,
         selected_text=comment_data.selected_text,
+        selected_node_id=selected_node_id,
         body=comment_data.body,
     )
     db.add(comment_orm)
@@ -147,7 +139,7 @@ async def list_suggestions(
 @router.post("/api/suggestions/{suggestion_id}/accept", response_model=None)
 async def accept(
     request: Request, db: DbDep, suggestion_id: uuid.UUID
-) -> HTMLResponse | DocumentResponse:
+) -> PlainTextResponse | DocumentResponse:
     try:
         doc = await accept_suggestion(db, suggestion_id)
         await db.commit()
@@ -157,7 +149,7 @@ async def accept(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if request.headers.get("HX-Request"):
-        return HTMLResponse(doc.content)
+        return PlainTextResponse(doc.content or "")
     return doc
 
 

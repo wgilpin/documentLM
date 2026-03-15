@@ -26,37 +26,61 @@ async def invoke_drafter(
     Raises ValueError if no text response is returned.
     Raises RuntimeError on unexpected agent errors.
     """
-    from writer.agents.root_agent import root_agent
+    from writer.agents.drafter_agent import make_drafter_agent
 
-    surrounding_start = max(0, comment.selection_start - 500)
-    surrounding_end = min(len(document.content), comment.selection_end + 500)
-    surrounding_context = document.content[surrounding_start:surrounding_end]
-    core_sources = "\n\n---\n\n".join(f"[{s.title}]\n{s.content}" for s in sources if s.content)
+    # Source tools — closures over the sources list for this request
+    source_index = {s.title: s.content or "" for s in sources}
 
-    session_state = {
-        "selected_text": comment.selected_text,
-        "surrounding_context": surrounding_context,
-        "user_instruction": comment.body,
-        "core_sources": core_sources,
-    }
+    def list_sources() -> list[str]:
+        """Return the titles of all available research sources."""
+        return list(source_index.keys())
+
+    def get_source(title: str) -> str:
+        """Return the full content of a research source by its title.
+
+        Args:
+            title: The exact title of the source as returned by list_sources.
+
+        Returns:
+            The source content, or an error message if not found.
+        """
+        if title in source_index:
+            return source_index[title]
+        return f"Source '{title}' not found. Call list_sources() to see available titles."
+
+    agent = make_drafter_agent(tools=[list_sources, get_source])
 
     session_service = InMemorySessionService()
     session = await session_service.create_session(
-        app_name=_APP_NAME, user_id=_USER_ID, state=session_state
+        app_name=_APP_NAME, user_id=_USER_ID, state={}
     )
 
     runner = Runner(
-        agent=root_agent,
+        agent=agent,
         app_name=_APP_NAME,
         session_service=session_service,
     )
 
+    from writer.services.tiptap import tiptap_to_markdown
+
+    doc_content = tiptap_to_markdown(document.content or "")
+    message_text = (
+        f"--- FULL DOCUMENT ---\n{doc_content}\n--- END DOCUMENT ---\n\n"
+        f"Selected text:\n{comment.selected_text}\n\n"
+        f"Instruction: {comment.body}"
+    )
     user_message = genai_types.Content(
         role="user",
-        parts=[genai_types.Part(text=comment.body)],
+        parts=[genai_types.Part(text=message_text)],
     )
 
-    logger.info("Invoking drafter for comment=%s doc=%s", comment.id, comment.document_id)
+    logger.info(
+        "Invoking drafter for comment=%s doc=%s | selected=%r instruction=%r",
+        comment.id,
+        comment.document_id,
+        comment.selected_text[:80] if comment.selected_text else None,
+        comment.body[:120],
+    )
 
     suggested_text: str | None = None
     try:
@@ -65,9 +89,30 @@ async def invoke_drafter(
             session_id=session.id,
             new_message=user_message,
         ):
+            agent_name = getattr(event, "author", None) or "unknown"
+            if event.content and event.content.parts:
+                part_text = event.content.parts[0].text or ""
+                logger.info(
+                    "Agent event author=%s is_final=%s text=%r",
+                    agent_name,
+                    event.is_final_response(),
+                    part_text[:200],
+                )
+            else:
+                logger.info(
+                    "Agent event author=%s is_final=%s (no text parts)",
+                    agent_name,
+                    event.is_final_response(),
+                )
             if event.is_final_response():
                 if event.content and event.content.parts:
                     suggested_text = event.content.parts[0].text
+                    logger.info(
+                        "Final response from agent=%s for comment=%s: %r",
+                        agent_name,
+                        comment.id,
+                        (suggested_text or "")[:200],
+                    )
                 break
     except Exception as exc:
         logger.exception("Agent invocation failed: %s", exc)
@@ -76,7 +121,6 @@ async def invoke_drafter(
     if suggested_text is None:
         raise ValueError("Drafter agent returned no text response")
 
-    logger.info("Drafter response received for comment=%s", comment.id)
     return suggested_text
 
 

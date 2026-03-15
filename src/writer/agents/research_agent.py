@@ -20,7 +20,8 @@ research_agent = Agent(
         "sources relevant to this topic.\n\n"
         "Return ONLY a JSON array (no other text) in this exact format:\n"
         '[{"title": "...", "url": "...", "summary": "2-3 sentence summary of the source"}]\n\n'
-        "Choose reputable sources: academic papers, established publications, official sites. "
+        "Choose appropriate sources: for academic topics use academic papers, "
+        "for general topics use established publications, official sites. "
         "Ensure URLs are real and accessible."
     ),
 )

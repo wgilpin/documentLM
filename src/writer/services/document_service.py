@@ -86,11 +86,51 @@ async def delete_document(db: AsyncSession, doc_id: uuid.UUID) -> None:
     logger.info("Deleted document id=%s", doc_id)
 
 
-def is_selection_valid(document_content: str, start: int, end: int, selected_text: str) -> bool:
-    """Check whether the stored selection still matches the current document content."""
-    if start < 0 or end <= start or end > len(document_content):
-        return False
-    return document_content[start:end] == selected_text
+def _suggested_inline_nodes(suggested_text: str) -> list[dict]:  # type: ignore[type-arg]
+    """Convert suggested markdown text to TipTap inline nodes.
+
+    Uses the markdown parser to produce properly marked-up content (bold, italic,
+    code) rather than a raw text node containing markdown syntax.
+    Falls back to a plain text node if parsing produces nothing.
+    """
+    import json
+
+    from writer.services.tiptap import markdown_to_tiptap
+
+    try:
+        doc = json.loads(markdown_to_tiptap(suggested_text))
+        content_nodes = doc.get("content", [])
+        if content_nodes:
+            inline = content_nodes[0].get("content", [])
+            if inline:
+                return inline
+    except Exception:
+        pass
+    return [{"type": "text", "text": suggested_text}]
+
+
+def _update_node_text(content_json: str, node_id: str, new_text: str) -> str:
+    """Recursively find a TipTap node by attrs.id and replace its inline content.
+
+    The new_text is treated as markdown so that bold/italic/code marks are
+    rendered correctly rather than displayed as raw syntax.
+    Raises ValueError when the node is not found.
+    """
+    import json
+
+    doc = json.loads(content_json)
+    inline_nodes = _suggested_inline_nodes(new_text)
+
+    def visit(node: dict) -> bool:  # type: ignore[type-arg]
+        if node.get("attrs", {}).get("id") == node_id:
+            node["content"] = inline_nodes
+            return True
+        return any(visit(child) for child in node.get("content", []))
+
+    if not visit(doc):
+        raise ValueError(f"Node {node_id!r} not found in document JSON")
+    return json.dumps(doc)
+
 
 
 async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> DocumentResponse:
@@ -109,18 +149,32 @@ async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> Docum
     if doc is None:
         raise DocumentNotFoundError(comment.document_id)
 
-    if not is_selection_valid(
-        doc.content, comment.selection_start, comment.selection_end, comment.selected_text
-    ):
+    # Node-ID path: fast and accurate, no text mismatch
+    node_replaced = False
+    if comment.selected_node_id and doc.content:
+        try:
+            doc.content = _update_node_text(
+                doc.content, comment.selected_node_id, suggestion.suggested_text
+            )
+            node_replaced = True
+        except ValueError:
+            logger.warning(
+                "accept_suggestion=%s: node %r not found — marking stale",
+                suggestion_id,
+                comment.selected_node_id,
+            )
+            suggestion.status = SuggestionStatus.stale
+            await db.flush()
+            raise ValueError(
+                "Selection is stale — the target node was deleted"
+            ) from None
+
+    if not node_replaced:
         suggestion.status = SuggestionStatus.stale
         await db.flush()
-        raise ValueError("Selection is stale — document was edited after suggestion was created")
-
-    doc.content = (
-        doc.content[: comment.selection_start]
-        + suggestion.suggested_text
-        + doc.content[comment.selection_end :]
-    )
+        raise ValueError(
+            "Selection is stale — document was edited after suggestion was created"
+        )
     suggestion.status = SuggestionStatus.accepted
     comment.status = CommentStatus.resolved
     await db.flush()

@@ -13,17 +13,19 @@
                hx-trigger="change"
                hx-vals='js:{"title": document.getElementById("doc-title").value, "content": document.getElementById("document-content").value}'
                hx-swap="none">
-        <div class="editor-view-toggle">
-            <button id="btn-raw" class="view-btn active" type="button" onclick="setEditorView('raw')">Raw</button>
-            <button id="btn-preview" class="view-btn" type="button" onclick="setEditorView('preview')">Preview</button>
-        </div>
         <textarea id="document-content"
                   hx-put="/api/documents/{{ doc.id }}"
                   hx-ext="json-enc"
-                  hx-trigger="keyup delay:1s"
+                  hx-trigger="tiptap-changed delay:1s"
                   hx-vals='js:{"content": document.getElementById("document-content").value, "title": document.getElementById("doc-title").value}'
-                  hx-swap="none">{{ doc.content }}</textarea>
-        <div id="document-preview" class="document-preview" style="display:none"></div>
+                  hx-swap="none"
+                  style="display:none">{{ doc.content | e }}</textarea>
+
+        <div id="tiptap-mount" class="tiptap-editor tiptap-editor--loading"></div>
+
+        <div id="tiptap-bubble-menu" class="bubble-menu" style="display:none">
+            <button type="button" id="bubble-comment-btn">Comment</button>
+        </div>
 
         <!-- US3: Inline suggestions overlay -->
         <div id="inline-suggestions"
@@ -148,7 +150,8 @@
                   hx-post="/api/documents/{{ doc.id }}/chat"
                   hx-target="#chat-history"
                   hx-swap="beforeend"
-                  hx-on::after-request="this.reset()">
+                  hx-on::before-request="lockEditor()"
+                  hx-on::after-request="unlockEditor(); this.reset()">
                 <textarea name="content" class="chat-input-textarea" rows="2" placeholder="Ask the AI anything about your document…" required></textarea>
                 <button type="submit" class="btn btn-primary btn-sm">Send</button>
             </form>
@@ -157,54 +160,28 @@
     {% endif %}
 </div>
 
-<!-- AI Instruction context menu -->
-{% if doc %}
-<div id="context-menu" style="display:none; position:fixed; z-index:300">
-    <button type="button" id="ctx-comment-btn">Comment</button>
-</div>
-
 <!-- AI Instruction modal -->
+{% if doc %}
 <dialog id="command-modal">
-    <form method="dialog" class="modal-close-form">
-        <button type="submit" class="modal-close-btn" aria-label="Close">✕</button>
-    </form>
-    <h3 class="modal-title">AI Instruction</h3>
     <form id="modal-comment-form"
           hx-post="/api/documents/{{ doc.id }}/comments"
           hx-target="#inline-suggestions"
           hx-swap="beforeend"
-          hx-on::after-request="document.getElementById('command-modal').close(); this.reset()">
+          hx-on::before-request="lockEditor(); document.getElementById('modal-submit-btn').classList.add('modal-submit-btn--loading')"
+          hx-on::after-request="unlockEditor(); document.getElementById('modal-submit-btn').classList.remove('modal-submit-btn--loading'); document.getElementById('command-modal').close(); this.reset()">
         <input type="hidden" name="selection_start" id="modal-sel-start" value="0">
         <input type="hidden" name="selection_end" id="modal-sel-end" value="0">
         <input type="hidden" name="selected_text" id="modal-sel-text" value="">
-        <div id="modal-selection-info" class="modal-selection-info"></div>
-        <textarea name="body" class="modal-body-input" placeholder="Instruction to the AI…" required></textarea>
-        <div class="modal-actions">
-            <button type="submit" class="btn btn-primary">Submit</button>
+        <input type="hidden" name="selected_node_id" id="modal-sel-node-id" value="">
+        <div class="modal-input-wrap">
+            <textarea name="body" class="modal-body-input" placeholder="Instruction to the AI…" required></textarea>
+            <button type="submit" id="modal-submit-btn" class="modal-submit-btn" aria-label="Submit">&#9654;</button>
         </div>
     </form>
 </dialog>
 
 <script>
-function setEditorView(view) {
-    const textarea = document.getElementById('document-content');
-    const preview = document.getElementById('document-preview');
-    const btnRaw = document.getElementById('btn-raw');
-    const btnPreview = document.getElementById('btn-preview');
-    if (view === 'preview') {
-        preview.innerHTML = marked.parse(textarea.value || '');
-        textarea.style.display = 'none';
-        preview.style.display = 'block';
-        btnRaw.classList.remove('active');
-        btnPreview.classList.add('active');
-    } else {
-        textarea.style.display = 'block';
-        preview.style.display = 'none';
-        btnRaw.classList.add('active');
-        btnPreview.classList.remove('active');
-    }
-}
-
+/* switchTab must be in non-module scope — called from onclick attributes */
 function switchTab(name) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -212,45 +189,138 @@ function switchTab(name) {
     event.target.classList.add('active');
 }
 
-// Right-click on textarea → show custom context menu
-const ctxMenu = document.getElementById('context-menu');
+function lockEditor()   { window.tiptapEditor?.setEditable(false, false); }
+function unlockEditor() { window.tiptapEditor?.setEditable(true, false); }
+</script>
 
-document.getElementById('document-content').addEventListener('contextmenu', function(e) {
+<script type="importmap">
+{
+  "imports": {
+    "@tiptap/core": "https://esm.sh/@tiptap/core@2",
+    "@tiptap/pm": "https://esm.sh/@tiptap/pm@2",
+    "@tiptap/starter-kit": "https://esm.sh/@tiptap/starter-kit@2",
+    "tiptap-markdown": "https://esm.sh/tiptap-markdown",
+    "@tiptap/extension-unique-id": "https://esm.sh/@tiptap/extension-unique-id@2"
+  }
+}
+</script>
+
+<script type="module">
+import { Editor } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import { Markdown } from 'tiptap-markdown';
+import UniqueID from '@tiptap/extension-unique-id';
+
+const mountEl = document.getElementById('tiptap-mount');
+const bubbleMenuEl = document.getElementById('tiptap-bubble-menu');
+
+let pendingSelection = { start: 0, end: 0, text: '', nodeId: null };
+let pendingClickPos = { x: 0, y: 0 };
+
+// Load from JSON if available (content column stores TipTap JSON), fall back to empty
+const rawContent = document.getElementById('document-content').value;
+let initialContent;
+try {
+    initialContent = rawContent ? JSON.parse(rawContent) : '';
+} catch (_) {
+    initialContent = rawContent || '';
+}
+
+const editor = new Editor({
+    element: mountEl,
+    extensions: [
+        StarterKit,
+        Markdown,
+        UniqueID.configure({
+            types: ['heading', 'paragraph', 'bulletList', 'orderedList',
+                    'listItem', 'blockquote', 'codeBlock'],
+        }),
+    ],
+    content: initialContent,
+    onCreate({ editor }) {
+        mountEl.classList.remove('tiptap-editor--loading');
+    },
+    onUpdate({ editor }) {
+        const ta = document.getElementById('document-content');
+        if (ta) ta.value = JSON.stringify(editor.getJSON());
+        if (ta) ta.dispatchEvent(new Event('tiptap-changed'));
+    },
+});
+
+window.tiptapEditor = editor;
+
+// Right-click on editor → show bubble menu at mouse position
+mountEl.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    ctxMenu.style.display = 'block';
-    ctxMenu.style.left = e.clientX + 'px';
-    ctxMenu.style.top = e.clientY + 'px';
-    ctxMenu.dataset.selStart = this.selectionStart;
-    ctxMenu.dataset.selEnd = this.selectionEnd;
-    ctxMenu.dataset.selText = this.value.substring(this.selectionStart, this.selectionEnd);
+    const { from, to } = editor.state.selection;
+    const selectedText = from !== to ? editor.state.doc.textBetween(from, to, '\n') : '';
+    const raw = editor.storage.markdown.getMarkdown();
+    let mdIdx = selectedText ? raw.indexOf(selectedText) : -1;
+    let mdText = selectedText;
+    if (mdIdx === -1 && selectedText) {
+        const escaped = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const m = raw.match(new RegExp('(?:#{1,6} |\\*{1,2}|_{1,2}|~~|> )*' + escaped));
+        if (m) { mdIdx = raw.indexOf(m[0]); mdText = m[0]; }
+    }
+
+    // Capture the node ID of the first block containing the selection
+    let capturedNodeId = null;
+    if (from !== to) {
+        editor.state.doc.nodesBetween(from, to, (node) => {
+            if (capturedNodeId) return false;
+            if (node.attrs?.id) { capturedNodeId = node.attrs.id; return false; }
+        });
+    }
+
+    pendingSelection = {
+        start: mdIdx >= 0 ? mdIdx : 0,
+        end: mdIdx >= 0 ? mdIdx + mdText.length : 0,
+        text: mdText,
+        nodeId: capturedNodeId,
+    };
+    pendingClickPos = { x: e.clientX, y: e.clientY };
+    bubbleMenuEl.style.position = 'fixed';
+    bubbleMenuEl.style.top = (e.clientY - 44) + 'px';
+    bubbleMenuEl.style.left = e.clientX + 'px';
+    bubbleMenuEl.style.transform = 'translateX(-50%)';
+    bubbleMenuEl.style.zIndex = '200';
+    bubbleMenuEl.style.display = 'flex';
 });
 
-// Hide context menu on outside click or Escape
-document.addEventListener('mousedown', function(e) {
-    if (!ctxMenu.contains(e.target)) ctxMenu.style.display = 'none';
-});
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') ctxMenu.style.display = 'none';
+// Hide bubble menu when clicking outside it
+document.addEventListener('mousedown', (e) => {
+    if (!bubbleMenuEl.contains(e.target)) bubbleMenuEl.style.display = 'none';
 });
 
-// "Comment" opens the AI instruction modal with selection pre-filled
-document.getElementById('ctx-comment-btn').addEventListener('click', function() {
-    const start = ctxMenu.dataset.selStart || '0';
-    const end = ctxMenu.dataset.selEnd || '0';
-    const text = ctxMenu.dataset.selText || '';
-
-    document.getElementById('modal-sel-start').value = start;
-    document.getElementById('modal-sel-end').value = end;
-    document.getElementById('modal-sel-text').value = text;
-
-    const infoEl = document.getElementById('modal-selection-info');
-    infoEl.textContent = text
-        ? 'Selection: "' + text.substring(0, 60) + (text.length > 60 ? '…' : '') + '"'
-        : '';
-
-    ctxMenu.style.display = 'none';
-    document.getElementById('command-modal').showModal();
+document.getElementById('bubble-comment-btn').addEventListener('click', () => {
+    document.getElementById('modal-sel-start').value = pendingSelection.start;
+    document.getElementById('modal-sel-end').value = pendingSelection.end;
+    document.getElementById('modal-sel-text').value = pendingSelection.text;
+    document.getElementById('modal-sel-node-id').value = pendingSelection.nodeId || '';
+    const modal = document.getElementById('command-modal');
+    modal.style.margin = '0';
+    modal.style.position = 'fixed';
+    modal.style.left = Math.min(pendingClickPos.x, window.innerWidth - 520) + 'px';
+    modal.style.top = Math.min(pendingClickPos.y, window.innerHeight - 300) + 'px';
+    modal.showModal();
 });
+
+// OOB swap: chat agent edits push a replacement textarea via HTMX outerHTML swap.
+// The textarea value is TipTap JSON — parse it and load into the editor (no autosave needed).
+const editorPane = mountEl.closest('.editor-pane');
+new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+            if (node.id === 'document-content') {
+                htmx.process(node);
+                let content;
+                try { content = JSON.parse(node.value); }
+                catch (_) { content = node.value; }
+                editor.commands.setContent(content, false);
+            }
+        }
+    }
+}).observe(editorPane, { childList: true, subtree: true });
 </script>
 {% endif %}
 {% endblock %}

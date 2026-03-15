@@ -67,6 +67,7 @@ class Comment(Base):
     selection_start: Mapped[int] = mapped_column(Integer, nullable=False)
     selection_end: Mapped[int] = mapped_column(Integer, nullable=False)
     selected_text: Mapped[str] = mapped_column(Text, nullable=False)
+    selected_node_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[CommentStatus] = mapped_column(
         Enum(CommentStatus), nullable=False, default=CommentStatus.open

@@ -94,9 +94,29 @@ async def stream_chat_init(
     overview = doc.overview
     tmpl = get_templates()
 
+    def _messages_oob(msgs: list[ChatMessageResponse]) -> str:
+        """Render messages into an OOB swap that replaces #chat-history.
+
+        Replacing #chat-history (which contains #chat-stream-wrapper) removes
+        the sse-connect element from the DOM, stopping HTMX SSE from reconnecting.
+        """
+        html = "".join(
+            tmpl.get_template("partials/chat_message.html").render({"msg": m, "request": request})
+            for m in msgs
+        )
+        return f'<div id="chat-history" hx-swap-oob="outerHTML">{html}</div>'
+
     async def generate() -> None:  # type: ignore[return]
         from writer.services import agent_service, source_service
         from writer.services.content_fetcher import fetch_url_content
+
+        # Guard: if already initialised (e.g. SSE auto-reconnect after first run),
+        # replace the SSE wrapper with existing messages and stop — no LLM calls.
+        existing = await chat_service.list_chat_messages(db, doc_id)
+        if existing:
+            logger.info("Stream: already initialised for doc=%s — skipping", doc_id)
+            yield _sse(_messages_oob(existing))
+            return
 
         try:
             yield _sse(_status_html("Researching relevant sources\u2026"))
@@ -138,21 +158,15 @@ async def stream_chat_init(
             await db.commit()
             logger.info("Stream: complete for doc=%s", doc_id)
 
-            messages_html = "".join(
-                tmpl.get_template("partials/chat_message.html").render(
-                    {"msg": m, "request": request}
-                )
-                for m in [user_msg, assistant_msg]
-            )
-            # OOB swap refreshes the source list in the sidebar
-            oob = (
+            # OOB: replace #chat-history (removes sse-connect), refresh source list
+            source_oob = (
                 f'<ul id="source-list"'
                 f' hx-get="/api/documents/{doc_id}/sources"'
                 f' hx-trigger="load"'
                 f' hx-swap="innerHTML"'
                 f' hx-swap-oob="true"></ul>'
             )
-            yield _sse(messages_html + oob)
+            yield _sse(_messages_oob([user_msg, assistant_msg]) + source_oob)
 
         except Exception as exc:
             logger.exception("Stream init failed for doc=%s: %s", doc_id, exc)
@@ -215,7 +229,7 @@ async def post_chat_message(
                 f'<textarea id="document-content" hx-swap-oob="outerHTML"'
                 f' hx-put="/api/documents/{doc_id}"'
                 f' hx-ext="json-enc"'
-                f' hx-trigger="keyup delay:1s"'
+                f' hx-trigger="tiptap-changed delay:1s"'
                 f' hx-vals=\'js:{{"content": document.getElementById("document-content").value,'
                 f' "title": document.getElementById("doc-title").value}}\''
                 f" hx-swap=\"none\">{escaped}</textarea>"

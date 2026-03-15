@@ -22,8 +22,10 @@ from writer.services.document_service import DocumentNotFoundError
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_logging()
     import logging
+    import os
     log = logging.getLogger("writer.startup")
     if settings.gemini_api_key:
+        os.environ["GOOGLE_API_KEY"] = settings.gemini_api_key
         log.info("GEMINI_API_KEY loaded (%d chars)", len(settings.gemini_api_key))
     else:
         log.warning("GEMINI_API_KEY is not set — chat agent will fail")

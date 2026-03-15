@@ -87,11 +87,14 @@ async def invoke_chat_agent(
     )
 
     # Build a self-contained prompt with full context so the agent never loses history
-    prompt_parts: list[str] = []
+    from writer.services.tiptap import tiptap_to_markdown
 
-    if document_content:
+    prompt_parts: list[str] = []
+    md_content = tiptap_to_markdown(document_content)
+
+    if md_content:
         prompt_parts.append(
-            f"--- CURRENT DOCUMENT ---\n{document_content}\n--- END DOCUMENT ---"
+            f"--- CURRENT DOCUMENT ---\n{md_content}\n--- END DOCUMENT ---"
         )
 
     prior_turns = history[:-1]  # everything except the new user message at the end
@@ -150,6 +153,7 @@ async def process_chat(
     """
     from writer.models.schemas import DocumentUpdate
     from writer.services import document_service
+    from writer.services.tiptap import markdown_to_tiptap
 
     try:
         reply_text, new_content = await invoke_chat_agent(history, document_content)
@@ -157,12 +161,14 @@ async def process_chat(
         logger.error("ChatAgent error for document=%s: %s", document_id, exc)
         raise
 
+    new_json: str | None = None
     if new_content is not None:
-        await document_service.update_document(db, document_id, DocumentUpdate(content=new_content))
+        new_json = markdown_to_tiptap(new_content)
+        await document_service.update_document(db, document_id, DocumentUpdate(content=new_json))
         logger.info("ChatAgent edited document=%s", document_id)
 
     msg = await create_chat_message(db, document_id, reply_text, ChatRole.assistant)
-    return msg, new_content
+    return msg, new_json
 
 
 async def initialize_chat_with_overview(
