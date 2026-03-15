@@ -14,6 +14,7 @@ def _make_doc(**kwargs: object) -> MagicMock:
         "id": uuid.uuid4(),
         "title": "Test Doc",
         "content": "Hello world",
+        "overview": None,
         "created_at": datetime.now(UTC),
         "updated_at": datetime.now(UTC),
     }
@@ -199,9 +200,12 @@ class TestAcceptRejectSuggestion:
         return obj
 
     async def test_accept_suggestion_replaces_text(self) -> None:
+        import json
+
         from writer.services.document_service import accept_suggestion
 
         doc_id = uuid.uuid4()
+        node_id = "test-node-1"
         suggestion = self._make_suggestion(original_text="old", suggested_text="NEW TEXT")
         comment = self._make_comment(
             id=suggestion.comment_id,
@@ -209,8 +213,13 @@ class TestAcceptRejectSuggestion:
             selection_start=0,
             selection_end=3,
             selected_text="old",
+            selected_node_id=node_id,
         )
-        doc_obj = _make_doc(id=doc_id, content="old content rest")
+        tiptap_content = json.dumps({
+            "type": "doc",
+            "content": [{"type": "paragraph", "attrs": {"id": node_id}, "content": [{"type": "text", "text": "old"}]}],
+        })
+        doc_obj = _make_doc(id=doc_id, content=tiptap_content)
 
         db = AsyncMock()
         db.flush = AsyncMock()
@@ -227,8 +236,8 @@ class TestAcceptRejectSuggestion:
 
         result = await accept_suggestion(db, suggestion.id)
         assert isinstance(result, DocumentResponse)
-        # Content should have suggestion applied
-        assert result.content.startswith("NEW TEXT")
+        # Content should have suggestion applied (stored as TipTap JSON)
+        assert "NEW TEXT" in result.content
 
     async def test_reject_suggestion_sets_status(self) -> None:
         from writer.models.schemas import SuggestionResponse

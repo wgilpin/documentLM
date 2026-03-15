@@ -130,7 +130,7 @@ async def test_process_chat_calls_agent_and_returns_assistant_message() -> None:
         patch(invoke_path, new_callable=AsyncMock) as mock_agent,
         patch(create_path, new_callable=AsyncMock) as mock_create,
     ):
-        mock_agent.return_value = agent_reply
+        mock_agent.return_value = (agent_reply, None)
         mock_create.return_value = _msg(
             document_id=doc_id,
             role=ChatRole.assistant,
@@ -138,9 +138,10 @@ async def test_process_chat_calls_agent_and_returns_assistant_message() -> None:
         )
 
         db = AsyncMock()
-        result = await chat_service.process_chat(db, doc_id, history)
+        result, new_content = await chat_service.process_chat(db, doc_id, history)
 
-    mock_agent.assert_called_once_with(history)
+    mock_agent.assert_called_once_with(history, "")
     mock_create.assert_called_once_with(db, doc_id, agent_reply, ChatRole.assistant)
     assert result.role == ChatRole.assistant
     assert result.content == agent_reply
+    assert new_content is None

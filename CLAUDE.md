@@ -53,4 +53,7 @@ Python 3.13+: Follow standard conventions
 - 001-document-workbench-mvp: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x (async), asyncpg, Alembic, Jinja2
 
 <!-- MANUAL ADDITIONS START -->
+## Quality Gates
+
+Always run `uv run pytest` before reporting a task as complete or writing a commit message. If tests fail, fix them or report the failures — do not proceed.
 <!-- MANUAL ADDITIONS END -->

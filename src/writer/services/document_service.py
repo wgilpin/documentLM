@@ -183,6 +183,15 @@ async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> Docum
     return DocumentResponse.model_validate(doc)
 
 
+def is_selection_valid(content: str, start: int, end: int, selected_text: str) -> bool:
+    """Return True when [start, end) is in-bounds and content[start:end] == selected_text."""
+    if start >= end:
+        return False
+    if end > len(content):
+        return False
+    return content[start:end] == selected_text
+
+
 async def reject_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> SuggestionResponse:
     result = await db.execute(select(Suggestion).where(Suggestion.id == suggestion_id))
     suggestion = result.scalar_one_or_none()

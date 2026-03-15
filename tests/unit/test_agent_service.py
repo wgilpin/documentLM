@@ -15,6 +15,7 @@ def _doc(**kwargs: object) -> DocumentResponse:
         "id": uuid.uuid4(),
         "title": "Doc",
         "content": "The quick brown fox.",
+        "overview": None,
         "created_at": datetime.now(UTC),
         "updated_at": datetime.now(UTC),
     }
@@ -29,6 +30,7 @@ def _comment(**kwargs: object) -> CommentResponse:
         "selection_start": 0,
         "selection_end": 3,
         "selected_text": "The",
+        "selected_node_id": None,
         "body": "Expand this",
         "status": CommentStatus.open,
         "created_at": datetime.now(UTC),
