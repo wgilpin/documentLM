@@ -50,3 +50,6 @@ htmlcov/
 # Misc
 *.log
 nul
+
+# ChromaDB vector store data
+data/chroma/

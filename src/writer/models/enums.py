@@ -24,3 +24,10 @@ class SuggestionStatus(enum.Enum):
 class ChatRole(enum.Enum):
     user = "user"
     assistant = "assistant"
+
+
+class IndexingStatus(enum.Enum):
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"

@@ -3,7 +3,17 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,6 +59,7 @@ async def list_sources(
 async def add_source(
     request: Request,
     db: DbDep,
+    background_tasks: BackgroundTasks,
     doc_id: uuid.UUID,
     source_type: Annotated[str, Form()],
     title: Annotated[str, Form()],
@@ -56,6 +67,8 @@ async def add_source(
     url: Annotated[str | None, Form()] = None,
     file: Annotated[UploadFile | None, File()] = None,
 ) -> HTMLResponse | SourceResponse:
+    from writer.services.indexer import run_indexing
+
     stype = SourceType(source_type)
 
     if stype == SourceType.pdf and file is not None:
@@ -85,6 +98,7 @@ async def add_source(
         source = await source_service.add_source(db, data)
 
     await db.commit()
+    background_tasks.add_task(run_indexing, source_id=source.id, db=db)
 
     if request.headers.get("HX-Request"):
         tmpl = get_templates()

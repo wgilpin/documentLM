@@ -8,13 +8,20 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from writer.core.database import Base
-from writer.models.enums import ChatRole, CommentStatus, SourceType, SuggestionStatus
+from writer.models.enums import (
+    ChatRole,
+    CommentStatus,
+    IndexingStatus,
+    SourceType,
+    SuggestionStatus,
+)
 
 __all__ = [
     "ChatMessage",
     "ChatRole",
     "CommentStatus",
     "Document",
+    "IndexingStatus",
     "Source",
     "Comment",
     "Suggestion",
@@ -52,6 +59,10 @@ class Source(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    indexing_status: Mapped[IndexingStatus] = mapped_column(
+        Enum(IndexingStatus), nullable=False, default=IndexingStatus.pending
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
