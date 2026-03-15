@@ -27,14 +27,14 @@ def _render(node: dict) -> str:  # type: ignore[type-arg]
         return "\n\n".join(_render(c) for c in ch)
 
     if t == "heading":
-        level = node.get("attrs", {}).get("level", 1)
+        level = int(node.get("attrs", {}).get("level", 1))
         return "#" * level + " " + "".join(_render(c) for c in ch)
 
     if t == "paragraph":
         return "".join(_render(c) for c in ch)
 
     if t == "text":
-        text = node.get("text", "")
+        text = str(node.get("text", ""))
         for mark in node.get("marks", []):
             o, c = _MARK_WRAP.get(mark["type"], ("", ""))
             text = f"{o}{text}{c}"
@@ -179,7 +179,7 @@ def _list_items(tokens: list, start: int, close_type: str) -> tuple[list, int]: 
 
 
 def _block_until(tokens: list, start: int, close_type: str) -> tuple[list, int]:  # type: ignore[type-arg]
-    collected = []
+    collected: list[object] = []
     i = start
     depth = 0
     open_type = close_type.replace("close", "open")

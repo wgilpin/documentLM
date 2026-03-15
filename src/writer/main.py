@@ -11,9 +11,9 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.config import settings
-from writer.core.templates import templates
 from writer.core.database import _get_engine, get_db
 from writer.core.logging import configure_logging
+from writer.core.templates import templates
 from writer.services import document_service
 from writer.services.document_service import DocumentNotFoundError
 
@@ -61,7 +61,10 @@ async def index(request: Request, db: DbDep) -> HTMLResponse:
 
 @app.get("/documents/new", response_class=HTMLResponse)
 async def new_document(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("document.html", {"request": request, "doc": None})
+    return templates.TemplateResponse(
+        "document.html",
+        {"request": request, "doc": None, "undo_buffer_size": settings.undo_buffer_size},
+    )
 
 
 @app.get("/documents/{doc_id}", response_class=HTMLResponse)
@@ -72,4 +75,7 @@ async def view_document(request: Request, db: DbDep, doc_id: uuid.UUID) -> HTMLR
         return templates.TemplateResponse(
             "index.html", {"request": request, "documents": [], "error": "Document not found"}
         )
-    return templates.TemplateResponse("document.html", {"request": request, "doc": doc})
+    return templates.TemplateResponse(
+        "document.html",
+        {"request": request, "doc": doc, "undo_buffer_size": settings.undo_buffer_size},
+    )
