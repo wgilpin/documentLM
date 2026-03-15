@@ -3,7 +3,7 @@
 from io import BytesIO
 
 import httpx
-from bs4 import BeautifulSoup
+from nlp_utils import extract_article
 
 from writer.core.logging import get_logger
 
@@ -12,14 +12,12 @@ logger = get_logger(__name__)
 _USER_AGENT = "Mozilla/5.0 (compatible; writer-bot/1.0)"
 _TIMEOUT = 15.0
 
-_NOISE_TAGS = ["nav", "aside", "header", "footer", "script", "style"]
-
 
 async def fetch_url_content(url: str) -> str:
     """Fetch a URL and return extracted text content.
 
     For HTML: extracts <article>, then <main>, then <body>,
-    stripping <nav>, <aside>, <header>, <footer>, <script>, <style>.
+    stripping noise tags (nav, aside, header, footer, script, style, iframe, noscript).
     For PDF: extracts text from all pages via pypdf.
 
     Raises httpx.HTTPError on network/HTTP failure.
@@ -47,7 +45,7 @@ async def fetch_url_content(url: str) -> str:
         return text
 
     logger.info("Extracting HTML content from url=%s", url)
-    text = _extract_html(response.text)
+    text = extract_article(response.text)
     logger.info("Extracted HTML text (len=%d) from url=%s", len(text), url)
     return text
 
@@ -66,29 +64,3 @@ def _extract_pdf(data: bytes) -> str:
         pages.append(page_text)
 
     return "\n".join(pages)
-
-
-def _extract_html(html: str) -> str:
-    logger.debug("Parsing HTML (raw len=%d)", len(html))
-    soup = BeautifulSoup(html, "html.parser")
-
-    removed = 0
-    for tag in soup.find_all(_NOISE_TAGS):
-        tag.decompose()
-        removed += 1
-    logger.debug("Removed %d noise elements (%s)", removed, ", ".join(_NOISE_TAGS))
-
-    article = soup.find("article")
-    main = soup.find("main")
-    target = article or main or soup.body
-
-    if target is None:
-        logger.warning("No suitable content element found in HTML")
-        return ""
-
-    chosen = "article" if article else ("main" if main else "body")
-    logger.debug("Extracting text from <%s>", chosen)
-
-    text = target.get_text(separator="\n", strip=True)
-    logger.debug("Extracted %d chars from <%s>", len(text), chosen)
-    return text

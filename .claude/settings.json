@@ -11,8 +11,8 @@
       "Bash(git diff *)",
       "Bash(uv run mypy *)",
       "Bash(find *)",
+      "Bash(ls *)",
       "Bash(.specify/scripts/bash/check-prerequisites.sh --json)",
-      "mcp__coolify__coolify_psql"
     ]
   }
 }

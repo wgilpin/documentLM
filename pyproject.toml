@@ -20,6 +20,7 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "prosemirror>=0.6.1",
     "markdown-it-py>=4.0.0",
+    "nlp-utils",
 ]
 
 [project.optional-dependencies]
@@ -56,3 +57,6 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "--ignore=tests/integration"
 markers = ["integration: requires a live PostgreSQL database (run with docker-compose up -d postgres)"]
+
+[tool.uv.sources]
+nlp-utils = { path = "../nlp_utils" }
