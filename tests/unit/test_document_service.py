@@ -170,13 +170,22 @@ class TestUpdateNodeRange:
         return json.dumps({"type": "doc", "content": list(nodes)})
 
     def _para(self, node_id: str, text: str = "hello") -> dict:  # type: ignore[type-arg]
-        return {"type": "paragraph", "attrs": {"id": node_id}, "content": [{"type": "text", "text": text}]}
+        return {
+            "type": "paragraph",
+            "attrs": {"id": node_id},
+            "content": [{"type": "text", "text": text}],
+        }
 
     def _heading(self, node_id: str, text: str, level: int = 2) -> dict:  # type: ignore[type-arg]
-        return {"type": "heading", "attrs": {"id": node_id, "level": level}, "content": [{"type": "text", "text": text}]}
+        return {
+            "type": "heading",
+            "attrs": {"id": node_id, "level": level},
+            "content": [{"type": "text", "text": text}],
+        }
 
     def test_single_node_replaced_when_to_node_id_is_none(self) -> None:
         import json
+
         from writer.services.document_service import _update_node_range
 
         content = self._doc(self._para("a", "old"), self._para("b", "keep"))
@@ -188,6 +197,7 @@ class TestUpdateNodeRange:
 
     def test_single_node_replaced_when_to_equals_from(self) -> None:
         import json
+
         from writer.services.document_service import _update_node_range
 
         content = self._doc(self._para("a", "old"), self._para("b", "keep"))
@@ -198,6 +208,7 @@ class TestUpdateNodeRange:
 
     def test_multi_node_range_removes_intermediate_nodes(self) -> None:
         import json
+
         from writer.services.document_service import _update_node_range
 
         content = self._doc(
@@ -218,6 +229,7 @@ class TestUpdateNodeRange:
 
     def test_multi_block_new_content_all_inserted(self) -> None:
         import json
+
         from writer.services.document_service import _update_node_range
 
         content = self._doc(self._para("a"), self._para("keep"))
@@ -298,7 +310,13 @@ class TestAcceptRejectSuggestion:
         )
         tiptap_content = json.dumps({
             "type": "doc",
-            "content": [{"type": "paragraph", "attrs": {"id": node_id}, "content": [{"type": "text", "text": "old"}]}],
+            "content": [
+                {
+                    "type": "paragraph",
+                    "attrs": {"id": node_id},
+                    "content": [{"type": "text", "text": "old"}],
+                }
+            ],
         })
         doc_obj = _make_doc(id=doc_id, content=tiptap_content)
 
@@ -321,7 +339,7 @@ class TestAcceptRejectSuggestion:
         assert "NEW TEXT" in result.content
 
     async def test_accept_suggestion_multi_node_range(self) -> None:
-        """Accepting a suggestion that spans two top-level nodes removes both and inserts new content."""
+        """Suggestion spanning two top-level nodes removes both and inserts new content."""
         import json
 
         from writer.services.document_service import accept_suggestion
@@ -339,11 +357,28 @@ class TestAcceptRejectSuggestion:
         tiptap_content = json.dumps({
             "type": "doc",
             "content": [
-                {"type": "heading", "attrs": {"id": from_id, "level": 2}, "content": [{"type": "text", "text": "Speaker Management"}]},
-                {"type": "bulletList", "attrs": {"id": to_id}, "content": [
-                    {"type": "listItem", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Item"}]}]}
-                ]},
-                {"type": "paragraph", "attrs": {"id": "node-after"}, "content": [{"type": "text", "text": "After"}]},
+                {
+                    "type": "heading",
+                    "attrs": {"id": from_id, "level": 2},
+                    "content": [{"type": "text", "text": "Speaker Management"}],
+                },
+                {
+                    "type": "bulletList",
+                    "attrs": {"id": to_id},
+                    "content": [
+                        {
+                            "type": "listItem",
+                            "content": [
+                                {"type": "paragraph", "content": [{"type": "text", "text": "Item"}]}
+                            ],
+                        }
+                    ],
+                },
+                {
+                    "type": "paragraph",
+                    "attrs": {"id": "node-after"},
+                    "content": [{"type": "text", "text": "After"}],
+                },
             ],
         })
         doc_obj = _make_doc(id=doc_id, content=tiptap_content)

@@ -15,6 +15,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.database import get_db
@@ -28,7 +29,7 @@ router = APIRouter()
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
-def get_templates():
+def get_templates() -> Jinja2Templates:
     return _shared_templates
 
 

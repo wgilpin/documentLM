@@ -3,7 +3,7 @@
 from io import BytesIO
 
 import httpx
-from nlp_utils import extract_article
+from nlp_utils import extract_article  # type: ignore[import-untyped]
 
 from writer.core.logging import get_logger
 
@@ -45,7 +45,7 @@ async def fetch_url_content(url: str) -> str:
         return text
 
     logger.info("Extracting HTML content from url=%s", url)
-    text = extract_article(response.text)
+    text = str(extract_article(response.text))
     logger.info("Extracted HTML text (len=%d) from url=%s", len(text), url)
     return text
 

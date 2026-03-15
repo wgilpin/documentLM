@@ -1,7 +1,8 @@
 """Chat agent — conversational collaborator that can also edit the document."""
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from typing import Any
 
 from google.adk.agents import Agent
 
@@ -21,11 +22,11 @@ _INSTRUCTION = (
 )
 
 
-def make_chat_agent(tools: list[Callable] | None = None) -> Agent:  # type: ignore[type-arg]
+def make_chat_agent(tools: Sequence[Callable[..., Any]] | None = None) -> Agent:
     """Create a ChatAgent instance, optionally with per-request tools."""
     return Agent(
         name="chat",
         model=settings.gemini_model,
         instruction=_INSTRUCTION,
-        tools=tools or [],
+        tools=list(tools) if tools else [],
     )

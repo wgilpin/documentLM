@@ -21,6 +21,11 @@
                   hx-swap="none"
                   style="display:none">{{ doc.content | e }}</textarea>
 
+        <div class="editor-toolbar">
+            <button id="undo-btn" class="toolbar-btn" disabled title="Undo" aria-label="Undo">&#8630; Undo</button>
+            <button id="redo-btn" class="toolbar-btn" disabled title="Redo" aria-label="Redo">Redo &#8631;</button>
+        </div>
+
         <div id="tiptap-mount" class="tiptap-editor tiptap-editor--loading"></div>
 
         <div id="tiptap-bubble-menu" class="bubble-menu" style="display:none">
@@ -212,11 +217,14 @@ import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
 import UniqueID from '@tiptap/extension-unique-id';
 
+const UNDO_BUFFER_SIZE = {{ undo_buffer_size }};
+
 const mountEl = document.getElementById('tiptap-mount');
 const bubbleMenuEl = document.getElementById('tiptap-bubble-menu');
 
 let pendingSelection = { start: 0, end: 0, text: '', nodeId: null };
 let pendingClickPos = { x: 0, y: 0 };
+let lastChangeType = null;
 
 // Load from JSON if available (content column stores TipTap JSON), fall back to empty
 const rawContent = document.getElementById('document-content').value;
@@ -230,7 +238,9 @@ try {
 const editor = new Editor({
     element: mountEl,
     extensions: [
-        StarterKit,
+        StarterKit.configure({
+            history: { depth: UNDO_BUFFER_SIZE, newGroupDelay: 0 },
+        }),
         Markdown,
         UniqueID.configure({
             types: ['heading', 'paragraph', 'bulletList', 'orderedList',
@@ -249,6 +259,27 @@ const editor = new Editor({
 });
 
 window.tiptapEditor = editor;
+
+// Undo/redo toolbar
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
+
+editor.on('transaction', ({ transaction }) => {
+    if (transaction.docChanged) {
+        lastChangeType = transaction.getMeta('ai-change') ? 'ai-change' : 'keystroke';
+    }
+    const canUndo = editor.can().undo();
+    const canRedo = editor.can().redo();
+    undoBtn.disabled = !canUndo;
+    redoBtn.disabled = !canRedo;
+    undoBtn.title = canUndo
+        ? (lastChangeType === 'ai-change' ? 'Undo AI change' : 'Undo')
+        : 'Nothing to undo';
+    redoBtn.title = canRedo ? 'Redo' : 'Nothing to redo';
+});
+
+undoBtn.addEventListener('click', () => editor.chain().focus().undo().run());
+redoBtn.addEventListener('click', () => editor.chain().focus().redo().run());
 
 // Right-click on editor → show bubble menu at mouse position
 mountEl.addEventListener('contextmenu', (e) => {
@@ -322,7 +353,14 @@ new MutationObserver((mutations) => {
                 let content;
                 try { content = JSON.parse(node.value); }
                 catch (_) { content = node.value; }
-                editor.commands.setContent(content, false);
+                const aiDocJson = (typeof content === 'object' && content?.type === 'doc')
+                    ? content
+                    : { type: 'doc', content: [{ type: 'paragraph', content: content ? [{ type: 'text', text: String(content) }] : [] }] };
+                const aiDoc = editor.schema.nodeFromJSON(aiDocJson);
+                const tr = editor.state.tr;
+                tr.replaceWith(0, editor.state.doc.content.size, aiDoc.content);
+                tr.setMeta('ai-change', true);
+                editor.view.dispatch(tr);
             }
         }
     }

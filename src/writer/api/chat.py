@@ -2,10 +2,12 @@
 
 import html as html_lib
 import uuid
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.database import get_db
@@ -21,7 +23,7 @@ logger = get_logger(__name__)
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
-def get_templates():
+def get_templates() -> Jinja2Templates:
     return _shared_templates
 
 
@@ -100,7 +102,7 @@ async def stream_chat_init(
         )
         return f'<div id="chat-history" hx-swap-oob="outerHTML">{html}</div>'
 
-    async def generate() -> None:  # type: ignore[return]
+    async def generate() -> AsyncGenerator[str]:
         from writer.services import agent_service, source_service
         from writer.services.content_fetcher import fetch_url_content
 

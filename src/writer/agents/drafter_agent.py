@@ -1,6 +1,7 @@
 """Drafter sub-agent — rewrites or expands selected text based on user instruction."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from typing import Any
 
 from google.adk.agents import Agent
 
@@ -16,11 +17,11 @@ _INSTRUCTION = (
 )
 
 
-def make_drafter_agent(tools: list[Callable] | None = None) -> Agent:  # type: ignore[type-arg]
+def make_drafter_agent(tools: Sequence[Callable[..., Any]] | None = None) -> Agent:
     """Create a drafter Agent instance with optional per-request tools."""
     return Agent(
         name="drafter",
         model=settings.gemini_model,
         instruction=_INSTRUCTION,
-        tools=tools or [],
+        tools=list(tools) if tools else [],
     )

@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +32,7 @@ logger = get_logger(__name__)
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 
-def get_templates():
+def get_templates() -> Jinja2Templates:
     return _shared_templates
 
 
