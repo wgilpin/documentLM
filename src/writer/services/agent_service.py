@@ -47,6 +47,7 @@ async def invoke_drafter(
 
     query_text = f"{comment.body} {comment.selected_text}"
     chunks = await asyncio.to_thread(vector_store.query_sources, query_text)
+    logger.info("drafter: injecting %d source chunks into context", len(chunks))
 
     doc_content = tiptap_to_markdown(document.content or "")
     source_block = "\n".join(chunks)
@@ -175,6 +176,7 @@ async def invoke_planner(overview: str, sources: list[SourceResponse]) -> str:
     from writer.agents.planner_agent import planner_agent
 
     chunks = await asyncio.to_thread(vector_store.query_sources, overview, top_k=5)
+    logger.info("planner: injecting %d source chunks into context", len(chunks))
     research_sources = "\n".join(chunks)
 
     session_state = {

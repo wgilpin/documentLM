@@ -39,7 +39,13 @@ def query_sources(query_text: str, top_k: int = 5) -> list[str]:
     collection = get_collection()
     result = collection.query(query_texts=[query_text], n_results=top_k)
     docs: list[str] = result["documents"][0] if result["documents"] else []
-    logger.debug("query_sources query=%r returned %d chunks", query_text[:80], len(docs))
+    logger.info(
+        "query_sources query=%r → %d chunks",
+        query_text[:80],
+        len(docs),
+    )
+    for i, chunk in enumerate(docs):
+        logger.info("  chunk[%d]: %r", i, chunk[:120])
     return docs
 
 

@@ -105,6 +105,7 @@ async def invoke_chat_agent(
 
     if last_user_content:
         chunks = await asyncio.to_thread(vector_store.query_sources, last_user_content)
+        logger.info("chat: injecting %d source chunks into context", len(chunks))
         if chunks:
             source_block = "\n".join(chunks)
             prompt_parts.append(
