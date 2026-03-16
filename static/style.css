@@ -95,10 +95,24 @@ main {
 /* Editor layout */
 .editor-layout {
     display: grid;
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 1fr 5px 320px;
     grid-template-rows: 1fr;
-    gap: 1.5rem;
+    gap: 0 0.75rem;
     height: calc(100vh - 120px);
+}
+
+.resize-handle {
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    border-radius: 3px;
+    transition: background 0.15s;
+    align-self: stretch;
+}
+
+.resize-handle:hover,
+.resize-handle--dragging {
+    background: #d1d5db;
 }
 
 .editor-pane {
