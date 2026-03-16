@@ -41,7 +41,7 @@ async def run_indexing(source_id: uuid.UUID, db: AsyncSession) -> None:
 
     try:
         chunks = chunk_sentences(source.content, chunk_size=1000, chunk_overlap=100)
-        await asyncio.to_thread(vector_store.index_source, source_id, chunks)
+        await asyncio.to_thread(vector_store.index_source, source_id, source.document_id, chunks)
         source.indexing_status = IndexingStatus.completed
         await db.flush()
         logger.info(

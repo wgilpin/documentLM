@@ -171,7 +171,7 @@ async def stream_chat_init(
 
             yield _sse(_status_html("Generating your document plan\u2026"))
             logger.info("Stream: planning for doc=%s", doc_id)
-            plan_text = await agent_service.invoke_planner(overview, saved_sources)
+            plan_text = await agent_service.invoke_planner(overview, saved_sources, doc_id)
 
             user_msg = await chat_service.create_chat_message(db, doc_id, overview, ChatRole.user)
             assistant_msg = await chat_service.create_chat_message(

@@ -143,7 +143,7 @@ async def test_process_chat_calls_agent_and_returns_assistant_message() -> None:
         db = AsyncMock()
         result, new_content = await chat_service.process_chat(db, doc_id, history)
 
-    mock_agent.assert_called_once_with(history, "", mock_settings.return_value)
+    mock_agent.assert_called_once_with(history, doc_id, "", mock_settings.return_value)
     mock_create.assert_called_once_with(db, doc_id, agent_reply, ChatRole.assistant)
     assert result.role == ChatRole.assistant
     assert result.content == agent_reply

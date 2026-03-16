@@ -54,6 +54,7 @@ async def list_chat_messages(
 
 async def invoke_chat_agent(
     history: list[ChatMessageResponse],
+    document_id: uuid.UUID,
     document_content: str = "",
     user_settings: "UserSettingsResponse | None" = None,
 ) -> tuple[str, str | None]:
@@ -112,7 +113,7 @@ async def invoke_chat_agent(
     last_user_content = next((m.content for m in reversed(history) if m.role == ChatRole.user), "")
 
     if last_user_content:
-        chunks = await asyncio.to_thread(vector_store.query_sources, last_user_content)  # type: ignore[call-arg]
+        chunks = await asyncio.to_thread(vector_store.query_sources, last_user_content, document_id)  # type: ignore[call-arg]
         logger.info("chat: injecting %d source chunks into context", len(chunks))
         if chunks:
             source_block = "\n".join(chunks)
@@ -205,7 +206,7 @@ async def process_chat(
 
     try:
         reply_text, new_content = await invoke_chat_agent(
-            history, document_content, user_settings
+            history, document_id, document_content, user_settings
         )
     except Exception as exc:
         logger.error("ChatAgent error for document=%s: %s", document_id, exc)

@@ -3,6 +3,7 @@
 import asyncio
 import json
 import re
+import uuid
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -42,7 +43,7 @@ async def invoke_drafter(
     )
 
     query_text = f"{comment.body} {comment.selected_text}"
-    chunks = await asyncio.to_thread(vector_store.query_sources, query_text)
+    chunks = await asyncio.to_thread(vector_store.query_sources, query_text, document.id)
     logger.info("drafter: injecting %d source chunks into context", len(chunks))
 
     doc_content = document.content or ""
@@ -174,14 +175,16 @@ async def invoke_research_agent(
         return []
 
 
-async def invoke_planner(overview: str, sources: list[SourceResponse]) -> str:
+async def invoke_planner(
+    overview: str, sources: list[SourceResponse], document_id: uuid.UUID
+) -> str:
     """Invoke the Planner agent with an overview and research sources.
 
     Returns the plan text (overview paragraph + table of contents).
     """
     from writer.agents.planner_agent import planner_agent
 
-    chunks = await asyncio.to_thread(vector_store.query_sources, overview, top_k=5)
+    chunks = await asyncio.to_thread(vector_store.query_sources, overview, document_id, top_k=5)
     logger.info("planner: injecting %d source chunks into context", len(chunks))
     research_sources = "\n".join(chunks)
 
