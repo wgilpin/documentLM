@@ -235,7 +235,8 @@ main {
 }
 
 /* Active block highlight (Focus extension) */
-.tiptap-editor .ProseMirror .has-focus {
+.tiptap-editor .ProseMirror .has-focus,
+.tiptap-editor .ProseMirror .ai-selected {
     background-color: #f3f4f6;
     border-radius: 4px;
     margin-left: -0.5rem;
