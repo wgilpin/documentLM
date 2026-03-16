@@ -61,6 +61,8 @@ async def invoke_chat_agent(
     # Closure that captures the edit result
     edited: list[str | None] = [None]
 
+    edit_call_count = [0]
+
     def edit_document(new_content: str) -> str:
         """Replace the entire document content with new_content.
 
@@ -70,6 +72,13 @@ async def invoke_chat_agent(
         Returns:
             Confirmation that the document was updated.
         """
+        edit_call_count[0] += 1
+        logger.info(
+            "edit_document called (call #%d, content len=%d): %r",
+            edit_call_count[0],
+            len(new_content),
+            new_content[:200],
+        )
         edited[0] = new_content
         return "Document updated."
 
@@ -122,13 +131,44 @@ async def invoke_chat_agent(
     logger.info("Invoking ChatAgent with %d history turns", len(history))
 
     reply_text: str | None = None
+    event_count = 0
     try:
         async for event in runner.run_async(
             user_id=_USER_ID,
             session_id=session.id,
             new_message=user_message,
         ):
-            if event.is_final_response():
+            event_count += 1
+            author = getattr(event, "author", "unknown")
+            is_final = event.is_final_response()
+            # Log function calls
+            if event.content and event.content.parts:
+                for part in event.content.parts:
+                    if hasattr(part, "function_call") and part.function_call:
+                        fc = part.function_call
+                        logger.info(
+                            "ChatAgent event #%d author=%s function_call=%s args_keys=%s",
+                            event_count,
+                            author,
+                            fc.name,
+                            list((fc.args or {}).keys()),
+                        )
+                    elif part.text:
+                        logger.info(
+                            "ChatAgent event #%d author=%s is_final=%s text=%r",
+                            event_count,
+                            author,
+                            is_final,
+                            part.text[:120],
+                        )
+            else:
+                logger.info(
+                    "ChatAgent event #%d author=%s is_final=%s (no parts)",
+                    event_count,
+                    author,
+                    is_final,
+                )
+            if is_final:
                 if event.content and event.content.parts:
                     reply_text = event.content.parts[0].text
                 break
