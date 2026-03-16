@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tiptap Active Block Test</title>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      max-width: 800px; 
+      margin: 4rem auto; 
+    }
+    #editor-wrapper { 
+      position: relative; 
+    }
+    .ProseMirror { 
+      border: 1px solid #ccc; 
+      padding: 1rem; 
+      min-height: 300px; 
+      outline: none; 
+    }
+    
+    /* State-safe visual highlight applied by Focus extension */
+    .ProseMirror .has-focus { 
+      background-color: #f3f4f6; 
+      border-radius: 4px; 
+      margin-left: -0.5rem;
+      margin-right: -0.5rem;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      outline: none; 
+    }
+    
+    #ai-btn {
+      position: absolute;
+      display: none;
+      right: -50px;
+      background: #000;
+      color: #fff;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div id="editor-wrapper">
+  <button id="ai-btn">AI ✨</button>
+  <div id="editor"></div>
+</div>
+
+<script type="module">
+  import { Editor } from 'https://esm.sh/@tiptap/core';
+  import StarterKit from 'https://esm.sh/@tiptap/starter-kit';
+  import Focus from 'https://esm.sh/@tiptap/extension-focus';
+
+  const aiBtn = document.getElementById('ai-btn');
+  let activeBlockPos = null;
+  let activeBlockNode = null;
+
+  const editor = new Editor({
+    element: document.getElementById('editor'),
+    extensions: [
+      StarterKit,
+      Focus.configure({
+        className: 'has-focus',
+        mode: 'deepest',
+      })
+    ],
+    content: `
+      <h2>Tiptap Active Block Test</h2>
+      <p>Click inside any block.</p>
+      <ul>
+        <li>It highlights visually with a grey background.</li>
+        <li>The AI button stays locked to the active item.</li>
+      </ul>
+    `,
+    onTransaction({ editor }) {
+      updateAiButton(editor);
+    }
+  });
+
+  function updateAiButton(editor) {
+    const { state, view } = editor;
+    const { $from } = state.selection;
+    
+    // Dynamically find the closest block node
+    let depth = $from.depth;
+    while (depth > 0 && !$from.node(depth).isBlock) {
+      depth--;
+    }
+
+    if (depth > 0) {
+      activeBlockPos = $from.before(depth);
+      activeBlockNode = $from.node(depth);
+      
+      try {
+        const domNode = view.nodeDOM(activeBlockPos);
+        if (domNode && domNode.nodeType === 1) {
+          const wrapperRect = document.getElementById('editor-wrapper').getBoundingClientRect();
+          const rect = domNode.getBoundingClientRect();
+          
+          aiBtn.style.display = 'block';
+          aiBtn.style.top = (rect.top - wrapperRect.top) + 'px';
+          return;
+        }
+      } catch (e) {
+        // DOM node not ready
+      }
+    }
+    
+    aiBtn.style.display = 'none';
+    activeBlockPos = null;
+    activeBlockNode = null;
+  }
+
+  aiBtn.addEventListener('click', () => {
+    if (activeBlockPos !== null && activeBlockNode) {
+      const from = activeBlockPos;
+      const to = activeBlockPos + activeBlockNode.nodeSize;
+      
+      editor.commands.insertContentAt(
+        { from, to }, 
+        '<p><strong>✨ AI generated block ✨</strong></p>'
+      );
+    }
+  });
+</script>
+
+</body>
+</html>
