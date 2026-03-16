@@ -122,7 +122,7 @@ main {
     display: none;
 }
 
-/* CodeMirror editor container */
+/* TipTap editor container */
 .tiptap-editor {
     flex: 1;
     border: 1px solid #d1d5db;
@@ -162,28 +162,76 @@ main {
     z-index: 11;
 }
 
-.tiptap-editor .cm-editor {
+.tiptap-editor .ProseMirror {
     flex: 1;
     height: 100%;
+    padding: 0.75rem;
     font-size: 0.95rem;
     line-height: 1.6;
-}
-
-.tiptap-editor .cm-scroller {
-    font-family: inherit;
-    line-height: 1.6;
-    overflow-x: hidden;
-}
-
-.tiptap-editor .cm-content {
-    padding: 0.75rem;
-    min-height: 100%;
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
-.tiptap-editor .cm-focused {
     outline: none;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.tiptap-editor .ProseMirror h1,
+.tiptap-editor .ProseMirror h2,
+.tiptap-editor .ProseMirror h3 {
+    margin: 0.75em 0 0.4em;
+    line-height: 1.3;
+}
+
+.tiptap-editor .ProseMirror p {
+    margin: 0 0 0.5em;
+}
+
+.tiptap-editor .ProseMirror p:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor .ProseMirror ul,
+.tiptap-editor .ProseMirror ol {
+    margin: 0 0 0.5em 1.25em;
+    padding: 0;
+}
+
+.tiptap-editor .ProseMirror li {
+    margin-bottom: 0.2em;
+}
+
+.tiptap-editor .ProseMirror strong { font-weight: 600; }
+.tiptap-editor .ProseMirror em { font-style: italic; }
+
+.tiptap-editor .ProseMirror code {
+    background: #f3f4f6;
+    border-radius: 3px;
+    padding: 0.1em 0.3em;
+    font-size: 0.85em;
+    font-family: monospace;
+}
+
+.tiptap-editor .ProseMirror pre {
+    background: #f3f4f6;
+    border-radius: 4px;
+    padding: 0.6em 0.75em;
+    overflow-x: auto;
+    margin: 0 0 0.5em;
+}
+
+.tiptap-editor .ProseMirror pre code {
+    background: none;
+    padding: 0;
+}
+
+.tiptap-editor .ProseMirror blockquote {
+    border-left: 3px solid #d1d5db;
+    padding-left: 0.75em;
+    color: #6b7280;
+    margin: 0 0 0.5em;
+}
+
+/* ProseMirror selection highlight */
+.tiptap-editor .ProseMirror ::selection {
+    background: #bfdbfe;
 }
 
 /* Bubble menu */

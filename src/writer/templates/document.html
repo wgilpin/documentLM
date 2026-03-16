@@ -16,7 +16,7 @@
         <textarea id="document-content"
                   hx-put="/api/documents/{{ doc.id }}"
                   hx-ext="json-enc"
-                  hx-trigger="editor-changed delay:1s"
+                  hx-trigger="tiptap-changed delay:1s"
                   hx-vals='js:{"content": document.getElementById("document-content").value, "title": document.getElementById("doc-title").value}'
                   hx-swap="none"
                   style="display:none">{{ doc.content | e }}</textarea>
@@ -38,7 +38,7 @@
             </div>
         </dialog>
 
-        <div id="editor-mount" class="tiptap-editor tiptap-editor--loading"></div>
+        <div id="tiptap-mount" class="tiptap-editor tiptap-editor--loading"></div>
 
         <div id="tiptap-bubble-menu" class="bubble-menu" style="display:none">
             <button type="button" id="bubble-comment-btn">Comment</button>
@@ -205,105 +205,84 @@ function switchTab(name) {
     event.target.classList.add('active');
 }
 
-function lockEditor()   { window._cmEditable?.reconfigure(false); }
-function unlockEditor() { window._cmEditable?.reconfigure(true); }
+function lockEditor()   { window.tiptapEditor?.setEditable(false); }
+function unlockEditor() { window.tiptapEditor?.setEditable(true); }
 </script>
 
 <script type="importmap">
 {
   "imports": {
-    "@codemirror/state":         "https://esm.sh/@codemirror/state@6",
-    "@codemirror/view":          "https://esm.sh/@codemirror/view@6",
-    "@codemirror/commands":      "https://esm.sh/@codemirror/commands@6",
-    "@codemirror/lang-markdown": "https://esm.sh/@codemirror/lang-markdown@6"
+    "@tiptap/core":        "https://esm.sh/@tiptap/core@2",
+    "@tiptap/starter-kit": "https://esm.sh/@tiptap/starter-kit@2",
+    "tiptap-markdown":     "https://esm.sh/tiptap-markdown@0"
   }
 }
 </script>
 
 <script type="module">
-import { EditorState, Compartment, Transaction } from '@codemirror/state';
-import { EditorView }                             from '@codemirror/view';
-import { history, undo, redo, undoDepth, redoDepth } from '@codemirror/commands';
-import { markdown }                               from '@codemirror/lang-markdown';
+import { Editor }   from '@tiptap/core';
+import StarterKit   from '@tiptap/starter-kit';
+import { Markdown } from 'tiptap-markdown';
 
-const mountEl  = document.getElementById('editor-mount');
-const bubbleEl = document.getElementById('tiptap-bubble-menu');
+const mountEl      = document.getElementById('tiptap-mount');
+const bubbleEl     = document.getElementById('tiptap-bubble-menu');
+const contentInput = document.getElementById('document-content');
 
 let pendingSelection = { start: 0, end: 0, text: '' };
 let pendingClickPos  = { x: 0, y: 0 };
-let lastChangeType   = null;
-
-// ── Compartment for toggling editability ──────────────────────────────────
-const editableComp = new Compartment();
-
-// Expose reconfigure helper for lockEditor/unlockEditor in non-module scope
-window._cmEditable = {
-    reconfigure: (on) =>
-        view.dispatch({ effects: editableComp.reconfigure(EditorView.editable.of(on)) }),
-};
-
-// ── Initial content (plain markdown) ─────────────────────────────────────
-const initialContent = document.getElementById('document-content').value || '';
+let lastChangeIsAi   = false;
 
 // ── Undo/redo toolbar ─────────────────────────────────────────────────────
 const undoBtn = document.getElementById('undo-btn');
 const redoBtn = document.getElementById('redo-btn');
 
-function updateToolbar(state) {
-    const canUndo = undoDepth(state) > 0;
-    const canRedo = redoDepth(state) > 0;
+function updateToolbar(editor) {
+    const canUndo = editor.can().undo();
+    const canRedo = editor.can().redo();
     undoBtn.disabled = !canUndo;
     redoBtn.disabled = !canRedo;
     undoBtn.title = canUndo
-        ? (lastChangeType === 'ai-change' ? 'Undo AI change' : 'Undo')
+        ? (lastChangeIsAi ? 'Undo AI change' : 'Undo')
         : 'Nothing to undo';
     redoBtn.title = canRedo ? 'Redo' : 'Nothing to redo';
 }
 
 // ── Editor ────────────────────────────────────────────────────────────────
-const view = new EditorView({
-    state: EditorState.create({
-        doc: initialContent,
-        extensions: [
-            history({ newGroupDelay: 0 }),
-            markdown(),
-            EditorView.lineWrapping,
-            editableComp.of(EditorView.editable.of(true)),
-            EditorView.updateListener.of((update) => {
-                if (update.docChanged) {
-                    const isAi = update.transactions.some(
-                        tr => tr.annotation(Transaction.userEvent) === 'ai-change'
-                    );
-                    lastChangeType = isAi ? 'ai-change' : 'keystroke';
-
-                    const ta = document.getElementById('document-content');
-                    if (ta) {
-                        ta.value = update.state.doc.toString();
-                        ta.dispatchEvent(new Event('editor-changed'));
-                    }
-                }
-                updateToolbar(update.state);
-            }),
-        ],
-    }),
-    parent: mountEl,
+const editor = new Editor({
+    element: mountEl,
+    extensions: [StarterKit, Markdown],
+    content: contentInput.value,
+    onUpdate({ editor }) {
+        contentInput.value = editor.storage.markdown.getMarkdown();
+        contentInput.dispatchEvent(new Event('tiptap-changed'));
+        updateToolbar(editor);
+    },
+    onTransaction({ editor }) {
+        updateToolbar(editor);
+    },
 });
 
+window.tiptapEditor = editor;
 mountEl.classList.remove('tiptap-editor--loading');
-window.cmView = view;
+updateToolbar(editor);
 
 // ── Undo/redo buttons ─────────────────────────────────────────────────────
-undoBtn.addEventListener('click', () => undo(view));
-redoBtn.addEventListener('click', () => redo(view));
+undoBtn.addEventListener('click', () => {
+    lastChangeIsAi = false;
+    editor.chain().focus().undo().run();
+});
+redoBtn.addEventListener('click', () => editor.chain().focus().redo().run());
 
 // ── Context menu → bubble menu ────────────────────────────────────────────
 mountEl.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    const { from, to } = view.state.selection.main;
+    const selectedText = window.getSelection()?.toString() || '';
+    const md  = editor.storage.markdown.getMarkdown();
+    const idx = selectedText ? md.indexOf(selectedText) : -1;
     pendingSelection = {
-        start: from,
-        end:   to,
-        text:  from !== to ? view.state.sliceDoc(from, to) : '',
+        start: idx >= 0 ? idx : 0,
+        end:   idx >= 0 ? idx + selectedText.length : 0,
+        text:  selectedText,
     };
     pendingClickPos = { x: e.clientX, y: e.clientY };
     bubbleEl.style.cssText =
@@ -335,11 +314,8 @@ new MutationObserver((mutations) => {
         for (const node of mutation.addedNodes) {
             if (node.id === 'document-content') {
                 htmx.process(node);
-                const md = node.value || '';
-                view.dispatch({
-                    changes: { from: 0, to: view.state.doc.length, insert: md },
-                    annotations: Transaction.userEvent.of('ai-change'),
-                });
+                lastChangeIsAi = true;
+                editor.commands.setContent(node.value || '');
             }
         }
     }
