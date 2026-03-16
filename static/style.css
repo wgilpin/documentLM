@@ -165,7 +165,7 @@ main {
 .tiptap-editor .ProseMirror {
     flex: 1;
     height: 100%;
-    padding: 0.75rem;
+    padding: 0.75rem 3rem 0.75rem 0.75rem;
     font-size: 0.95rem;
     line-height: 1.6;
     outline: none;
@@ -234,27 +234,34 @@ main {
     background: #bfdbfe;
 }
 
-/* Bubble menu */
-.bubble-menu {
-    background: #1a1a1a;
+/* Active block highlight (Focus extension) */
+.tiptap-editor .ProseMirror .has-focus {
+    background-color: #f3f4f6;
     border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    display: flex;
-    overflow: hidden;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    outline: none;
 }
 
-.bubble-menu button {
-    background: none;
-    border: none;
+/* AI block button (floats right of active block) */
+#ai-block-btn {
+    position: absolute;
+    right: 0.5rem;
+    background: #1a1a1a;
     color: #fff;
-    padding: 0.35rem 0.75rem;
-    font-size: 0.8rem;
+    border: none;
+    padding: 3px 8px;
     cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    z-index: 100;
     white-space: nowrap;
 }
 
-.bubble-menu button:hover {
-    background: rgba(255,255,255,0.15);
+#ai-block-btn:hover {
+    background: #374151;
 }
 
 /* Sidebar */

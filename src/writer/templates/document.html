@@ -38,10 +38,8 @@
             </div>
         </dialog>
 
-        <div id="tiptap-mount" class="tiptap-editor tiptap-editor--loading"></div>
-
-        <div id="tiptap-bubble-menu" class="bubble-menu" style="display:none">
-            <button type="button" id="bubble-comment-btn">Comment</button>
+        <div id="tiptap-mount" class="tiptap-editor tiptap-editor--loading">
+            <button id="ai-block-btn" type="button" style="display:none">AI ✨</button>
         </div>
 
         <!-- US3: Inline suggestions overlay -->
@@ -212,9 +210,10 @@ function unlockEditor() { window.tiptapEditor?.setEditable(true); }
 <script type="importmap">
 {
   "imports": {
-    "@tiptap/core":        "https://esm.sh/@tiptap/core@2",
-    "@tiptap/starter-kit": "https://esm.sh/@tiptap/starter-kit@2",
-    "tiptap-markdown":     "https://esm.sh/tiptap-markdown@0"
+    "@tiptap/core":              "https://esm.sh/@tiptap/core@2",
+    "@tiptap/starter-kit":       "https://esm.sh/@tiptap/starter-kit@2",
+    "@tiptap/extension-focus":   "https://esm.sh/@tiptap/extension-focus@2",
+    "tiptap-markdown":           "https://esm.sh/tiptap-markdown@0"
   }
 }
 </script>
@@ -222,15 +221,44 @@ function unlockEditor() { window.tiptapEditor?.setEditable(true); }
 <script type="module">
 import { Editor }   from '@tiptap/core';
 import StarterKit   from '@tiptap/starter-kit';
+import Focus        from '@tiptap/extension-focus';
 import { Markdown } from 'tiptap-markdown';
 
 const mountEl      = document.getElementById('tiptap-mount');
-const bubbleEl     = document.getElementById('tiptap-bubble-menu');
 const contentInput = document.getElementById('document-content');
+const aiBtn        = document.getElementById('ai-block-btn');
 
 let pendingSelection = { start: 0, end: 0, text: '' };
-let pendingClickPos  = { x: 0, y: 0 };
 let lastChangeIsAi   = false;
+
+// ── Active block tracking ─────────────────────────────────────────────────
+let activeBlockPos  = null;
+let activeBlockNode = null;
+
+function updateAiButton(editor) {
+    const { state, view } = editor;
+    const { $from } = state.selection;
+    let depth = $from.depth;
+    while (depth > 0 && !$from.node(depth).isBlock) depth--;
+
+    if (depth > 0) {
+        activeBlockPos  = $from.before(depth);
+        activeBlockNode = $from.node(depth);
+        try {
+            const domNode = view.nodeDOM(activeBlockPos);
+            if (domNode?.nodeType === 1) {
+                const wrapperRect = mountEl.getBoundingClientRect();
+                const rect        = domNode.getBoundingClientRect();
+                aiBtn.style.top     = (rect.top - wrapperRect.top + mountEl.scrollTop) + 'px';
+                aiBtn.style.display = 'block';
+                return;
+            }
+        } catch (_) {}
+    }
+    aiBtn.style.display = 'none';
+    activeBlockPos  = null;
+    activeBlockNode = null;
+}
 
 // ── Undo/redo toolbar ─────────────────────────────────────────────────────
 const undoBtn = document.getElementById('undo-btn');
@@ -250,7 +278,11 @@ function updateToolbar(editor) {
 // ── Editor ────────────────────────────────────────────────────────────────
 const editor = new Editor({
     element: mountEl,
-    extensions: [StarterKit, Markdown],
+    extensions: [
+        StarterKit,
+        Markdown,
+        Focus.configure({ className: 'has-focus', mode: 'deepest' }),
+    ],
     content: contentInput.value,
     onUpdate({ editor }) {
         contentInput.value = editor.storage.markdown.getMarkdown();
@@ -259,6 +291,7 @@ const editor = new Editor({
     },
     onTransaction({ editor }) {
         updateToolbar(editor);
+        updateAiButton(editor);
     },
 });
 
@@ -273,38 +306,42 @@ undoBtn.addEventListener('click', () => {
 });
 redoBtn.addEventListener('click', () => editor.chain().focus().redo().run());
 
-// ── Context menu → bubble menu ────────────────────────────────────────────
-mountEl.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    const selectedText = window.getSelection()?.toString() || '';
-    const md  = editor.storage.markdown.getMarkdown();
-    const idx = selectedText ? md.indexOf(selectedText) : -1;
+// ── AI block button → open modal with block as context ────────────────────
+aiBtn.addEventListener('click', () => {
+    if (activeBlockPos === null || !activeBlockNode) return;
+
+    const md    = editor.storage.markdown.getMarkdown();
+    const lines = md.split('\n');
+    const text  = activeBlockNode.textContent.trim();
+
+    let offset = 0, blockStart = 0, blockLine = '';
+    for (const line of lines) {
+        const plain = line
+            .replace(/^#{1,6}\s+/, '')
+            .replace(/^[-*+]\s+/, '')
+            .replace(/^\d+\.\s+/, '')
+            .trim();
+        if (plain === text) {
+            blockStart = offset;
+            blockLine  = line;
+            break;
+        }
+        offset += line.length + 1;
+    }
+
     pendingSelection = {
-        start: idx >= 0 ? idx : 0,
-        end:   idx >= 0 ? idx + selectedText.length : 0,
-        text:  selectedText,
+        start: blockStart,
+        end:   blockStart + blockLine.length,
+        text:  blockLine,
     };
-    pendingClickPos = { x: e.clientX, y: e.clientY };
-    bubbleEl.style.cssText =
-        `position:fixed; top:${e.clientY - 44}px; left:${e.clientX}px;` +
-        `transform:translateX(-50%); z-index:200; display:flex;`;
-});
 
-document.addEventListener('mousedown', (e) => {
-    if (!bubbleEl.contains(e.target)) bubbleEl.style.display = 'none';
-});
-
-document.getElementById('bubble-comment-btn').addEventListener('click', () => {
     document.getElementById('modal-sel-start').value = pendingSelection.start;
     document.getElementById('modal-sel-end').value   = pendingSelection.end;
     document.getElementById('modal-sel-text').value  = pendingSelection.text;
+
     const modal = document.getElementById('command-modal');
-    modal.style.cssText =
-        `margin:0; position:fixed;` +
-        `left:${Math.min(pendingClickPos.x, window.innerWidth - 520)}px;` +
-        `top:${Math.min(pendingClickPos.y, window.innerHeight - 300)}px;`;
+    modal.style.cssText = '';
     modal.showModal();
-    bubbleEl.style.display = 'none';
 });
 
 // ── OOB swap: chat agent replaces #document-content textarea ──────────────
