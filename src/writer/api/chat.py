@@ -105,8 +105,8 @@ async def stream_chat_init(
 
     async def generate() -> AsyncGenerator[str]:
         from writer.services import agent_service, source_service
-        from writer.services.indexer import run_indexing
         from writer.services.content_fetcher import fetch_url_content
+        from writer.services.indexer import run_indexing
 
         # Guard: if already initialised (e.g. SSE auto-reconnect after first run),
         # replace the SSE wrapper with existing messages and stop — no LLM calls.
