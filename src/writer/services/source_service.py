@@ -40,6 +40,17 @@ def _extract_pdf_text(file_bytes: bytes) -> str:
 
 async def add_source(db: AsyncSession, data: SourceCreate) -> SourceResponse:
     logger.info("Adding source type=%s doc=%s", data.source_type, data.document_id)
+    if data.url:
+        existing = await db.execute(
+            select(Source).where(
+                Source.document_id == data.document_id,
+                Source.url == data.url,
+            )
+        )
+        dupe = existing.scalar_one_or_none()
+        if dupe is not None:
+            logger.info("Skipping duplicate url=%s for doc=%s", data.url, data.document_id)
+            return SourceResponse.model_validate(dupe)
     source = Source(
         document_id=data.document_id,
         source_type=data.source_type,

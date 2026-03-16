@@ -22,12 +22,25 @@
                   style="display:none">{{ doc.content | e }}</textarea>
 
         <div class="editor-toolbar">
-            <button id="undo-btn" class="toolbar-btn" disabled title="Undo" aria-label="Undo">&#8630; Undo</button>
-            <button id="redo-btn" class="toolbar-btn" disabled title="Redo" aria-label="Redo">Redo &#8631;</button>
+            <button id="undo-btn" class="toolbar-btn" disabled title="Undo" aria-label="Undo">&#8630;</button>
+            <button id="redo-btn" class="toolbar-btn" disabled title="Redo" aria-label="Redo">&#8631;</button>
+            <span class="toolbar-sep"></span>
+            <button id="fmt-bold" class="toolbar-btn" title="Bold" aria-label="Bold"><strong>B</strong></button>
+            <button id="fmt-italic" class="toolbar-btn" title="Italic" aria-label="Italic"><em style="font-family: Georgia, 'Times New Roman', serif;">I</em></button>
+            <span class="toolbar-sep"></span>
+            <button id="fmt-h1" class="toolbar-btn" title="Heading 1" aria-label="Heading 1">H1</button>
+            <button id="fmt-h2" class="toolbar-btn" title="Heading 2" aria-label="Heading 2">H2</button>
+            <button id="fmt-h3" class="toolbar-btn" title="Heading 3" aria-label="Heading 3">H3</button>
+            <span class="toolbar-sep"></span>
+            <button id="fmt-ul" class="toolbar-btn" title="Bullet list" aria-label="Bullet list"><span style="font-size: 1.2em; line-height: 1;">&#8226;</span></button>
+            <button id="fmt-ol" class="toolbar-btn" title="Numbered list" aria-label="Numbered list">1.</button>
+            <button id="fmt-quote" class="toolbar-btn" title="Blockquote" aria-label="Blockquote"><span style="font-size: 1.2em; line-height: 1;">&#10077;</span></button>
+            <button id="fmt-code" class="toolbar-btn" title="Code block" aria-label="Code block">&lt;/&gt;</button>
+            <button id="fmt-hr" class="toolbar-btn" title="Horizontal rule" aria-label="Horizontal rule">&#8212;</button>
             <button type="button" class="toolbar-btn" title="Settings" aria-label="Settings"
-                    onclick="document.getElementById('settings-dialog').showModal()">&#9881; Settings</button>
+                    onclick="document.getElementById('settings-dialog').showModal()">&#9881;</button>
             <button id="delete-doc-btn" class="toolbar-btn toolbar-btn--danger" title="Delete document" aria-label="Delete document"
-                    onclick="document.getElementById('delete-confirm-dialog').showModal()">&#128465; Delete</button>
+                    onclick="document.getElementById('delete-confirm-dialog').showModal()">&#128465;</button>
         </div>
 
         <dialog id="delete-confirm-dialog" style="padding: 1.5rem;">

@@ -13,6 +13,7 @@
       "Bash(uv run mypy *)",
       "Bash(find *)",
       "Bash(ls *)",
+      "Bash(cd c:/Users/wgilp/projects/writer)",
       "Bash(.specify/scripts/bash/check-prerequisites.sh --json)",
       "Bash(git ls-tree:*)",
       "mcp__chrome-devtools__list_pages",

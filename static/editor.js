@@ -43,6 +43,31 @@ function updateAiButton(editor) {
 const undoBtn = document.getElementById('undo-btn');
 const redoBtn = document.getElementById('redo-btn');
 
+// ── Formatting toolbar ────────────────────────────────────────────────────
+const fmtButtons = {
+    bold:  document.getElementById('fmt-bold'),
+    italic: document.getElementById('fmt-italic'),
+    h1: document.getElementById('fmt-h1'),
+    h2: document.getElementById('fmt-h2'),
+    h3: document.getElementById('fmt-h3'),
+    ul: document.getElementById('fmt-ul'),
+    ol: document.getElementById('fmt-ol'),
+    quote: document.getElementById('fmt-quote'),
+    code: document.getElementById('fmt-code'),
+};
+
+const fmtActiveChecks = [
+    [fmtButtons.bold,   () => editor.isActive('bold')],
+    [fmtButtons.italic, () => editor.isActive('italic')],
+    [fmtButtons.h1,     () => editor.isActive('heading', { level: 1 })],
+    [fmtButtons.h2,     () => editor.isActive('heading', { level: 2 })],
+    [fmtButtons.h3,     () => editor.isActive('heading', { level: 3 })],
+    [fmtButtons.ul,     () => editor.isActive('bulletList')],
+    [fmtButtons.ol,     () => editor.isActive('orderedList')],
+    [fmtButtons.quote,  () => editor.isActive('blockquote')],
+    [fmtButtons.code,   () => editor.isActive('codeBlock')],
+];
+
 function updateToolbar(editor) {
     const canUndo = editor.can().undo();
     const canRedo = editor.can().redo();
@@ -52,6 +77,9 @@ function updateToolbar(editor) {
         ? (lastChangeIsAi ? 'Undo AI change' : 'Undo')
         : 'Nothing to undo';
     redoBtn.title = canRedo ? 'Redo' : 'Nothing to redo';
+    for (const [btn, check] of fmtActiveChecks) {
+        btn.classList.toggle('toolbar-btn--active', check());
+    }
 }
 
 // ── Editor ────────────────────────────────────────────────────────────────
@@ -84,6 +112,18 @@ undoBtn.addEventListener('click', () => {
     editor.chain().focus().undo().run();
 });
 redoBtn.addEventListener('click', () => editor.chain().focus().redo().run());
+
+// ── Formatting buttons ────────────────────────────────────────────────────
+fmtButtons.bold.addEventListener('click', () => editor.chain().focus().toggleBold().run());
+fmtButtons.italic.addEventListener('click', () => editor.chain().focus().toggleItalic().run());
+fmtButtons.h1.addEventListener('click', () => editor.chain().focus().toggleHeading({ level: 1 }).run());
+fmtButtons.h2.addEventListener('click', () => editor.chain().focus().toggleHeading({ level: 2 }).run());
+fmtButtons.h3.addEventListener('click', () => editor.chain().focus().toggleHeading({ level: 3 }).run());
+fmtButtons.ul.addEventListener('click', () => editor.chain().focus().toggleBulletList().run());
+fmtButtons.ol.addEventListener('click', () => editor.chain().focus().toggleOrderedList().run());
+fmtButtons.quote.addEventListener('click', () => editor.chain().focus().toggleBlockquote().run());
+fmtButtons.code.addEventListener('click', () => editor.chain().focus().toggleCodeBlock().run());
+document.getElementById('fmt-hr').addEventListener('click', () => editor.chain().focus().setHorizontalRule().run());
 
 // ── AI block button → open modal with block as context ────────────────────
 

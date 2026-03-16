@@ -15,6 +15,9 @@
                         const ta = document.getElementById('document-content');
                         if (ta) ta.value = content;
                         document.getElementById('suggestion-{{ s.id }}').remove();
+                    } else {
+                        const card = document.getElementById('suggestion-{{ s.id }}');
+                        card.innerHTML = '<div class=\'suggestion-stale\'>Suggestion is outdated — the document changed. <button class=\'btn btn-ghost btn-xs\' onclick=\'this.closest(&quot;.suggestion-card--inline&quot;).remove()\'>Dismiss</button></div>';
                     }
                 ">Accept</button>
         <button class="btn btn-secondary"

@@ -4,8 +4,12 @@ import asyncio
 import json
 import re
 import uuid
+from typing import TYPE_CHECKING
 
 from google.adk.runners import Runner
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
 
@@ -23,6 +27,7 @@ async def invoke_drafter(
     comment: CommentResponse,
     document: DocumentResponse,
     sources: list[SourceResponse],
+    db: "AsyncSession | None" = None,
 ) -> str:
     """Invoke the Drafter agent and return its text response.
 
@@ -30,8 +35,14 @@ async def invoke_drafter(
     Raises RuntimeError on unexpected agent errors.
     """
     from writer.agents.drafter_agent import make_drafter_agent
+    from writer.services.chat_service import make_find_more_sources_tool
 
-    agent = make_drafter_agent(tools=[])
+    tools = []
+    if db is not None:
+        find_more_sources, _ = make_find_more_sources_tool(document.id, db)
+        tools.append(find_more_sources)
+
+    agent = make_drafter_agent(tools=tools)
 
     session_service = InMemorySessionService()
     session = await session_service.create_session(app_name=_APP_NAME, user_id=_USER_ID, state={})

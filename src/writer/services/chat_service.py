@@ -52,11 +52,78 @@ async def list_chat_messages(
     return [ChatMessageResponse.model_validate(m) for m in result.scalars().all()]
 
 
+def make_find_more_sources_tool(document_id: uuid.UUID, db: "AsyncSession") -> tuple:
+    """Return (tool, was_called) where was_called() is True after any successful source fetch."""
+    _called = [False]
+
+    async def find_more_sources(query: str) -> str:
+        """Search for and index additional sources relevant to the given query.
+
+        Call this when you need more background on a specific topic or subtopic
+        and the existing sources are insufficient.
+
+        Args:
+            query: The topic or question to find sources about.
+
+        Returns:
+            A summary of the sources found and indexed.
+        """
+        from writer.models.enums import SourceType
+        from writer.models.schemas import SourceCreate
+        from writer.services import agent_service, source_service
+        from writer.services.content_fetcher import fetch_url_content
+
+        logger.info(
+            "find_more_sources called: query=%r document=%s", query[:100], document_id
+        )
+
+        raw_sources = await agent_service.invoke_research_agent(query)
+        if not raw_sources:
+            logger.info("find_more_sources: no sources returned for query=%r", query[:80])
+            return "No additional sources found for that query."
+
+        from writer.services.indexer import run_indexing
+
+        saved_titles: list[str] = []
+        for s in raw_sources:
+            url = s.get("url")
+            if url:
+                try:
+                    content = await fetch_url_content(url)
+                except Exception as exc:
+                    logger.warning("find_more_sources: failed to fetch %s: %s", url, exc)
+                    content = s.get("summary", "")
+            else:
+                content = s.get("summary", "")
+
+            saved = await source_service.add_source(
+                db,
+                SourceCreate(
+                    document_id=document_id,
+                    source_type=SourceType.url,
+                    title=s.get("title", "Source"),
+                    content=content,
+                    url=url,
+                ),
+            )
+            await db.flush()
+            await run_indexing(source_id=saved.id, db=db)
+            saved_titles.append(s.get("title") or url or "Unknown")
+
+        _called[0] = True
+        summary = f"Found and indexed {len(saved_titles)} source(s): {', '.join(saved_titles[:5])}"
+        logger.info("find_more_sources: %s", summary)
+        return summary
+
+    return find_more_sources, lambda: _called[0]
+
+
 async def invoke_chat_agent(
     history: list[ChatMessageResponse],
     document_id: uuid.UUID,
     document_content: str = "",
     user_settings: "UserSettingsResponse | None" = None,
+    extra_tools: "list | None" = None,
 ) -> tuple[str, str | None]:
     """Invoke the ChatAgent with the full conversation history and return (reply_text, new_content).
 
@@ -88,7 +155,9 @@ async def invoke_chat_agent(
         edited[0] = new_content
         return "Document updated."
 
-    agent = make_chat_agent(tools=[edit_document], user_settings=user_settings)
+    agent = make_chat_agent(
+        tools=[edit_document] + (extra_tools or []), user_settings=user_settings
+    )
 
     session_service = InMemorySessionService()
     session = await session_service.create_session(
@@ -194,19 +263,22 @@ async def process_chat(
     document_id: uuid.UUID,
     history: list[ChatMessageResponse],
     document_content: str = "",
-) -> tuple[ChatMessageResponse, str | None]:
-    """Call the ChatAgent with history and persist + return (assistant_msg, new_content).
+) -> tuple[ChatMessageResponse, str | None, bool]:
+    """Call the ChatAgent with history; return (assistant_msg, new_content, sources_added).
 
     new_content is non-None when the agent edited the document.
+    sources_added is True when the agent called find_more_sources successfully.
     """
     from writer.models.schemas import DocumentUpdate
     from writer.services import document_service, settings_service
 
     user_settings = await settings_service.get_settings(db)
+    find_more_sources, sources_were_added = make_find_more_sources_tool(document_id, db)
 
     try:
         reply_text, new_content = await invoke_chat_agent(
-            history, document_id, document_content, user_settings
+            history, document_id, document_content, user_settings,
+            extra_tools=[find_more_sources],
         )
     except Exception as exc:
         logger.error("ChatAgent error for document=%s: %s", document_id, exc)
@@ -217,7 +289,7 @@ async def process_chat(
         logger.info("ChatAgent edited document=%s", document_id)
 
     msg = await create_chat_message(db, document_id, reply_text, ChatRole.assistant)
-    return msg, new_content
+    return msg, new_content, sources_were_added()
 
 
 async def initialize_chat_with_overview(

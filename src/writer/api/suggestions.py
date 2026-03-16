@@ -78,7 +78,7 @@ async def submit_comment(
 
     # Invoke Drafter agent
     try:
-        suggested_text = await agent_service.invoke_drafter(comment, doc, sources)
+        suggested_text = await agent_service.invoke_drafter(comment, doc, sources, db)
     except Exception as exc:
         logger.exception("Agent invocation error: %s", exc)
         raise HTTPException(status_code=502, detail=f"AI agent error: {exc}") from exc

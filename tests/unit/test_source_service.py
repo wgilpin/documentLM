@@ -53,12 +53,19 @@ class TestAddSource:
     async def test_add_url_returns_source_response(self) -> None:
         from writer.services.source_service import add_source
 
+        doc_id = uuid.uuid4()
+        instance = _make_source(
+            document_id=doc_id, source_type=SourceType.url, url="https://example.com"
+        )
+        no_dupe = MagicMock()
+        no_dupe.scalar_one_or_none.return_value = None
+
         db = AsyncMock()
+        db.execute = AsyncMock(return_value=no_dupe)
         db.add = MagicMock()
         db.flush = AsyncMock()
         db.refresh = AsyncMock()
 
-        doc_id = uuid.uuid4()
         data = SourceCreate(
             document_id=doc_id,
             source_type=SourceType.url,
@@ -67,15 +74,41 @@ class TestAddSource:
             url="https://example.com",
         )
 
-        with patch("writer.services.source_service.Source") as MockSource:
-            instance = _make_source(
-                document_id=doc_id,
-                source_type=SourceType.url,
-                url="https://example.com",
-            )
+        with (
+            patch("writer.services.source_service.Source") as MockSource,
+            patch("writer.services.source_service.select"),
+        ):
             MockSource.return_value = instance
             result = await add_source(db, data)
 
+        assert isinstance(result, SourceResponse)
+
+    async def test_add_url_skips_duplicate(self) -> None:
+        from writer.services.source_service import add_source
+
+        doc_id = uuid.uuid4()
+        existing = _make_source(
+            document_id=doc_id, source_type=SourceType.url, url="https://example.com"
+        )
+        dupe_result = MagicMock()
+        dupe_result.scalar_one_or_none.return_value = existing
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=dupe_result)
+        db.add = MagicMock()
+
+        data = SourceCreate(
+            document_id=doc_id,
+            source_type=SourceType.url,
+            title="A Link",
+            content="summary",
+            url="https://example.com",
+        )
+
+        with patch("writer.services.source_service.select"):
+            result = await add_source(db, data)
+
+        db.add.assert_not_called()
         assert isinstance(result, SourceResponse)
 
 

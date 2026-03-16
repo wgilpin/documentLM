@@ -10,8 +10,9 @@ from writer.core.config import settings
 _INSTRUCTION = (
     "You are a writing assistant. The user has selected a passage from their document and "
     "provided an instruction for how to change it.\n\n"
-    "You have access to the full document and a set of research sources via tools.\n\n"
-    "Use list_sources to see what sources are available, and get_source to read one.\n\n"
+    "Relevant source excerpts are provided in the prompt. If you need additional background "
+    "on a specific topic to fulfil the instruction well, call find_more_sources with a focused "
+    "search query before writing your response.\n\n"
     "Respond with ONLY the replacement text — no preamble, no explanation, no quotes. "
     "The replacement text will be substituted directly into the document."
 )

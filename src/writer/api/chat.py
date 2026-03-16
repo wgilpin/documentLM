@@ -228,7 +228,7 @@ async def post_chat_message(
 
     # Invoke agent and persist assistant reply
     try:
-        assistant_msg, new_doc_content = await chat_service.process_chat(
+        assistant_msg, new_doc_content, sources_added = await chat_service.process_chat(
             db, doc_id, history, doc.content or ""
         )
     except Exception as exc:
@@ -243,8 +243,22 @@ async def post_chat_message(
             tmpl.get_template("partials/chat_message.html").render({"msg": m, "request": request})
             for m in (user_msg, assistant_msg)
         )
-        # If the agent edited the document, push an OOB swap to update the textarea
+        # If the agent added sources, render them directly into an OOB swap
         oob = ""
+        if sources_added:
+            from writer.services import source_service as _src_svc
+            updated_sources = await _src_svc.list_sources(db, doc_id)
+            if updated_sources:
+                items_html = "".join(
+                    tmpl.get_template("partials/sources.html").render(
+                        {"source": s, "request": request}
+                    )
+                    for s in updated_sources
+                )
+            else:
+                items_html = '<li class="source-empty-state">No sources added yet.</li>'
+            oob += f'<ul id="source-list" hx-swap-oob="true">{items_html}</ul>'
+        # If the agent edited the document, push an OOB swap to update the textarea
         if new_doc_content is not None:
             escaped = html_lib.escape(new_doc_content)
             oob = (

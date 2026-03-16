@@ -43,6 +43,10 @@ _INSTRUCTION = (
     "- 'Write the section', 'draft this part', 'fill in the content' = write prose for that "
     "specific section only.\n"
     "- 'Write the full document' = write all sections in full.\n\n"
+    "When you need more background on a specific topic or subtopic to give the user a better "
+    "answer, call find_more_sources with a focused search query. The tool will search for, "
+    "fetch, and index relevant sources so they become available as context. Only call it when "
+    "the existing sources are clearly insufficient — not on every turn.\n\n"
     "Respond conversationally. When you edit the document, briefly describe what you changed."
 )
 
