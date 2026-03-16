@@ -10,12 +10,10 @@
                 hx-on::after-request="
                     unlockEditor();
                     if (event.detail.successful) {
-                        try {
-                            const json = JSON.parse(event.detail.xhr.responseText);
-                            window.tiptapEditor.commands.setContent(json, false);
-                            const ta = document.getElementById('document-content');
-                            if (ta) ta.value = event.detail.xhr.responseText;
-                        } catch (_) {}
+                        const content = event.detail.xhr.responseText;
+                        window.tiptapEditor.commands.setContent(content, false);
+                        const ta = document.getElementById('document-content');
+                        if (ta) ta.value = content;
                         document.getElementById('suggestion-{{ s.id }}').remove();
                     }
                 ">Accept</button>
