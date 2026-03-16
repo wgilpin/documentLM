@@ -246,6 +246,12 @@ main {
     outline: none;
 }
 
+/* Cross-block selection highlight — highlight any block that contains selected text */
+.tiptap-editor .ProseMirror :is(p, h1, h2, h3, h4, h5, h6, li, blockquote):has(::selection) {
+    background-color: #f3f4f6;
+    border-radius: 4px;
+}
+
 /* AI block button (floats right of active block) */
 #ai-block-btn {
     position: absolute;

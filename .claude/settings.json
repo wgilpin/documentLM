@@ -14,7 +14,9 @@
       "Bash(find *)",
       "Bash(ls *)",
       "Bash(.specify/scripts/bash/check-prerequisites.sh --json)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "mcp__chrome-devtools__list_pages",
+      "mcp__chrome-devtools__evaluate_script"
     ]
   }
 }

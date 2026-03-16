@@ -24,15 +24,15 @@ function updateAiButton(editor) {
         activeBlockPos  = $from.before(depth);
         activeBlockNode = $from.node(depth);
         try {
-            const domNode = view.nodeDOM(activeBlockPos);
-            if (domNode?.nodeType === 1) {
-                const wrapperRect = mountEl.getBoundingClientRect();
-                const rect        = domNode.getBoundingClientRect();
-                aiBtn.style.top     = (rect.top - wrapperRect.top + mountEl.scrollTop) + 'px';
-                aiBtn.style.display = 'block';
-                return;
-            }
-        } catch (_) {}
+            const coords      = view.coordsAtPos($from.pos);
+            const wrapperRect = mountEl.getBoundingClientRect();
+            const top         = coords.top - wrapperRect.top + mountEl.scrollTop;
+            aiBtn.style.top     = top + 'px';
+            aiBtn.style.display = 'block';
+            return;
+        } catch (err) {
+            console.warn('[aiBtn] coordsAtPos threw:', err);
+        }
     }
     aiBtn.style.display = 'none';
     activeBlockPos  = null;
@@ -96,6 +96,11 @@ function findBlockInMarkdown(lines, nodeText, minOffset = 0) {
                 .replace(/^#{1,6}\s+/, '')
                 .replace(/^[-*+]\s+/, '')
                 .replace(/^\d+\.\s+/, '')
+                .replace(/^>\s*/, '')
+                .replace(/\*\*(.+?)\*\*/g, '$1')
+                .replace(/\*(.+?)\*/g, '$1')
+                .replace(/`(.+?)`/g, '$1')
+                .replace(/~~(.+?)~~/g, '$1')
                 .trim();
             if (plain === nodeText) {
                 return { start: offset, end: offset + line.length };
@@ -122,7 +127,8 @@ document.getElementById('command-modal').addEventListener('close', () => {
     clearAiHighlight = null;
 });
 
-aiBtn.addEventListener('click', () => {
+aiBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     const { state } = editor;
     const { from, to, empty } = state.selection;
     const md    = editor.storage.markdown.getMarkdown();
@@ -134,7 +140,8 @@ aiBtn.addEventListener('click', () => {
     if (empty) {
         // Cursor only — use active block
         if (activeBlockPos === null || !activeBlockNode) return;
-        const found = findBlockInMarkdown(lines, activeBlockNode.textContent.trim());
+        const nodeText = activeBlockNode.textContent.trim();
+        const found = findBlockInMarkdown(lines, nodeText);
         if (!found) return;
         selStart = found.start;
         selEnd   = found.end;
@@ -170,8 +177,6 @@ aiBtn.addEventListener('click', () => {
     }
 
     if (!selText) return;
-
-    console.log('[AI btn] selStart=%d selEnd=%d selText=%o', selStart, selEnd, selText);
 
     clearAiHighlight?.();
     clearAiHighlight = highlightBlocks(blockPositions);
