@@ -9,6 +9,7 @@
       "Bash(grep *)",
       "Bash(uv run ruff *)",
       "Bash(git diff *)",
+      "Bash(git show *)",
       "Bash(uv run mypy *)",
       "Bash(find *)",
       "Bash(ls *)",
