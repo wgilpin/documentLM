@@ -24,6 +24,8 @@
         <div class="editor-toolbar">
             <button id="undo-btn" class="toolbar-btn" disabled title="Undo" aria-label="Undo">&#8630; Undo</button>
             <button id="redo-btn" class="toolbar-btn" disabled title="Redo" aria-label="Redo">Redo &#8631;</button>
+            <button type="button" class="toolbar-btn" title="Settings" aria-label="Settings"
+                    onclick="document.getElementById('settings-dialog').showModal()">&#9881; Settings</button>
             <button id="delete-doc-btn" class="toolbar-btn toolbar-btn--danger" title="Delete document" aria-label="Delete document"
                     onclick="document.getElementById('delete-confirm-dialog').showModal()">&#128465; Delete</button>
         </div>
@@ -36,6 +38,55 @@
                         hx-on::after-request="window.location.href='/'">Delete</button>
                 <button type="button" class="btn" onclick="document.getElementById('delete-confirm-dialog').close()">Cancel</button>
             </div>
+        </dialog>
+
+        <dialog id="settings-dialog" style="padding: 1.5rem; min-width: 28rem;">
+            <h2 style="margin-top:0">Settings</h2>
+            <form id="settings-form"
+                  hx-post="/api/settings"
+                  hx-ext="json-enc"
+                  hx-swap="none"
+                  hx-on::after-request="if(event.detail.successful) document.getElementById('settings-dialog').close()">
+                <div class="form-group">
+                    <label for="settings-name">Your name</label>
+                    <input type="text" id="settings-name" name="display_name"
+                           value="{{ user_settings.display_name or '' }}"
+                           placeholder="e.g. Alice">
+                </div>
+                <div class="form-group">
+                    <label for="settings-language">Language</label>
+                    <select id="settings-language" name="language_code">
+                        {% set lang = user_settings.language_code %}
+                        <option value="en"    {% if lang == 'en'    %}selected{% endif %}>English</option>
+                        <option value="en-GB" {% if lang == 'en-GB' %}selected{% endif %}>English (UK)</option>
+                        <option value="fr"    {% if lang == 'fr'    %}selected{% endif %}>French</option>
+                        <option value="de"    {% if lang == 'de'    %}selected{% endif %}>German</option>
+                        <option value="es"    {% if lang == 'es'    %}selected{% endif %}>Spanish</option>
+                        <option value="it"    {% if lang == 'it'    %}selected{% endif %}>Italian</option>
+                        <option value="pt"    {% if lang == 'pt'    %}selected{% endif %}>Portuguese</option>
+                        <option value="nl"    {% if lang == 'nl'    %}selected{% endif %}>Dutch</option>
+                        <option value="ja"    {% if lang == 'ja'    %}selected{% endif %}>Japanese</option>
+                        <option value="zh"    {% if lang == 'zh'    %}selected{% endif %}>Chinese (Simplified)</option>
+                        <option value="ar"    {% if lang == 'ar'    %}selected{% endif %}>Arabic</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="settings-ai-instructions">
+                        Universal AI instructions
+                        <span id="ai-instr-count" style="font-weight:normal; color:#888; margin-left:.5rem; font-size:.85em;">
+                            {{ (user_settings.ai_instructions or '') | length }}/2000
+                        </span>
+                    </label>
+                    <textarea id="settings-ai-instructions" name="ai_instructions"
+                              rows="5" maxlength="2000"
+                              placeholder="e.g. Always respond in a formal academic tone."
+                              oninput="document.getElementById('ai-instr-count').textContent=this.value.length+'/2000'">{{ user_settings.ai_instructions or '' }}</textarea>
+                </div>
+                <div class="dialog-actions">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn" onclick="document.getElementById('settings-dialog').close()">Cancel</button>
+                </div>
+            </form>
         </dialog>
 
         <div id="tiptap-mount" class="tiptap-editor tiptap-editor--loading">
@@ -64,6 +115,11 @@
         </form>
         {% endif %}
     </div>
+
+    <!-- Resize handle -->
+    {% if doc %}
+    <div class="resize-handle" id="resize-handle"></div>
+    {% endif %}
 
     <!-- Right: Sidebar -->
     {% if doc %}
@@ -202,7 +258,7 @@
     "@tiptap/core":              "https://esm.sh/@tiptap/core@2",
     "@tiptap/starter-kit":       "https://esm.sh/@tiptap/starter-kit@2",
     "@tiptap/extension-focus":   "https://esm.sh/@tiptap/extension-focus@2",
-    "tiptap-markdown":           "https://esm.sh/tiptap-markdown@0"
+    "tiptap-markdown":           "https://esm.sh/tiptap-markdown@0.8"
   }
 }
 </script>

@@ -126,10 +126,13 @@ async def test_process_chat_calls_agent_and_returns_assistant_message() -> None:
 
     invoke_path = "writer.services.chat_service.invoke_chat_agent"
     create_path = "writer.services.chat_service.create_chat_message"
+    settings_path = "writer.services.settings_service.get_settings"
     with (
         patch(invoke_path, new_callable=AsyncMock) as mock_agent,
         patch(create_path, new_callable=AsyncMock) as mock_create,
+        patch(settings_path, new_callable=AsyncMock) as mock_settings,
     ):
+        mock_settings.return_value = MagicMock()
         mock_agent.return_value = (agent_reply, None)
         mock_create.return_value = _msg(
             document_id=doc_id,
@@ -140,7 +143,7 @@ async def test_process_chat_calls_agent_and_returns_assistant_message() -> None:
         db = AsyncMock()
         result, new_content = await chat_service.process_chat(db, doc_id, history)
 
-    mock_agent.assert_called_once_with(history, "")
+    mock_agent.assert_called_once_with(history, doc_id, "", mock_settings.return_value)
     mock_create.assert_called_once_with(db, doc_id, agent_reply, ChatRole.assistant)
     assert result.role == ChatRole.assistant
     assert result.content == agent_reply

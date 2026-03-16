@@ -2,8 +2,12 @@
 
 import asyncio
 import uuid
+from typing import TYPE_CHECKING
 
 from google.adk.runners import Runner
+
+if TYPE_CHECKING:
+    from writer.models.schemas import UserSettingsResponse
 from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
 from sqlalchemy import select
@@ -50,7 +54,9 @@ async def list_chat_messages(
 
 async def invoke_chat_agent(
     history: list[ChatMessageResponse],
+    document_id: uuid.UUID,
     document_content: str = "",
+    user_settings: "UserSettingsResponse | None" = None,
 ) -> tuple[str, str | None]:
     """Invoke the ChatAgent with the full conversation history and return (reply_text, new_content).
 
@@ -61,6 +67,8 @@ async def invoke_chat_agent(
     # Closure that captures the edit result
     edited: list[str | None] = [None]
 
+    edit_call_count = [0]
+
     def edit_document(new_content: str) -> str:
         """Replace the entire document content with new_content.
 
@@ -70,10 +78,17 @@ async def invoke_chat_agent(
         Returns:
             Confirmation that the document was updated.
         """
+        edit_call_count[0] += 1
+        logger.info(
+            "edit_document called (call #%d, content len=%d): %r",
+            edit_call_count[0],
+            len(new_content),
+            new_content[:200],
+        )
         edited[0] = new_content
         return "Document updated."
 
-    agent = make_chat_agent(tools=[edit_document])
+    agent = make_chat_agent(tools=[edit_document], user_settings=user_settings)
 
     session_service = InMemorySessionService()
     session = await session_service.create_session(
@@ -98,7 +113,7 @@ async def invoke_chat_agent(
     last_user_content = next((m.content for m in reversed(history) if m.role == ChatRole.user), "")
 
     if last_user_content:
-        chunks = await asyncio.to_thread(vector_store.query_sources, last_user_content)
+        chunks = await asyncio.to_thread(vector_store.query_sources, last_user_content, document_id)  # type: ignore[call-arg]
         logger.info("chat: injecting %d source chunks into context", len(chunks))
         if chunks:
             source_block = "\n".join(chunks)
@@ -122,13 +137,44 @@ async def invoke_chat_agent(
     logger.info("Invoking ChatAgent with %d history turns", len(history))
 
     reply_text: str | None = None
+    event_count = 0
     try:
         async for event in runner.run_async(
             user_id=_USER_ID,
             session_id=session.id,
             new_message=user_message,
         ):
-            if event.is_final_response():
+            event_count += 1
+            author = getattr(event, "author", "unknown")
+            is_final = event.is_final_response()
+            # Log function calls
+            if event.content and event.content.parts:
+                for part in event.content.parts:
+                    if hasattr(part, "function_call") and part.function_call:
+                        fc = part.function_call
+                        logger.info(
+                            "ChatAgent event #%d author=%s function_call=%s args_keys=%s",
+                            event_count,
+                            author,
+                            fc.name,
+                            list((fc.args or {}).keys()),
+                        )
+                    elif part.text:
+                        logger.info(
+                            "ChatAgent event #%d author=%s is_final=%s text=%r",
+                            event_count,
+                            author,
+                            is_final,
+                            part.text[:120],
+                        )
+            else:
+                logger.info(
+                    "ChatAgent event #%d author=%s is_final=%s (no parts)",
+                    event_count,
+                    author,
+                    is_final,
+                )
+            if is_final:
                 if event.content and event.content.parts:
                     reply_text = event.content.parts[0].text
                 break
@@ -154,10 +200,14 @@ async def process_chat(
     new_content is non-None when the agent edited the document.
     """
     from writer.models.schemas import DocumentUpdate
-    from writer.services import document_service
+    from writer.services import document_service, settings_service
+
+    user_settings = await settings_service.get_settings(db)
 
     try:
-        reply_text, new_content = await invoke_chat_agent(history, document_content)
+        reply_text, new_content = await invoke_chat_agent(
+            history, document_id, document_content, user_settings
+        )
     except Exception as exc:
         logger.error("ChatAgent error for document=%s: %s", document_id, exc)
         raise

@@ -243,7 +243,7 @@ class TestInvokePlannerVectorRetrieval:
             runner_instance.run_async = fake_run
             MockRunner.return_value = runner_instance
 
-            result = await invoke_planner(overview, [source])
+            result = await invoke_planner(overview, [source], source.document_id)
 
         mock_qs.assert_called_once()
         assert result == "plan text"
@@ -273,9 +273,9 @@ class TestInvokePlannerVectorRetrieval:
             runner_instance.run_async = fake_run
             MockRunner.return_value = runner_instance
 
-            await invoke_planner(overview, [source])
+            await invoke_planner(overview, [source], source.document_id)
 
-        mock_qs.assert_called_once_with(overview, top_k=5)
+        mock_qs.assert_called_once_with(overview, source.document_id, top_k=5)
 
 
 class TestIsSelectionValid:

@@ -16,7 +16,7 @@ from writer.core.database import _get_engine, _get_session_factory, get_db
 from writer.core.logging import configure_logging
 from writer.core.templates import templates
 from writer.models.db import Document
-from writer.services import document_service
+from writer.services import document_service, settings_service
 from writer.services.document_service import DocumentNotFoundError
 
 # Fixed UUID for the dev seed document — stable across restarts
@@ -70,13 +70,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         log.warning("GEMINI_API_KEY is not set — chat agent will fail")
 
     if settings.dev_seed_doc:
-        async with _get_session_factory()() as db:
-            async with db.begin():
-                result = await db.execute(select(Document).where(Document.id == _SEED_DOC_ID))
-                existing = result.scalar_one_or_none()
-                if existing:
-                    await db.delete(existing)
-                db.add(Document(id=_SEED_DOC_ID, title=_SEED_TITLE, content=_SEED_CONTENT))
+        async with _get_session_factory()() as db, db.begin():
+            result = await db.execute(select(Document).where(Document.id == _SEED_DOC_ID))
+            existing = result.scalar_one_or_none()
+            if existing:
+                await db.delete(existing)
+            db.add(Document(id=_SEED_DOC_ID, title=_SEED_TITLE, content=_SEED_CONTENT))
         port = os.environ.get("WRITER_PORT", "8000")
         log.info("Dev seed doc reset → http://localhost:%s/documents/%s", port, _SEED_DOC_ID)
 
@@ -94,6 +93,7 @@ DbDep = Annotated[AsyncSession, Depends(get_db)]
 # Import and register routers
 from writer.api import chat as chat_router  # noqa: E402
 from writer.api import documents as doc_router  # noqa: E402
+from writer.api import settings as settings_router  # noqa: E402
 from writer.api import sources as src_router  # noqa: E402
 from writer.api import suggestions as sug_router  # noqa: E402
 
@@ -101,6 +101,7 @@ app.include_router(doc_router.router, prefix="/api/documents", tags=["documents"
 app.include_router(src_router.router, prefix="/api/documents", tags=["sources"])
 app.include_router(sug_router.router, tags=["suggestions"])
 app.include_router(chat_router.router, tags=["chat"])
+app.include_router(settings_router.router)
 
 
 # UI routes
@@ -111,10 +112,16 @@ async def index(request: Request, db: DbDep) -> HTMLResponse:
 
 
 @app.get("/documents/new", response_class=HTMLResponse)
-async def new_document(request: Request) -> HTMLResponse:
+async def new_document(request: Request, db: DbDep) -> HTMLResponse:
+    user_settings = await settings_service.get_settings(db)
     return templates.TemplateResponse(
         "document.html",
-        {"request": request, "doc": None, "undo_buffer_size": settings.undo_buffer_size},
+        {
+            "request": request,
+            "doc": None,
+            "undo_buffer_size": settings.undo_buffer_size,
+            "user_settings": user_settings,
+        },
     )
 
 
@@ -126,7 +133,13 @@ async def view_document(request: Request, db: DbDep, doc_id: uuid.UUID) -> HTMLR
         return templates.TemplateResponse(
             "index.html", {"request": request, "documents": [], "error": "Document not found"}
         )
+    user_settings = await settings_service.get_settings(db)
     return templates.TemplateResponse(
         "document.html",
-        {"request": request, "doc": doc, "undo_buffer_size": settings.undo_buffer_size},
+        {
+            "request": request,
+            "doc": doc,
+            "undo_buffer_size": settings.undo_buffer_size,
+            "user_settings": user_settings,
+        },
     )

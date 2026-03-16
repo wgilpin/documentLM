@@ -2,8 +2,9 @@
 
 import uuid
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from writer.models.enums import (
     ChatRole,
@@ -96,6 +97,21 @@ class SuggestionResponse(BaseModel):
     suggested_text: str
     status: SuggestionStatus
     created_at: datetime
+
+
+class UserSettingsUpdate(BaseModel):
+    display_name: str | None = None
+    language_code: str = "en"
+    ai_instructions: Annotated[str | None, Field(max_length=2000)] = None
+
+
+class UserSettingsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    display_name: str | None
+    language_code: str
+    ai_instructions: str | None
+    updated_at: datetime
 
 
 class ChatMessageCreate(BaseModel):

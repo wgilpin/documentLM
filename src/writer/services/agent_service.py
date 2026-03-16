@@ -3,6 +3,7 @@
 import asyncio
 import json
 import re
+import uuid
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -42,7 +43,7 @@ async def invoke_drafter(
     )
 
     query_text = f"{comment.body} {comment.selected_text}"
-    chunks = await asyncio.to_thread(vector_store.query_sources, query_text)
+    chunks = await asyncio.to_thread(vector_store.query_sources, query_text, document.id)
     logger.info("drafter: injecting %d source chunks into context", len(chunks))
 
     doc_content = document.content or ""
@@ -108,11 +109,14 @@ async def invoke_drafter(
     return suggested_text
 
 
-async def invoke_research_agent(overview: str) -> list[dict]:  # type: ignore[type-arg]
+async def invoke_research_agent(
+    overview: str, exclude_urls: list[str] | None = None
+) -> list[dict]:  # type: ignore[type-arg]
     """Invoke the Research agent to find sources for the given overview.
 
     Returns a list of dicts with keys: title, url, summary.
     Returns an empty list if the agent response cannot be parsed as JSON.
+    Pass exclude_urls to ask the agent to avoid already-found sources.
     """
     from writer.agents.research_agent import research_agent
 
@@ -125,9 +129,16 @@ async def invoke_research_agent(overview: str) -> list[dict]:  # type: ignore[ty
         session_service=session_service,
     )
 
+    prompt = overview
+    if exclude_urls:
+        exclusion_list = "\n".join(f"- {u}" for u in exclude_urls)
+        prompt = (
+            f"{overview}\n\nDo NOT return any of these URLs — find different sources:\n{exclusion_list}"
+        )
+
     user_message = genai_types.Content(
         role="user",
-        parts=[genai_types.Part(text=overview)],
+        parts=[genai_types.Part(text=prompt)],
     )
 
     logger.info("Invoking ResearchAgent for overview (len=%d)", len(overview))
@@ -164,14 +175,16 @@ async def invoke_research_agent(overview: str) -> list[dict]:  # type: ignore[ty
         return []
 
 
-async def invoke_planner(overview: str, sources: list[SourceResponse]) -> str:
+async def invoke_planner(
+    overview: str, sources: list[SourceResponse], document_id: uuid.UUID
+) -> str:
     """Invoke the Planner agent with an overview and research sources.
 
     Returns the plan text (overview paragraph + table of contents).
     """
     from writer.agents.planner_agent import planner_agent
 
-    chunks = await asyncio.to_thread(vector_store.query_sources, overview, top_k=5)
+    chunks = await asyncio.to_thread(vector_store.query_sources, overview, document_id, top_k=5)
     logger.info("planner: injecting %d source chunks into context", len(chunks))
     research_sources = "\n".join(chunks)
 

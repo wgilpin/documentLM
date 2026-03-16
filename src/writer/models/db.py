@@ -27,6 +27,7 @@ __all__ = [
     "Suggestion",
     "SourceType",
     "SuggestionStatus",
+    "UserSettings",
 ]
 
 
@@ -101,6 +102,21 @@ class Suggestion(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    language_code: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
+    ai_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
 
