@@ -307,37 +307,78 @@ undoBtn.addEventListener('click', () => {
 redoBtn.addEventListener('click', () => editor.chain().focus().redo().run());
 
 // ── AI block button → open modal with block as context ────────────────────
-aiBtn.addEventListener('click', () => {
-    if (activeBlockPos === null || !activeBlockNode) return;
 
-    const md    = editor.storage.markdown.getMarkdown();
-    const lines = md.split('\n');
-    const text  = activeBlockNode.textContent.trim();
-
-    let offset = 0, blockStart = 0, blockLine = '';
+// Find a block's markdown line by matching plain text, searching forward from minOffset.
+function findBlockInMarkdown(lines, nodeText, minOffset = 0) {
+    let offset = 0;
     for (const line of lines) {
-        const plain = line
-            .replace(/^#{1,6}\s+/, '')
-            .replace(/^[-*+]\s+/, '')
-            .replace(/^\d+\.\s+/, '')
-            .trim();
-        if (plain === text) {
-            blockStart = offset;
-            blockLine  = line;
-            break;
+        if (offset >= minOffset) {
+            const plain = line
+                .replace(/^#{1,6}\s+/, '')
+                .replace(/^[-*+]\s+/, '')
+                .replace(/^\d+\.\s+/, '')
+                .trim();
+            if (plain === nodeText) {
+                return { start: offset, end: offset + line.length };
+            }
         }
         offset += line.length + 1;
     }
+    return null;
+}
 
-    pendingSelection = {
-        start: blockStart,
-        end:   blockStart + blockLine.length,
-        text:  blockLine,
-    };
+aiBtn.addEventListener('click', () => {
+    const { state } = editor;
+    const { from, to, empty } = state.selection;
+    const md    = editor.storage.markdown.getMarkdown();
+    const lines = md.split('\n');
 
-    document.getElementById('modal-sel-start').value = pendingSelection.start;
-    document.getElementById('modal-sel-end').value   = pendingSelection.end;
-    document.getElementById('modal-sel-text').value  = pendingSelection.text;
+    let selStart, selEnd, selText;
+
+    if (empty) {
+        // Cursor only — use active block
+        if (activeBlockPos === null || !activeBlockNode) return;
+        const found = findBlockInMarkdown(lines, activeBlockNode.textContent.trim());
+        if (!found) return;
+        selStart = found.start;
+        selEnd   = found.end;
+        selText  = md.slice(selStart, selEnd);
+    } else {
+        // Text selection — collect all text blocks within [from, to]
+        const blocks = [];
+        state.doc.nodesBetween(from, to, (node) => {
+            if (node.isTextblock && node.textContent.trim()) {
+                blocks.push(node.textContent.trim());
+            }
+        });
+        if (blocks.length === 0) return;
+
+        // Find first block, then subsequent blocks searching forward to avoid
+        // false matches when two blocks have identical text.
+        const first = findBlockInMarkdown(lines, blocks[0]);
+        if (!first) return;
+        let last = first;
+        let searchFrom = first.end;
+        for (let i = 1; i < blocks.length; i++) {
+            const found = findBlockInMarkdown(lines, blocks[i], searchFrom);
+            if (!found) return;
+            last = found;
+            searchFrom = found.end;
+        }
+
+        selStart = first.start;
+        selEnd   = last.end;
+        selText  = md.slice(selStart, selEnd);
+    }
+
+    if (!selText) return;
+
+    console.log('[AI btn] selStart=%d selEnd=%d selText=%o', selStart, selEnd, selText);
+
+    pendingSelection = { start: selStart, end: selEnd, text: selText };
+    document.getElementById('modal-sel-start').value = selStart;
+    document.getElementById('modal-sel-end').value   = selEnd;
+    document.getElementById('modal-sel-text').value  = selText;
 
     const modal = document.getElementById('command-modal');
     modal.style.cssText = '';
