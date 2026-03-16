@@ -108,11 +108,14 @@ async def invoke_drafter(
     return suggested_text
 
 
-async def invoke_research_agent(overview: str) -> list[dict]:  # type: ignore[type-arg]
+async def invoke_research_agent(
+    overview: str, exclude_urls: list[str] | None = None
+) -> list[dict]:  # type: ignore[type-arg]
     """Invoke the Research agent to find sources for the given overview.
 
     Returns a list of dicts with keys: title, url, summary.
     Returns an empty list if the agent response cannot be parsed as JSON.
+    Pass exclude_urls to ask the agent to avoid already-found sources.
     """
     from writer.agents.research_agent import research_agent
 
@@ -125,9 +128,16 @@ async def invoke_research_agent(overview: str) -> list[dict]:  # type: ignore[ty
         session_service=session_service,
     )
 
+    prompt = overview
+    if exclude_urls:
+        exclusion_list = "\n".join(f"- {u}" for u in exclude_urls)
+        prompt = (
+            f"{overview}\n\nDo NOT return any of these URLs — find different sources:\n{exclusion_list}"
+        )
+
     user_message = genai_types.Content(
         role="user",
-        parts=[genai_types.Part(text=overview)],
+        parts=[genai_types.Part(text=prompt)],
     )
 
     logger.info("Invoking ResearchAgent for overview (len=%d)", len(overview))

@@ -105,6 +105,7 @@ async def stream_chat_init(
 
     async def generate() -> AsyncGenerator[str]:
         from writer.services import agent_service, source_service
+        from writer.services.indexer import run_indexing
         from writer.services.content_fetcher import fetch_url_content
 
         # Guard: if already initialised (e.g. SSE auto-reconnect after first run),
@@ -120,27 +121,53 @@ async def stream_chat_init(
             logger.info("Stream: researching for doc=%s", doc_id)
             raw_sources = await agent_service.invoke_research_agent(overview)
 
+            target_sources = 5
+
+            async def _fetch_and_save(candidates: list[dict]) -> list:
+                results = []
+                for s in candidates:
+                    url = s.get("url")
+                    try:
+                        content = await fetch_url_content(url) if url else s.get("summary", "")
+                    except Exception as exc:
+                        logger.warning("Stream: failed to fetch %s: %s", url, exc)
+                        continue
+                    source = await source_service.add_source(
+                        db,
+                        SourceCreate(
+                            document_id=doc_id,
+                            source_type=SourceType.url,
+                            title=s.get("title", "Source"),
+                            content=content,
+                            url=url,
+                        ),
+                    )
+                    results.append(source)
+                return results
+
             yield _sse(_status_html(f"Fetching content from {len(raw_sources)} source(s)\u2026"))
             logger.info("Stream: fetching %d sources for doc=%s", len(raw_sources), doc_id)
-            saved_sources = []
-            for s in raw_sources:
-                url = s.get("url")
-                try:
-                    content = await fetch_url_content(url) if url else s.get("summary", "")
-                except Exception as exc:
-                    logger.warning("Stream: failed to fetch %s: %s", url, exc)
-                    content = s.get("summary", "")
-                source = await source_service.add_source(
-                    db,
-                    SourceCreate(
-                        document_id=doc_id,
-                        source_type=SourceType.url,
-                        title=s.get("title", "Source"),
-                        content=content,
-                        url=url,
-                    ),
+            saved_sources = await _fetch_and_save(raw_sources)
+
+            if len(saved_sources) < target_sources:
+                exclude = [s.url for s in saved_sources if s.url]
+                needed = target_sources - len(saved_sources)
+                logger.info(
+                    "Stream: only %d sources saved, fetching %d more for doc=%s",
+                    len(saved_sources),
+                    needed,
+                    doc_id,
                 )
-                saved_sources.append(source)
+                yield _sse(_status_html(f"Finding {needed} more source(s)\u2026"))
+                extra_raw = await agent_service.invoke_research_agent(
+                    overview, exclude_urls=exclude
+                )
+                extra_sources = await _fetch_and_save(extra_raw[:needed])
+                saved_sources.extend(extra_sources)
+
+            await db.commit()
+            for source in saved_sources:
+                await run_indexing(source_id=source.id, db=db)
 
             yield _sse(_status_html("Generating your document plan\u2026"))
             logger.info("Stream: planning for doc=%s", doc_id)
