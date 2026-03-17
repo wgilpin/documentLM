@@ -11,12 +11,13 @@ class TestIndexSource:
 
         source_id = uuid.uuid4()
         document_id = uuid.uuid4()
+        user_id = uuid.uuid4()
         chunks = ["chunk zero", "chunk one", "chunk two"]
 
         mock_collection = MagicMock()
 
         with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
-            index_source(source_id, document_id, chunks)
+            index_source(source_id, document_id, chunks, user_id)
 
         call_kwargs = mock_collection.add.call_args.kwargs
         expected_ids = [f"{source_id}_0", f"{source_id}_1", f"{source_id}_2"]
@@ -28,12 +29,13 @@ class TestIndexSource:
 
         source_id = uuid.uuid4()
         document_id = uuid.uuid4()
+        user_id = uuid.uuid4()
         chunks = ["alpha", "beta"]
 
         mock_collection = MagicMock()
 
         with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
-            index_source(source_id, document_id, chunks)
+            index_source(source_id, document_id, chunks, user_id)
 
         call_kwargs = mock_collection.add.call_args.kwargs
         for meta in call_kwargs["metadatas"]:
@@ -46,12 +48,13 @@ class TestIndexSource:
 
         source_id = uuid.uuid4()
         document_id = uuid.uuid4()
+        user_id = uuid.uuid4()
         chunks = ["first chunk", "second chunk"]
 
         mock_collection = MagicMock()
 
         with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
-            index_source(source_id, document_id, chunks)
+            index_source(source_id, document_id, chunks, user_id)
 
         call_kwargs = mock_collection.add.call_args.kwargs
         assert call_kwargs["documents"] == chunks
@@ -62,10 +65,11 @@ class TestIndexSource:
 
         source_id = uuid.uuid4()
         document_id = uuid.uuid4()
+        user_id = uuid.uuid4()
         mock_collection = MagicMock()
 
         with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
-            index_source(source_id, document_id, [])
+            index_source(source_id, document_id, [], user_id)
 
         mock_collection.add.assert_called_once()
 
@@ -74,31 +78,49 @@ class TestQuerySources:
     def test_calls_collection_query_with_correct_args(self) -> None:
         from writer.services.vector_store import query_sources
 
+        user_id = uuid.uuid4()
         document_id = uuid.uuid4()
         mock_collection = MagicMock()
+        mock_collection.count.return_value = 10
         mock_collection.query.return_value = {"documents": [["chunk A", "chunk B"]]}
 
         with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
-            result = query_sources("find something", document_id, top_k=5)
+            result = query_sources("find something", user_id, document_id, top_k=5)
 
         mock_collection.query.assert_called_once_with(
             query_texts=["find something"],
             n_results=5,
-            where={"document_id": str(document_id)},
+            where={"is_private": False},
         )
         assert result == ["chunk A", "chunk B"]
 
     def test_returns_flattened_documents_list(self) -> None:
         from writer.services.vector_store import query_sources
 
+        user_id = uuid.uuid4()
         document_id = uuid.uuid4()
         mock_collection = MagicMock()
+        mock_collection.count.return_value = 10
         mock_collection.query.return_value = {"documents": [["doc1", "doc2", "doc3"]]}
 
         with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
-            result = query_sources("query text", document_id)
+            result = query_sources("query text", user_id, document_id)
 
         assert result == ["doc1", "doc2", "doc3"]
+
+    def test_returns_empty_list_when_collection_empty(self) -> None:
+        from writer.services.vector_store import query_sources
+
+        user_id = uuid.uuid4()
+        document_id = uuid.uuid4()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+
+        with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
+            result = query_sources("query text", user_id, document_id)
+
+        assert result == []
+        mock_collection.query.assert_not_called()
 
 
 class TestDeleteSourceChunks:
@@ -106,9 +128,10 @@ class TestDeleteSourceChunks:
         from writer.services.vector_store import delete_source_chunks
 
         source_id = uuid.uuid4()
+        user_id = uuid.uuid4()
         mock_collection = MagicMock()
 
         with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
-            delete_source_chunks(source_id)
+            delete_source_chunks(source_id, user_id)
 
         mock_collection.delete.assert_called_once_with(where={"source_id": str(source_id)})

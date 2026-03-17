@@ -23,17 +23,17 @@ from writer.services import vector_store
 logger = get_logger(__name__)
 
 _APP_NAME = "writer-chat"
-_USER_ID = "default_user"
 
 
 async def create_chat_message(
     db: AsyncSession,
     document_id: uuid.UUID,
+    user_id: uuid.UUID,
     content: str,
     role: ChatRole,
 ) -> ChatMessageResponse:
     """Persist a single chat message and return the response schema."""
-    orm = ChatMessage(document_id=document_id, role=role, content=content)
+    orm = ChatMessage(document_id=document_id, user_id=user_id, role=role, content=content)
     db.add(orm)
     await db.flush()
     await db.refresh(orm)
@@ -43,18 +43,21 @@ async def create_chat_message(
 async def list_chat_messages(
     db: AsyncSession,
     document_id: uuid.UUID,
+    user_id: uuid.UUID,
 ) -> list[ChatMessageResponse]:
     """Return all chat messages for a document ordered oldest-first."""
     result = await db.execute(
         select(ChatMessage)
-        .where(ChatMessage.document_id == document_id)
+        .where(ChatMessage.document_id == document_id, ChatMessage.user_id == user_id)
         .order_by(ChatMessage.created_at)
     )
     return [ChatMessageResponse.model_validate(m) for m in result.scalars().all()]
 
 
 def make_find_more_sources_tool(
-    document_id: uuid.UUID, db: "AsyncSession"
+    document_id: uuid.UUID,
+    user_id: uuid.UUID,
+    db: "AsyncSession",
 ) -> tuple[Callable[..., Any], Callable[[], bool]]:
     """Return (tool, was_called) where was_called() is True after any successful source fetch."""
     _called = [False]
@@ -78,7 +81,7 @@ def make_find_more_sources_tool(
 
         logger.info("find_more_sources called: query=%r document=%s", query[:100], document_id)
 
-        raw_sources = await agent_service.invoke_research_agent(query)
+        raw_sources = await agent_service.invoke_research_agent(query, user_id)
         if not raw_sources:
             logger.info("find_more_sources: no sources returned for query=%r", query[:80])
             return "No additional sources found for that query."
@@ -106,9 +109,10 @@ def make_find_more_sources_tool(
                     content=content,
                     url=url,
                 ),
+                user_id,
             )
             await db.flush()
-            await run_indexing(source_id=saved.id, db=db)
+            await run_indexing(source_id=saved.id, db=db, user_id=user_id)
             saved_titles.append(s.get("title") or url or "Unknown")
 
         _called[0] = True
@@ -122,6 +126,8 @@ def make_find_more_sources_tool(
 async def invoke_chat_agent(
     history: list[ChatMessageResponse],
     document_id: uuid.UUID,
+    user_id: uuid.UUID,
+    is_private_doc: bool = False,
     document_content: str = "",
     user_settings: "UserSettingsResponse | None" = None,
     extra_tools: "list[Callable[..., Any]] | None" = None,
@@ -160,10 +166,11 @@ async def invoke_chat_agent(
         tools=[edit_document] + (extra_tools or []), user_settings=user_settings
     )
 
+    adk_user_id = str(user_id)
     session_service = InMemorySessionService()
     session = await session_service.create_session(
         app_name=_APP_NAME,
-        user_id=_USER_ID,
+        user_id=adk_user_id,
         state={"document_content": document_content},
     )
 
@@ -183,7 +190,13 @@ async def invoke_chat_agent(
     last_user_content = next((m.content for m in reversed(history) if m.role == ChatRole.user), "")
 
     if last_user_content:
-        chunks = await asyncio.to_thread(vector_store.query_sources, last_user_content, document_id)  # type: ignore[call-arg]
+        chunks = await asyncio.to_thread(
+            vector_store.query_sources,
+            last_user_content,
+            user_id,
+            document_id,
+            is_private_doc,
+        )
         logger.info("chat: injecting %d source chunks into context", len(chunks))
         if chunks:
             source_block = "\n".join(chunks)
@@ -210,7 +223,7 @@ async def invoke_chat_agent(
     event_count = 0
     try:
         async for event in runner.run_async(
-            user_id=_USER_ID,
+            user_id=adk_user_id,
             session_id=session.id,
             new_message=user_message,
         ):
@@ -262,8 +275,10 @@ async def invoke_chat_agent(
 async def process_chat(
     db: AsyncSession,
     document_id: uuid.UUID,
+    user_id: uuid.UUID,
     history: list[ChatMessageResponse],
     document_content: str = "",
+    is_private_doc: bool = False,
 ) -> tuple[ChatMessageResponse, str | None, bool]:
     """Call the ChatAgent with history; return (assistant_msg, new_content, sources_added).
 
@@ -273,13 +288,15 @@ async def process_chat(
     from writer.models.schemas import DocumentUpdate
     from writer.services import document_service, settings_service
 
-    user_settings = await settings_service.get_settings(db)
-    find_more_sources, sources_were_added = make_find_more_sources_tool(document_id, db)
+    user_settings = await settings_service.get_settings(db, user_id)
+    find_more_sources, sources_were_added = make_find_more_sources_tool(document_id, user_id, db)
 
     try:
         reply_text, new_content = await invoke_chat_agent(
             history,
             document_id,
+            user_id,
+            is_private_doc,
             document_content,
             user_settings,
             extra_tools=[find_more_sources],
@@ -289,16 +306,19 @@ async def process_chat(
         raise
 
     if new_content is not None:
-        await document_service.update_document(db, document_id, DocumentUpdate(content=new_content))
+        await document_service.update_document(
+            db, document_id, DocumentUpdate(content=new_content), user_id
+        )
         logger.info("ChatAgent edited document=%s", document_id)
 
-    msg = await create_chat_message(db, document_id, reply_text, ChatRole.assistant)
+    msg = await create_chat_message(db, document_id, user_id, reply_text, ChatRole.assistant)
     return msg, new_content, sources_were_added()
 
 
 async def initialize_chat_with_overview(
     db: AsyncSession,
     document_id: uuid.UUID,
+    user_id: uuid.UUID,
     overview: str,
 ) -> list[ChatMessageResponse]:
     """Seed the chat on first open.
@@ -313,7 +333,7 @@ async def initialize_chat_with_overview(
 
     # 1. Research
     logger.info("Initializing chat with overview for document=%s", document_id)
-    raw_sources = await agent_service.invoke_research_agent(overview)
+    raw_sources = await agent_service.invoke_research_agent(overview, user_id)
 
     # 2. Fetch content + save sources
     saved_sources = []
@@ -338,17 +358,20 @@ async def initialize_chat_with_overview(
                 content=content,
                 url=url,
             ),
+            user_id,
         )
         saved_sources.append(source)
 
     logger.info("Saved %d research sources for document=%s", len(saved_sources), document_id)
 
     # 3. Plan
-    plan_text = await agent_service.invoke_planner(overview, saved_sources, document_id)
+    plan_text = await agent_service.invoke_planner(overview, saved_sources, document_id, user_id)
 
     # 4. Persist chat messages
-    user_msg = await create_chat_message(db, document_id, overview, ChatRole.user)
-    assistant_msg = await create_chat_message(db, document_id, plan_text, ChatRole.assistant)
+    user_msg = await create_chat_message(db, document_id, user_id, overview, ChatRole.user)
+    assistant_msg = await create_chat_message(
+        db, document_id, user_id, plan_text, ChatRole.assistant
+    )
 
     logger.info("Chat initialized for document=%s", document_id)
     return [user_msg, assistant_msg]

@@ -39,6 +39,14 @@
             <button id="fmt-hr" class="toolbar-btn" title="Horizontal rule" aria-label="Horizontal rule">&#8212;</button>
             <button type="button" class="toolbar-btn" title="Settings" aria-label="Settings"
                     onclick="document.getElementById('settings-dialog').showModal()">&#9881;</button>
+            <button id="privacy-toggle-btn" class="toolbar-btn{% if doc.is_private %} toolbar-btn--active{% endif %}"
+                    title="{% if doc.is_private %}Private — click to make public{% else %}Public — click to make private{% endif %}"
+                    aria-label="Toggle privacy"
+                    hx-patch="/api/documents/{{ doc.id }}/privacy"
+                    hx-ext="json-enc"
+                    hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}'
+                    hx-swap="none"
+                    hx-on::after-request="window.location.reload()">{% if doc.is_private %}&#128274;{% else %}&#128275;{% endif %}</button>
             <button id="delete-doc-btn" class="toolbar-btn toolbar-btn--danger" title="Delete document" aria-label="Delete document"
                     onclick="document.getElementById('delete-confirm-dialog').showModal()">&#128465;</button>
         </div>

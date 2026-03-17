@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from writer.core.auth import get_current_user
 from writer.core.database import get_db
 from writer.core.logging import get_logger
 from writer.core.templates import templates as _shared_templates
@@ -18,6 +19,7 @@ from writer.models.schemas import (
     CommentResponse,
     DocumentResponse,
     SuggestionResponse,
+    UserResponse,
 )
 from writer.services import agent_service, document_service, source_service
 from writer.services.document_service import (
@@ -31,6 +33,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[UserResponse, Depends(get_current_user)]
 
 
 def get_templates() -> Jinja2Templates:
@@ -41,15 +44,16 @@ def get_templates() -> Jinja2Templates:
 async def submit_comment(
     request: Request,
     db: DbDep,
+    current_user: CurrentUser,
     doc_id: uuid.UUID,
     selection_start: Annotated[int, Form()],
     selection_end: Annotated[int, Form()],
     selected_text: Annotated[str, Form()],
     body: Annotated[str, Form()],
 ) -> HTMLResponse | SuggestionResponse:
-    # Validate document exists
+    # Validate document exists and belongs to current user
     try:
-        doc = await document_service.get_document(db, doc_id)
+        doc = await document_service.get_document(db, doc_id, current_user.id)
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
 
@@ -74,11 +78,13 @@ async def submit_comment(
     comment = CommentResponse.model_validate(comment_orm)
 
     # Fetch sources for context
-    sources = await source_service.list_sources(db, doc_id)
+    sources = await source_service.list_sources(db, doc_id, current_user.id)
 
     # Invoke Drafter agent
     try:
-        suggested_text = await agent_service.invoke_drafter(comment, doc, sources, db)
+        suggested_text = await agent_service.invoke_drafter(
+            comment, doc, sources, current_user.id, db
+        )
     except Exception as exc:
         logger.exception("Agent invocation error: %s", exc)
         raise HTTPException(status_code=502, detail=f"AI agent error: {exc}") from exc
@@ -107,7 +113,7 @@ async def submit_comment(
 
 @router.get("/api/documents/{doc_id}/suggestions", response_model=None)
 async def list_suggestions(
-    request: Request, db: DbDep, doc_id: uuid.UUID
+    request: Request, db: DbDep, current_user: CurrentUser, doc_id: uuid.UUID
 ) -> HTMLResponse | list[SuggestionResponse]:
     from writer.models.enums import SuggestionStatus
 

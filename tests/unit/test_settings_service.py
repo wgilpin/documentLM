@@ -1,5 +1,6 @@
 """Unit tests for settings_service — TDD (write first, confirm fail, then implement)."""
 
+import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -33,7 +34,7 @@ class TestGetSettings:
         result_mock.scalar_one_or_none.return_value = None
         db.execute = AsyncMock(return_value=result_mock)
 
-        result = await get_settings(db)
+        result = await get_settings(db, uuid.uuid4())
 
         assert result.display_name is None
         assert result.language_code == "en"
@@ -53,7 +54,7 @@ class TestGetSettings:
         result_mock.scalar_one_or_none.return_value = row
         db.execute = AsyncMock(return_value=result_mock)
 
-        result = await get_settings(db)
+        result = await get_settings(db, uuid.uuid4())
 
         assert result.display_name == "Alice"
         assert result.language_code == "fr"
@@ -83,7 +84,7 @@ class TestUpsertSettings:
             language_code="de",
             ai_instructions="Short replies.",
         )
-        result = await upsert_settings(db, data)
+        result = await upsert_settings(db, uuid.uuid4(), data)
 
         assert result.display_name == "Bob"
         assert result.language_code == "de"
@@ -104,7 +105,7 @@ class TestUpsertSettings:
         db.execute = AsyncMock(return_value=result_mock)
 
         data = UserSettingsUpdate(display_name="Carol", language_code="es")
-        result = await upsert_settings(db, data)
+        result = await upsert_settings(db, uuid.uuid4(), data)
 
         assert result.display_name == "Carol"
         assert result.language_code == "es"

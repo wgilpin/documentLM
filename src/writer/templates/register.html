@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Register — AI Document Workbench{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <h1>Create Account</h1>
+    {% if error %}
+    <div class="auth-error">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/auth/register" class="auth-form">
+        <label for="invite_code">Invite Code</label>
+        <input type="text" id="invite_code" name="invite_code" required autofocus
+               placeholder="32-character code" value="{{ invite_code or '' }}">
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required value="{{ email or '' }}">
+
+        <label for="password">Password <small>(min 8 characters)</small></label>
+        <input type="password" id="password" name="password" required>
+
+        <button type="submit" class="btn btn-primary">Create Account</button>
+    </form>
+    <p class="auth-footer">Already have an account? <a href="/auth/login">Sign in</a></p>
+</div>
+{% endblock %}

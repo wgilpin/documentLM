@@ -15,6 +15,35 @@ from writer.models.enums import (
 )
 
 
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    created_at: datetime
+
+
+class RegisterRequest(BaseModel):
+    invite_code: str
+    email: str
+    password: Annotated[str, Field(min_length=8)]
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class InviteCodeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    code: str
+    created_at: datetime
+    used_at: datetime | None
+    used_by_user_id: uuid.UUID | None
+
+
 class DocumentCreate(BaseModel):
     title: str
     content: str = ""
@@ -26,6 +55,10 @@ class DocumentUpdate(BaseModel):
     content: str | None = None
 
 
+class DocumentPrivacyUpdate(BaseModel):
+    is_private: bool
+
+
 class DocumentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,6 +66,7 @@ class DocumentResponse(BaseModel):
     title: str
     content: str
     overview: str | None
+    is_private: bool
     created_at: datetime
     updated_at: datetime
 
@@ -42,6 +76,7 @@ class DocumentSummary(BaseModel):
 
     id: uuid.UUID
     title: str
+    is_private: bool
     updated_at: datetime
 
 

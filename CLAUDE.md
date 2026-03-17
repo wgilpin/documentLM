@@ -53,9 +53,9 @@ docker-compose up --build                 # full stack
 Python 3.13+: Follow standard conventions
 
 ## Recent Changes
+- 009-multi-user-invite: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
 - 008-view-add-sources: Added Python 3.13+ + google-adk (local), FastAPI, HTMX 2.0, Pydantic v2, SQLAlchemy 2.x / asyncpg
 - 007-universal-settings: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
-- 006-editor-undo-redo: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, TipTap v2 (CDN)
 
 
 <!-- MANUAL ADDITIONS START -->

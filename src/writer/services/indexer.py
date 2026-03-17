@@ -8,14 +8,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.logging import get_logger
-from writer.models.db import Source
+from writer.models.db import Document, Source
 from writer.models.enums import IndexingStatus
 from writer.services import vector_store
 
 logger = get_logger(__name__)
 
 
-async def run_indexing(source_id: uuid.UUID, db: AsyncSession) -> None:
+async def run_indexing(source_id: uuid.UUID, db: AsyncSession, user_id: uuid.UUID) -> None:
     """Chunk and index a source into ChromaDB, updating indexing_status.
 
     Idempotency guard: returns immediately if status is already processing or completed.
@@ -35,13 +35,25 @@ async def run_indexing(source_id: uuid.UUID, db: AsyncSession) -> None:
         )
         return
 
+    # Fetch parent document's is_private flag
+    doc_result = await db.execute(select(Document).where(Document.id == source.document_id))
+    doc = doc_result.scalar_one_or_none()
+    is_private = doc.is_private if doc is not None else False
+
     source.indexing_status = IndexingStatus.processing
     await db.flush()
     logger.info("run_indexing: source_id=%s status → processing", source_id)
 
     try:
         chunks = chunk_sentences(source.content, chunk_size=1000, chunk_overlap=100)
-        await asyncio.to_thread(vector_store.index_source, source_id, source.document_id, chunks)
+        await asyncio.to_thread(
+            vector_store.index_source,
+            source_id,
+            source.document_id,
+            chunks,
+            user_id,
+            is_private,
+        )
         source.indexing_status = IndexingStatus.completed
         await db.flush()
         logger.info(

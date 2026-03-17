@@ -20,13 +20,13 @@ from writer.services import vector_store
 logger = get_logger(__name__)
 
 _APP_NAME = "writer"
-_USER_ID = "default_user"
 
 
 async def invoke_drafter(
     comment: CommentResponse,
     document: DocumentResponse,
     sources: list[SourceResponse],
+    user_id: uuid.UUID,
     db: "AsyncSession | None" = None,
 ) -> str:
     """Invoke the Drafter agent and return its text response.
@@ -39,13 +39,16 @@ async def invoke_drafter(
 
     tools = []
     if db is not None:
-        find_more_sources, _ = make_find_more_sources_tool(document.id, db)
+        find_more_sources, _ = make_find_more_sources_tool(document.id, user_id, db)
         tools.append(find_more_sources)
 
     agent = make_drafter_agent(tools=tools)
 
+    adk_user_id = str(user_id)
     session_service = InMemorySessionService()
-    session = await session_service.create_session(app_name=_APP_NAME, user_id=_USER_ID, state={})
+    session = await session_service.create_session(
+        app_name=_APP_NAME, user_id=adk_user_id, state={}
+    )
 
     runner = Runner(
         agent=agent,
@@ -54,7 +57,13 @@ async def invoke_drafter(
     )
 
     query_text = f"{comment.body} {comment.selected_text}"
-    chunks = await asyncio.to_thread(vector_store.query_sources, query_text, document.id)
+    chunks = await asyncio.to_thread(
+        vector_store.query_sources,
+        query_text,
+        user_id,
+        document.id,
+        document.is_private,
+    )
     logger.info("drafter: injecting %d source chunks into context", len(chunks))
 
     doc_content = document.content or ""
@@ -81,7 +90,7 @@ async def invoke_drafter(
     suggested_text: str | None = None
     try:
         async for event in runner.run_async(
-            user_id=_USER_ID,
+            user_id=adk_user_id,
             session_id=session.id,
             new_message=user_message,
         ):
@@ -120,7 +129,11 @@ async def invoke_drafter(
     return suggested_text
 
 
-async def invoke_research_agent(overview: str, exclude_urls: list[str] | None = None) -> list[dict]:  # type: ignore[type-arg]
+async def invoke_research_agent(
+    overview: str,
+    user_id: uuid.UUID,
+    exclude_urls: list[str] | None = None,
+) -> list[dict[str, str]]:
     """Invoke the Research agent to find sources for the given overview.
 
     Returns a list of dicts with keys: title, url, summary.
@@ -129,8 +142,9 @@ async def invoke_research_agent(overview: str, exclude_urls: list[str] | None = 
     """
     from writer.agents.research_agent import research_agent
 
+    adk_user_id = str(user_id)
     session_service = InMemorySessionService()
-    session = await session_service.create_session(app_name=_APP_NAME, user_id=_USER_ID)
+    session = await session_service.create_session(app_name=_APP_NAME, user_id=adk_user_id)
 
     runner = Runner(
         agent=research_agent,
@@ -156,7 +170,7 @@ async def invoke_research_agent(overview: str, exclude_urls: list[str] | None = 
     raw_text: str | None = None
     try:
         async for event in runner.run_async(
-            user_id=_USER_ID,
+            user_id=adk_user_id,
             session_id=session.id,
             new_message=user_message,
         ):
@@ -177,7 +191,7 @@ async def invoke_research_agent(overview: str, exclude_urls: list[str] | None = 
         match = re.search(r"\[.*\]", raw_text, re.DOTALL)
         if match is None:
             raise ValueError("No JSON array found in response")
-        sources: list[dict] = json.loads(match.group())  # type: ignore[type-arg]
+        sources: list[dict[str, str]] = json.loads(match.group())
         logger.info("ResearchAgent returned %d sources", len(sources))
         return sources
     except (ValueError, json.JSONDecodeError) as exc:
@@ -186,7 +200,10 @@ async def invoke_research_agent(overview: str, exclude_urls: list[str] | None = 
 
 
 async def invoke_planner(
-    overview: str, sources: list[SourceResponse], document_id: uuid.UUID
+    overview: str,
+    sources: list[SourceResponse],
+    document_id: uuid.UUID,
+    user_id: uuid.UUID,
 ) -> str:
     """Invoke the Planner agent with an overview and research sources.
 
@@ -194,7 +211,9 @@ async def invoke_planner(
     """
     from writer.agents.planner_agent import planner_agent
 
-    chunks = await asyncio.to_thread(vector_store.query_sources, overview, document_id, top_k=5)
+    chunks = await asyncio.to_thread(
+        vector_store.query_sources, overview, user_id, document_id, False, 5
+    )
     logger.info("planner: injecting %d source chunks into context", len(chunks))
     research_sources = "\n".join(chunks)
 
@@ -203,9 +222,10 @@ async def invoke_planner(
         "research_sources": research_sources,
     }
 
+    adk_user_id = str(user_id)
     session_service = InMemorySessionService()
     session = await session_service.create_session(
-        app_name=_APP_NAME, user_id=_USER_ID, state=session_state
+        app_name=_APP_NAME, user_id=adk_user_id, state=session_state
     )
 
     runner = Runner(
@@ -228,7 +248,7 @@ async def invoke_planner(
     plan_text: str | None = None
     try:
         async for event in runner.run_async(
-            user_id=_USER_ID,
+            user_id=adk_user_id,
             session_id=session.id,
             new_message=user_message,
         ):

@@ -26,17 +26,34 @@ def _make_source_orm(**kwargs: object) -> MagicMock:
     return obj
 
 
+def _make_doc_orm(**kwargs: object) -> MagicMock:
+    defaults = {"id": uuid.uuid4(), "is_private": False}
+    defaults.update(kwargs)
+    obj = MagicMock()
+    for k, v in defaults.items():
+        setattr(obj, k, v)
+    return obj
+
+
+def _make_two_results(source: object, doc: object) -> list[MagicMock]:
+    """Return two AsyncMock-compatible results for Source and Document queries."""
+    r1 = MagicMock()
+    r1.scalar_one_or_none.return_value = source
+    r2 = MagicMock()
+    r2.scalar_one_or_none.return_value = doc
+    return [r1, r2]
+
+
 class TestRunIndexing:
     async def test_status_transitions_pending_to_completed(self) -> None:
         from writer.services.indexer import run_indexing
 
         source = _make_source_orm()
         source_id = source.id
+        doc = _make_doc_orm()
 
         db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = source
-        db.execute = AsyncMock(return_value=mock_result)
+        db.execute = AsyncMock(side_effect=_make_two_results(source, doc))
         db.flush = AsyncMock()
 
         statuses: list[IndexingStatus] = []
@@ -54,7 +71,7 @@ class TestRunIndexing:
             patch("writer.services.indexer.vector_store") as mock_vs,
         ):
             mock_vs.index_source = MagicMock()
-            await run_indexing(source_id, db)
+            await run_indexing(source_id, db, uuid.uuid4())
 
         assert IndexingStatus.processing in statuses
         assert IndexingStatus.completed in statuses
@@ -64,11 +81,10 @@ class TestRunIndexing:
 
         source = _make_source_orm(content="My content here.")
         source_id = source.id
+        doc = _make_doc_orm()
 
         db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = source
-        db.execute = AsyncMock(return_value=mock_result)
+        db.execute = AsyncMock(side_effect=_make_two_results(source, doc))
         db.flush = AsyncMock()
 
         with (
@@ -76,7 +92,7 @@ class TestRunIndexing:
             patch("writer.services.indexer.vector_store") as mock_vs,
         ):
             mock_vs.index_source = MagicMock()
-            await run_indexing(source_id, db)
+            await run_indexing(source_id, db, uuid.uuid4())
 
         mock_chunk.assert_called_once_with("My content here.", chunk_size=1000, chunk_overlap=100)
 
@@ -85,11 +101,10 @@ class TestRunIndexing:
 
         source = _make_source_orm()
         source_id = source.id
+        doc = _make_doc_orm()
 
         db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = source
-        db.execute = AsyncMock(return_value=mock_result)
+        db.execute = AsyncMock(side_effect=_make_two_results(source, doc))
         db.flush = AsyncMock()
 
         with (
@@ -99,7 +114,7 @@ class TestRunIndexing:
             ),
             patch("writer.services.indexer.vector_store"),
         ):
-            await run_indexing(source_id, db)
+            await run_indexing(source_id, db, uuid.uuid4())
 
         assert source.indexing_status == IndexingStatus.failed
         assert "embed failed" in str(source.error_message)
@@ -111,15 +126,15 @@ class TestRunIndexing:
         source_id = source.id
 
         db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = source
-        db.execute = AsyncMock(return_value=mock_result)
+        r = MagicMock()
+        r.scalar_one_or_none.return_value = source
+        db.execute = AsyncMock(return_value=r)
 
         with (
             patch("writer.services.indexer.chunk_sentences") as mock_chunk,
             patch("writer.services.indexer.vector_store"),
         ):
-            await run_indexing(source_id, db)
+            await run_indexing(source_id, db, uuid.uuid4())
 
         mock_chunk.assert_not_called()
 
@@ -130,15 +145,15 @@ class TestRunIndexing:
         source_id = source.id
 
         db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = source
-        db.execute = AsyncMock(return_value=mock_result)
+        r = MagicMock()
+        r.scalar_one_or_none.return_value = source
+        db.execute = AsyncMock(return_value=r)
 
         with (
             patch("writer.services.indexer.chunk_sentences") as mock_chunk,
             patch("writer.services.indexer.vector_store"),
         ):
-            await run_indexing(source_id, db)
+            await run_indexing(source_id, db, uuid.uuid4())
 
         mock_chunk.assert_not_called()
 
@@ -146,14 +161,14 @@ class TestRunIndexing:
         from writer.services.indexer import run_indexing
 
         db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        db.execute = AsyncMock(return_value=mock_result)
+        r = MagicMock()
+        r.scalar_one_or_none.return_value = None
+        db.execute = AsyncMock(return_value=r)
 
         with (
             patch("writer.services.indexer.chunk_sentences") as mock_chunk,
             patch("writer.services.indexer.vector_store"),
         ):
-            await run_indexing(uuid.uuid4(), db)
+            await run_indexing(uuid.uuid4(), db, uuid.uuid4())
 
         mock_chunk.assert_not_called()
