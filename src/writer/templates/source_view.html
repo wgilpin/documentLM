@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}{{ source.title }} – Source{% endblock %}
+
+{% block content %}
+<div class="source-view">
+  <h1 class="source-view-title">{{ source.title }}</h1>
+  <span class="type-badge">{{ source.source_type.value }}</span>
+  <pre class="source-view-content">{{ source.content }}</pre>
+</div>
+{% endblock %}

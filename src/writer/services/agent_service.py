@@ -120,9 +120,7 @@ async def invoke_drafter(
     return suggested_text
 
 
-async def invoke_research_agent(
-    overview: str, exclude_urls: list[str] | None = None
-) -> list[dict]:  # type: ignore[type-arg]
+async def invoke_research_agent(overview: str, exclude_urls: list[str] | None = None) -> list[dict]:  # type: ignore[type-arg]
     """Invoke the Research agent to find sources for the given overview.
 
     Returns a list of dicts with keys: title, url, summary.
@@ -144,7 +142,8 @@ async def invoke_research_agent(
     if exclude_urls:
         exclusion_list = "\n".join(f"- {u}" for u in exclude_urls)
         prompt = (
-            f"{overview}\n\nDo NOT return any of these URLs — find different sources:\n{exclusion_list}"
+            f"{overview}\n\nDo NOT return any of these URLs — find different sources:\n"
+            f"{exclusion_list}"
         )
 
     user_message = genai_types.Content(

@@ -4,6 +4,17 @@
     <span class="source-title">{{ source.title }}</span>
     <span class="source-date">{{ source.created_at.strftime('%b %d, %Y') }}</span>
   </div>
+  {% if source.source_type.value == 'url' and source.url %}
+    <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
+  {% elif source.source_type.value == 'note' %}
+    <button class="btn btn-ghost btn-xs"
+            hx-get="/api/documents/{{ doc_id }}/sources/{{ source.id }}/view"
+            hx-target="#source-note-modal-body"
+            hx-swap="innerHTML"
+            hx-on::after-request="document.getElementById('source-note-modal').showModal()">View</button>
+  {% else %}
+    <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/view" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
+  {% endif %}
   <button class="btn btn-ghost-danger btn-xs"
           hx-delete="/api/documents/{{ source.document_id }}/sources/{{ source.id }}"
           hx-target="#source-{{ source.id }}"

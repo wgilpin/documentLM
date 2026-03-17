@@ -2,7 +2,8 @@
 
 import asyncio
 import uuid
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from google.adk.runners import Runner
 
@@ -52,7 +53,9 @@ async def list_chat_messages(
     return [ChatMessageResponse.model_validate(m) for m in result.scalars().all()]
 
 
-def make_find_more_sources_tool(document_id: uuid.UUID, db: "AsyncSession") -> tuple:
+def make_find_more_sources_tool(
+    document_id: uuid.UUID, db: "AsyncSession"
+) -> tuple[Callable[..., Any], Callable[[], bool]]:
     """Return (tool, was_called) where was_called() is True after any successful source fetch."""
     _called = [False]
 
@@ -73,9 +76,7 @@ def make_find_more_sources_tool(document_id: uuid.UUID, db: "AsyncSession") -> t
         from writer.services import agent_service, source_service
         from writer.services.content_fetcher import fetch_url_content
 
-        logger.info(
-            "find_more_sources called: query=%r document=%s", query[:100], document_id
-        )
+        logger.info("find_more_sources called: query=%r document=%s", query[:100], document_id)
 
         raw_sources = await agent_service.invoke_research_agent(query)
         if not raw_sources:
@@ -123,7 +124,7 @@ async def invoke_chat_agent(
     document_id: uuid.UUID,
     document_content: str = "",
     user_settings: "UserSettingsResponse | None" = None,
-    extra_tools: "list | None" = None,
+    extra_tools: "list[Callable[..., Any]] | None" = None,
 ) -> tuple[str, str | None]:
     """Invoke the ChatAgent with the full conversation history and return (reply_text, new_content).
 
@@ -277,7 +278,10 @@ async def process_chat(
 
     try:
         reply_text, new_content = await invoke_chat_agent(
-            history, document_id, document_content, user_settings,
+            history,
+            document_id,
+            document_content,
+            user_settings,
             extra_tools=[find_more_sources],
         )
     except Exception as exc:
@@ -340,7 +344,7 @@ async def initialize_chat_with_overview(
     logger.info("Saved %d research sources for document=%s", len(saved_sources), document_id)
 
     # 3. Plan
-    plan_text = await agent_service.invoke_planner(overview, saved_sources)
+    plan_text = await agent_service.invoke_planner(overview, saved_sources, document_id)
 
     # 4. Persist chat messages
     user_msg = await create_chat_message(db, document_id, overview, ChatRole.user)

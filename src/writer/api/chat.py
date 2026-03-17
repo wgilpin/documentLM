@@ -14,7 +14,12 @@ from writer.core.database import get_db
 from writer.core.logging import get_logger
 from writer.core.templates import templates as _shared_templates
 from writer.models.enums import ChatRole, SourceType
-from writer.models.schemas import ChatMessageCreate, ChatMessageResponse, SourceCreate
+from writer.models.schemas import (
+    ChatMessageCreate,
+    ChatMessageResponse,
+    SourceCreate,
+    SourceResponse,
+)
 from writer.services import chat_service, document_service
 from writer.services.document_service import DocumentNotFoundError
 
@@ -123,7 +128,7 @@ async def stream_chat_init(
 
             target_sources = 5
 
-            async def _fetch_and_save(candidates: list[dict]) -> list:
+            async def _fetch_and_save(candidates: list[dict[str, str]]) -> list[SourceResponse]:
                 results = []
                 for s in candidates:
                     url = s.get("url")
@@ -247,6 +252,7 @@ async def post_chat_message(
         oob = ""
         if sources_added:
             from writer.services import source_service as _src_svc
+
             updated_sources = await _src_svc.list_sources(db, doc_id)
             if updated_sources:
                 items_html = "".join(

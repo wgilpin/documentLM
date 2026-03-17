@@ -44,7 +44,9 @@ async def list_sources(
             return HTMLResponse('<li class="source-empty-state">No sources added yet.</li>')
         tmpl = get_templates()
         html = "".join(
-            tmpl.get_template("partials/sources.html").render({"source": s, "request": request})
+            tmpl.get_template("partials/sources.html").render(
+                {"source": s, "doc_id": doc_id, "request": request}
+            )
             for s in sources
         )
         return HTMLResponse(html)
@@ -99,10 +101,32 @@ async def add_source(
     if request.headers.get("HX-Request"):
         tmpl = get_templates()
         html = tmpl.get_template("partials/sources.html").render(
-            {"source": source, "request": request}
+            {"source": source, "doc_id": doc_id, "request": request}
         )
         return HTMLResponse(html)
     return source
+
+
+@router.get("/{doc_id}/sources/{source_id}/view", response_model=None)
+async def view_source(
+    request: Request, db: DbDep, doc_id: uuid.UUID, source_id: uuid.UUID
+) -> HTMLResponse:
+    try:
+        source = await source_service.get_source(db, source_id)
+    except SourceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Source not found") from exc
+    if source.document_id != doc_id:
+        raise HTTPException(status_code=404, detail="Source not found")
+    tmpl = get_templates()
+    if request.headers.get("HX-Request"):
+        return HTMLResponse(
+            tmpl.get_template("partials/source_note_modal.html").render(
+                {"source": source, "request": request}
+            )
+        )
+    return HTMLResponse(
+        tmpl.get_template("source_view.html").render({"source": source, "request": request})
+    )
 
 
 @router.delete("/{doc_id}/sources/{source_id}", response_model=None)
