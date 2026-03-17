@@ -14,38 +14,66 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from writer.core.auth import get_current_user
 from writer.core.config import settings
-from writer.core.database import _get_engine, get_db
+from writer.core.database import _get_engine, _get_session_factory, get_db
 from writer.core.logging import configure_logging
 from writer.core.templates import templates
+from writer.models.db import Document, User
 from writer.models.schemas import UserResponse
 from writer.services import document_service, settings_service
 from writer.services.document_service import DocumentNotFoundError
+
+# Fixed UUID for the dev seed document — stable across restarts
+_SEED_DOC_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+_SEED_TITLE = "Dev Sandbox Document"
+_SEED_CONTENT = """\
+# Dev Sandbox
+
+This document is **reset on every server start** so you always have a clean slate
+for testing the editor, suggestions, undo/redo, and chat features.
+
+## Section One
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque habitant
+morbi tristique senectus et netus et malesuada fames ac turpis egestas.
+
+- Item one — try editing this
+- Item two — select text and right-click to leave a comment
+- Item three — use the chat panel to ask the AI to rewrite a section
+
+## Section Two
+
+Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia
+curae; Donec velit neque, *auctor* sit amet aliquam vel, ullamcorper sit amet ligula.
+
+> A blockquote for variety.  Use Ctrl+Z / Ctrl+Y to test undo and redo.
+
+## Section Three
+
+Some `inline code` and a short numbered list:
+
+1. First step
+2. Second step
+3. Third step
+
+**Bold text** and _italic text_ and some plain prose to round things out.
+"""
 
 
 async def _seed_document(email: str, log: logging.Logger) -> None:
     from sqlalchemy import select
 
-    from writer.core.database import _get_session_factory
-    from writer.models.db import User
-    from writer.models.schemas import DocumentCreate
-
-    async with _get_session_factory()() as db:
+    async with _get_session_factory()() as db, db.begin():
         result = await db.execute(select(User).where(User.email == email.strip().lower()))
         user = result.scalar_one_or_none()
         if user is None:
             log.warning("--seed-doc: no user found with email=%r — skipping", email)
             return
-        await document_service.create_document(
-            db,
-            DocumentCreate(
-                title="Welcome to AI Document Workbench",
-                content="<p>This is your seed document. Start writing!</p>",
-                overview="Dev seed document",
-            ),
-            user.id,
-        )
-        await db.commit()
-        log.info("--seed-doc: created seed document for user=%r", email)
+        existing = await db.execute(select(Document).where(Document.id == _SEED_DOC_ID))
+        doc = existing.scalar_one_or_none()
+        if doc is not None:
+            await db.delete(doc)
+        db.add(Document(id=_SEED_DOC_ID, user_id=user.id, title=_SEED_TITLE, content=_SEED_CONTENT))
+    log.info("--seed-doc: reset seed doc → /documents/%s (user=%r)", _SEED_DOC_ID, email)
 
 
 @asynccontextmanager
