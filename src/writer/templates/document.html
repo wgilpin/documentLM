@@ -244,6 +244,16 @@
     {% endif %}
 </div>
 
+<!-- Source note viewer modal -->
+{% if doc %}
+<dialog id="source-note-modal" style="padding: 1.5rem; min-width: 32rem; max-width: 60rem; max-height: 80vh;">
+  <div id="source-note-modal-body"></div>
+  <div class="dialog-actions" style="margin-top: 1rem;">
+    <form method="dialog"><button class="btn">Close</button></form>
+  </div>
+</dialog>
+{% endif %}
+
 <!-- AI Instruction modal -->
 {% if doc %}
 <dialog id="command-modal">

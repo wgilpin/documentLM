@@ -41,6 +41,7 @@ transformations). The Red-Green-Refactor cycle MUST be followed: write a failing
 test, confirm it fails, implement the minimum code to make it pass, refactor.
 
 TDD MUST NOT be applied to:
+
 - Frontend components (UI layer)
 - API endpoint handlers (HTTP routing layer)
 
@@ -74,6 +75,7 @@ is a future maintenance burden.
 ### V. Strong Typing — No Plain Dicts, No `Any`
 
 All function arguments and return values MUST be typed using one of:
+
 - Pydantic models (for data validated at runtime boundaries)
 - `TypedDict` (for internal structured data)
 - Stdlib dataclasses or named tuples where appropriate
@@ -159,9 +161,15 @@ confirmation (Principle IV).
 **Feature gate**: No new feature work begins without an updated spec and explicit
 user approval of scope.
 
+**Implementation Strategy**
+When executing /speckit.implement, dispatch tasks marked [P] as parallel
+sub-agents. Each sub-agent should own distinct files with no overlap.
+Sequential tasks must complete before dependent parallel batches begin.
+
 ## Governance
 
 This constitution supersedes all other project conventions. Amendments require:
+
 1. A clear statement of the principle being changed and why.
 2. A version bump following semantic versioning (MAJOR / MINOR / PATCH).
 3. Updated `LAST_AMENDED_DATE`.

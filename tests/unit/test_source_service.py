@@ -227,6 +227,35 @@ class TestDeleteSource:
 
         assert call_order == ["vector_store", "db_delete"]
 
+
+class TestGetSource:
+    async def test_get_source_returns_source(self) -> None:
+        from writer.services.source_service import get_source
+
+        db = AsyncMock()
+        source_obj = _make_source()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = source_obj
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await get_source(db, source_obj.id)
+
+        assert isinstance(result, SourceResponse)
+        assert result.id == source_obj.id
+
+    async def test_get_source_raises_not_found(self) -> None:
+        from writer.services.source_service import SourceNotFoundError, get_source
+
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        db.execute = AsyncMock(return_value=mock_result)
+
+        with pytest.raises(SourceNotFoundError):
+            await get_source(db, uuid.uuid4())
+
+
+class TestDeleteSourceOrdering:
     async def test_delete_propagates_vector_store_exception_without_db_delete(self) -> None:
         """If delete_source_chunks raises, the DB record must NOT be deleted."""
         from writer.services.source_service import delete_source

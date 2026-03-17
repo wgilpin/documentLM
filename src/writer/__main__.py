@@ -6,7 +6,9 @@ import os
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m writer")
-    parser.add_argument("--seed-doc", action="store_true", help="Reset dev seed document on startup")
+    parser.add_argument(
+        "--seed-doc", action="store_true", help="Reset dev seed document on startup"
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true", default=True)

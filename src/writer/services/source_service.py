@@ -88,6 +88,15 @@ async def add_source_pdf(
     return SourceResponse.model_validate(source)
 
 
+async def get_source(db: AsyncSession, source_id: uuid.UUID) -> SourceResponse:
+    result = await db.execute(select(Source).where(Source.id == source_id))
+    source = result.scalar_one_or_none()
+    if source is None:
+        logger.error("Source %s not found", source_id)
+        raise SourceNotFoundError(source_id)
+    return SourceResponse.model_validate(source)
+
+
 async def list_sources(db: AsyncSession, document_id: uuid.UUID) -> list[SourceResponse]:
     result = await db.execute(
         select(Source).where(Source.document_id == document_id).order_by(Source.created_at)
