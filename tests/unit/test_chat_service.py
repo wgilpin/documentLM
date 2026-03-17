@@ -70,7 +70,10 @@ async def test_create_chat_message_stores_user_role() -> None:
         mock_instance.created_at = orm_result.created_at
         MockChatMessage.return_value = mock_instance
 
-        result = await chat_service.create_chat_message(db, doc_id, "Test message", ChatRole.user)
+        user_id = uuid.uuid4()
+        result = await chat_service.create_chat_message(
+            db, doc_id, user_id, "Test message", ChatRole.user
+        )
 
     assert result.role == ChatRole.user
     assert result.content == "Test message"
@@ -100,7 +103,7 @@ async def test_list_chat_messages_ordered_by_created_at() -> None:
     mock_result.scalars.return_value.all.return_value = [msg1, msg2]
     db.execute = AsyncMock(return_value=mock_result)
 
-    results = await chat_service.list_chat_messages(db, doc_id)
+    results = await chat_service.list_chat_messages(db, doc_id, uuid.uuid4())
 
     assert len(results) == 2
     assert results[0].content == "first"
@@ -140,14 +143,19 @@ async def test_process_chat_calls_agent_and_returns_assistant_message() -> None:
             content=agent_reply,
         )
 
+        user_id = uuid.uuid4()
         db = AsyncMock()
-        result, new_content, sources_added = await chat_service.process_chat(db, doc_id, history)
+        result, new_content, sources_added = await chat_service.process_chat(
+            db, doc_id, user_id, history
+        )
 
     call_args = mock_agent.call_args
-    assert call_args.args == (history, doc_id, "", mock_settings.return_value)
+    assert call_args.args[0] == history
+    assert call_args.args[1] == doc_id
+    assert call_args.args[2] == user_id
     assert len(call_args.kwargs["extra_tools"]) == 1
     assert callable(call_args.kwargs["extra_tools"][0])
-    mock_create.assert_called_once_with(db, doc_id, agent_reply, ChatRole.assistant)
+    mock_create.assert_called_once_with(db, doc_id, user_id, agent_reply, ChatRole.assistant)
     assert result.role == ChatRole.assistant
     assert result.content == agent_reply
     assert new_content is None

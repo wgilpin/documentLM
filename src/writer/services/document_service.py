@@ -35,9 +35,11 @@ class SuggestionNotFoundError(Exception):
         self.suggestion_id = suggestion_id
 
 
-async def create_document(db: AsyncSession, data: DocumentCreate) -> DocumentResponse:
-    logger.info("Creating document title=%r", data.title)
-    doc = Document(title=data.title, content=data.content, overview=data.overview)
+async def create_document(
+    db: AsyncSession, data: DocumentCreate, user_id: uuid.UUID
+) -> DocumentResponse:
+    logger.info("Creating document title=%r user=%s", data.title, user_id)
+    doc = Document(user_id=user_id, title=data.title, content=data.content, overview=data.overview)
     db.add(doc)
     await db.flush()
     await db.refresh(doc)
@@ -45,24 +47,30 @@ async def create_document(db: AsyncSession, data: DocumentCreate) -> DocumentRes
     return DocumentResponse.model_validate(doc)
 
 
-async def get_document(db: AsyncSession, doc_id: uuid.UUID) -> DocumentResponse:
-    result = await db.execute(select(Document).where(Document.id == doc_id))
+async def get_document(db: AsyncSession, doc_id: uuid.UUID, user_id: uuid.UUID) -> DocumentResponse:
+    result = await db.execute(
+        select(Document).where(Document.id == doc_id, Document.user_id == user_id)
+    )
     doc = result.scalar_one_or_none()
     if doc is None:
         raise DocumentNotFoundError(doc_id)
     return DocumentResponse.model_validate(doc)
 
 
-async def list_documents(db: AsyncSession) -> list[DocumentSummary]:
-    result = await db.execute(select(Document).order_by(Document.updated_at.desc()))
+async def list_documents(db: AsyncSession, user_id: uuid.UUID) -> list[DocumentSummary]:
+    result = await db.execute(
+        select(Document).where(Document.user_id == user_id).order_by(Document.updated_at.desc())
+    )
     docs = result.scalars().all()
     return [DocumentSummary.model_validate(d) for d in docs]
 
 
 async def update_document(
-    db: AsyncSession, doc_id: uuid.UUID, data: DocumentUpdate
+    db: AsyncSession, doc_id: uuid.UUID, data: DocumentUpdate, user_id: uuid.UUID
 ) -> DocumentResponse:
-    result = await db.execute(select(Document).where(Document.id == doc_id))
+    result = await db.execute(
+        select(Document).where(Document.id == doc_id, Document.user_id == user_id)
+    )
     doc = result.scalar_one_or_none()
     if doc is None:
         raise DocumentNotFoundError(doc_id)
@@ -76,14 +84,41 @@ async def update_document(
     return DocumentResponse.model_validate(doc)
 
 
-async def delete_document(db: AsyncSession, doc_id: uuid.UUID) -> None:
-    result = await db.execute(select(Document).where(Document.id == doc_id))
+async def delete_document(db: AsyncSession, doc_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    result = await db.execute(
+        select(Document).where(Document.id == doc_id, Document.user_id == user_id)
+    )
     doc = result.scalar_one_or_none()
     if doc is None:
         raise DocumentNotFoundError(doc_id)
     await db.delete(doc)
     await db.flush()
     logger.info("Deleted document id=%s", doc_id)
+
+
+async def toggle_privacy(
+    db: AsyncSession, doc_id: uuid.UUID, user_id: uuid.UUID, is_private: bool
+) -> DocumentResponse:
+    """Set the Private flag on a document and update ChromaDB metadata."""
+    from writer.services import vector_store
+
+    result = await db.execute(
+        select(Document).where(Document.id == doc_id, Document.user_id == user_id)
+    )
+    doc = result.scalar_one_or_none()
+    if doc is None:
+        raise DocumentNotFoundError(doc_id)
+    doc.is_private = is_private
+    await db.flush()
+    await db.refresh(doc)
+    logger.info("toggle_privacy doc=%s is_private=%s", doc_id, is_private)
+    try:
+        import asyncio
+
+        await asyncio.to_thread(vector_store.update_privacy, user_id, doc_id, is_private)
+    except Exception as exc:
+        logger.error("toggle_privacy: ChromaDB update failed for doc=%s: %s", doc_id, exc)
+    return DocumentResponse.model_validate(doc)
 
 
 async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> DocumentResponse:

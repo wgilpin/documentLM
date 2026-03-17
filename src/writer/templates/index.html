@@ -13,6 +13,7 @@
     {% for doc in documents %}
     <div class="doc-item">
         <a href="/documents/{{ doc.id }}">{{ doc.title }}</a>
+        {% if doc.is_private %}<span class="badge badge--private" title="Private document">&#128274; Private</span>{% endif %}
         <span class="meta">{{ doc.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
     </div>
     {% endfor %}

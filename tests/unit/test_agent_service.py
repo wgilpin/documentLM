@@ -16,6 +16,7 @@ def _doc(**kwargs: object) -> DocumentResponse:
         "title": "Doc",
         "content": "The quick brown fox.",
         "overview": None,
+        "is_private": False,
         "created_at": datetime.now(UTC),
         "updated_at": datetime.now(UTC),
     }
@@ -93,7 +94,7 @@ class TestInvokeDrafter:
             runner_instance.run_async = fake_run_async
             MockRunner.return_value = runner_instance
 
-            result = await invoke_drafter(comment, doc, sources)
+            result = await invoke_drafter(comment, doc, sources, uuid.uuid4())
 
         assert isinstance(result, str)
         assert result == "Hi there, expanded."
@@ -131,7 +132,7 @@ class TestInvokeDrafter:
             MockRunner.return_value = runner_instance
 
             with pytest.raises(ValueError, match="no text response"):
-                await invoke_drafter(comment, doc, sources)
+                await invoke_drafter(comment, doc, sources, uuid.uuid4())
 
 
 def _make_runner_patch(reply: str) -> tuple[object, object]:
@@ -176,7 +177,7 @@ class TestInvokeDrafterVectorRetrieval:
             runner_instance.run_async = fake_run
             MockRunner.return_value = runner_instance
 
-            await invoke_drafter(comment, doc, [source])
+            await invoke_drafter(comment, doc, [source], uuid.uuid4())
 
         # The message sent to the agent must NOT contain the raw source content
         call_args = MockRunner.call_args
@@ -208,7 +209,7 @@ class TestInvokeDrafterVectorRetrieval:
             runner_instance.run_async = fake_run
             MockRunner.return_value = runner_instance
 
-            await invoke_drafter(comment, doc, [source])
+            await invoke_drafter(comment, doc, [source], uuid.uuid4())
 
         mock_qs.assert_called_once()
         query_text = mock_qs.call_args[0][0]
@@ -243,7 +244,8 @@ class TestInvokePlannerVectorRetrieval:
             runner_instance.run_async = fake_run
             MockRunner.return_value = runner_instance
 
-            result = await invoke_planner(overview, [source], source.document_id)
+            user_id = uuid.uuid4()
+            result = await invoke_planner(overview, [source], source.document_id, user_id)
 
         mock_qs.assert_called_once()
         assert result == "plan text"
@@ -261,6 +263,7 @@ class TestInvokePlannerVectorRetrieval:
         mock_ss = MagicMock()
         mock_ss.create_session = AsyncMock(return_value=mock_session)
 
+        user_id = uuid.uuid4()
         with (
             patch("writer.services.agent_service.Runner") as MockRunner,
             patch("writer.services.agent_service.InMemorySessionService", return_value=mock_ss),
@@ -273,9 +276,13 @@ class TestInvokePlannerVectorRetrieval:
             runner_instance.run_async = fake_run
             MockRunner.return_value = runner_instance
 
-            await invoke_planner(overview, [source], source.document_id)
+            await invoke_planner(overview, [source], source.document_id, user_id)
 
-        mock_qs.assert_called_once_with(overview, source.document_id, top_k=5)
+        mock_qs.assert_called_once()
+        call_args = mock_qs.call_args
+        assert call_args.args[0] == overview
+        assert call_args.args[1] == user_id
+        assert call_args.args[2] == source.document_id
 
 
 class TestIsSelectionValid:

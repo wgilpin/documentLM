@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     chroma_path: str = "./data/chroma"
     undo_buffer_size: int = 1000
     dev_seed_doc: bool = False
+    # Must be set in .env: at least 32 random bytes (e.g. secrets.token_hex(32))
+    secret_key: str = ""
 
     @field_validator("undo_buffer_size", mode="before")
     @classmethod

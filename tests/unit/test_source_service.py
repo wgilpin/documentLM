@@ -43,10 +43,11 @@ class TestAddSource:
             document_id=doc_id, source_type=SourceType.note, title="My Note", content="text"
         )
 
+        user_id = uuid.uuid4()
         with patch("writer.services.source_service.Source") as MockSource:
             instance = _make_source(document_id=doc_id, source_type=SourceType.note)
             MockSource.return_value = instance
-            result = await add_source(db, data)
+            result = await add_source(db, data, user_id)
 
         assert isinstance(result, SourceResponse)
 
@@ -79,7 +80,7 @@ class TestAddSource:
             patch("writer.services.source_service.select"),
         ):
             MockSource.return_value = instance
-            result = await add_source(db, data)
+            result = await add_source(db, data, uuid.uuid4())
 
         assert isinstance(result, SourceResponse)
 
@@ -106,7 +107,7 @@ class TestAddSource:
         )
 
         with patch("writer.services.source_service.select"):
-            result = await add_source(db, data)
+            result = await add_source(db, data, uuid.uuid4())
 
         db.add.assert_not_called()
         assert isinstance(result, SourceResponse)
@@ -123,6 +124,7 @@ class TestAddSourcePdf:
 
         doc_id = uuid.uuid4()
 
+        user_id = uuid.uuid4()
         with (
             patch(
                 "writer.services.source_service._extract_pdf_text",
@@ -130,7 +132,7 @@ class TestAddSourcePdf:
             ),
             pytest.raises(PdfParseError),
         ):
-            await add_source_pdf(db, doc_id, "Bad PDF", b"not-a-pdf")
+            await add_source_pdf(db, doc_id, "Bad PDF", b"not-a-pdf", user_id)
 
     async def test_add_pdf_extracts_text(self) -> None:
         from writer.services.source_service import add_source_pdf
@@ -143,6 +145,7 @@ class TestAddSourcePdf:
         doc_id = uuid.uuid4()
         fake_pdf = b"%PDF-fake"
 
+        user_id = uuid.uuid4()
         with (
             patch("writer.services.source_service._extract_pdf_text", return_value="extracted"),
             patch("writer.services.source_service.Source") as MockSource,
@@ -153,7 +156,7 @@ class TestAddSourcePdf:
                 content="extracted",
             )
             MockSource.return_value = instance
-            result = await add_source_pdf(db, doc_id, "My PDF", fake_pdf)
+            result = await add_source_pdf(db, doc_id, "My PDF", fake_pdf, user_id)
 
         assert isinstance(result, SourceResponse)
         assert result.content == "extracted"
@@ -169,7 +172,7 @@ class TestListSources:
         mock_result.scalars.return_value.all.return_value = sources
         db.execute = AsyncMock(return_value=mock_result)
 
-        result = await list_sources(db, uuid.uuid4())
+        result = await list_sources(db, uuid.uuid4(), uuid.uuid4())
         assert isinstance(result, list)
         assert all(isinstance(s, SourceResponse) for s in result)
 
@@ -186,7 +189,7 @@ class TestDeleteSource:
         db.delete = AsyncMock()
         db.flush = AsyncMock()
 
-        await delete_source(db, source_obj.id)
+        await delete_source(db, source_obj.id, uuid.uuid4())
         db.delete.assert_called_once_with(source_obj)
 
     async def test_delete_raises_on_not_found(self) -> None:
@@ -198,7 +201,7 @@ class TestDeleteSource:
         db.execute = AsyncMock(return_value=mock_result)
 
         with pytest.raises(SourceNotFoundError):
-            await delete_source(db, uuid.uuid4())
+            await delete_source(db, uuid.uuid4(), uuid.uuid4())
 
     async def test_delete_calls_vector_store_delete_before_db_delete(self) -> None:
         """delete_source must call delete_source_chunks before deleting the DB record."""
@@ -212,9 +215,10 @@ class TestDeleteSource:
         db.delete = AsyncMock()
         db.flush = AsyncMock()
 
+        user_id = uuid.uuid4()
         call_order: list[str] = []
 
-        def track_vs_delete(sid: object) -> None:
+        def track_vs_delete(sid: object, uid: object) -> None:
             call_order.append("vector_store")
 
         db.delete.side_effect = lambda _: call_order.append("db_delete")
@@ -223,7 +227,7 @@ class TestDeleteSource:
             "writer.services.source_service.vector_store.delete_source_chunks",
             side_effect=track_vs_delete,
         ):
-            await delete_source(db, source_obj.id)
+            await delete_source(db, source_obj.id, user_id)
 
         assert call_order == ["vector_store", "db_delete"]
 
@@ -238,7 +242,7 @@ class TestGetSource:
         mock_result.scalar_one_or_none.return_value = source_obj
         db.execute = AsyncMock(return_value=mock_result)
 
-        result = await get_source(db, source_obj.id)
+        result = await get_source(db, source_obj.id, uuid.uuid4())
 
         assert isinstance(result, SourceResponse)
         assert result.id == source_obj.id
@@ -252,7 +256,7 @@ class TestGetSource:
         db.execute = AsyncMock(return_value=mock_result)
 
         with pytest.raises(SourceNotFoundError):
-            await get_source(db, uuid.uuid4())
+            await get_source(db, uuid.uuid4(), uuid.uuid4())
 
 
 class TestDeleteSourceOrdering:
@@ -275,6 +279,6 @@ class TestDeleteSourceOrdering:
             ),
             pytest.raises(RuntimeError, match="chroma down"),
         ):
-            await delete_source(db, source_obj.id)
+            await delete_source(db, source_obj.id, uuid.uuid4())
 
         db.delete.assert_not_called()

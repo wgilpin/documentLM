@@ -38,13 +38,14 @@ def _extract_pdf_text(file_bytes: bytes) -> str:
     return "\n".join(parts)
 
 
-async def add_source(db: AsyncSession, data: SourceCreate) -> SourceResponse:
-    logger.info("Adding source type=%s doc=%s", data.source_type, data.document_id)
+async def add_source(db: AsyncSession, data: SourceCreate, user_id: uuid.UUID) -> SourceResponse:
+    logger.info("Adding source type=%s doc=%s user=%s", data.source_type, data.document_id, user_id)
     if data.url:
         existing = await db.execute(
             select(Source).where(
                 Source.document_id == data.document_id,
                 Source.url == data.url,
+                Source.user_id == user_id,
             )
         )
         dupe = existing.scalar_one_or_none()
@@ -52,6 +53,7 @@ async def add_source(db: AsyncSession, data: SourceCreate) -> SourceResponse:
             logger.info("Skipping duplicate url=%s for doc=%s", data.url, data.document_id)
             return SourceResponse.model_validate(dupe)
     source = Source(
+        user_id=user_id,
         document_id=data.document_id,
         source_type=data.source_type,
         title=data.title,
@@ -66,15 +68,20 @@ async def add_source(db: AsyncSession, data: SourceCreate) -> SourceResponse:
 
 
 async def add_source_pdf(
-    db: AsyncSession, document_id: uuid.UUID, title: str, file_bytes: bytes
+    db: AsyncSession,
+    document_id: uuid.UUID,
+    title: str,
+    file_bytes: bytes,
+    user_id: uuid.UUID,
 ) -> SourceResponse:
-    logger.info("Extracting PDF text doc=%s", document_id)
+    logger.info("Extracting PDF text doc=%s user=%s", document_id, user_id)
     try:
         content = _extract_pdf_text(file_bytes)
     except Exception as exc:
         logger.exception("PDF extraction failed: %s", exc)
         raise PdfParseError("Failed to parse PDF") from exc
     source = Source(
+        user_id=user_id,
         document_id=document_id,
         source_type=SourceType.pdf,
         title=title,
@@ -88,30 +95,38 @@ async def add_source_pdf(
     return SourceResponse.model_validate(source)
 
 
-async def get_source(db: AsyncSession, source_id: uuid.UUID) -> SourceResponse:
-    result = await db.execute(select(Source).where(Source.id == source_id))
+async def get_source(db: AsyncSession, source_id: uuid.UUID, user_id: uuid.UUID) -> SourceResponse:
+    result = await db.execute(
+        select(Source).where(Source.id == source_id, Source.user_id == user_id)
+    )
     source = result.scalar_one_or_none()
     if source is None:
-        logger.error("Source %s not found", source_id)
+        logger.error("Source %s not found for user %s", source_id, user_id)
         raise SourceNotFoundError(source_id)
     return SourceResponse.model_validate(source)
 
 
-async def list_sources(db: AsyncSession, document_id: uuid.UUID) -> list[SourceResponse]:
+async def list_sources(
+    db: AsyncSession, document_id: uuid.UUID, user_id: uuid.UUID
+) -> list[SourceResponse]:
     result = await db.execute(
-        select(Source).where(Source.document_id == document_id).order_by(Source.created_at)
+        select(Source)
+        .where(Source.document_id == document_id, Source.user_id == user_id)
+        .order_by(Source.created_at)
     )
     sources = result.scalars().all()
     return [SourceResponse.model_validate(s) for s in sources]
 
 
-async def delete_source(db: AsyncSession, source_id: uuid.UUID) -> None:
-    result = await db.execute(select(Source).where(Source.id == source_id))
+async def delete_source(db: AsyncSession, source_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    result = await db.execute(
+        select(Source).where(Source.id == source_id, Source.user_id == user_id)
+    )
     source = result.scalar_one_or_none()
     if source is None:
         raise SourceNotFoundError(source_id)
     try:
-        await asyncio.to_thread(vector_store.delete_source_chunks, source_id)
+        await asyncio.to_thread(vector_store.delete_source_chunks, source_id, user_id)
         logger.info("Deleted ChromaDB chunks for source id=%s", source_id)
     except Exception as exc:
         logger.error("Failed to delete ChromaDB chunks for source id=%s: %s", source_id, exc)

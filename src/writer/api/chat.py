@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from writer.core.auth import get_current_user
 from writer.core.database import get_db
 from writer.core.logging import get_logger
 from writer.core.templates import templates as _shared_templates
@@ -19,6 +20,7 @@ from writer.models.schemas import (
     ChatMessageResponse,
     SourceCreate,
     SourceResponse,
+    UserResponse,
 )
 from writer.services import chat_service, document_service
 from writer.services.document_service import DocumentNotFoundError
@@ -27,6 +29,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[UserResponse, Depends(get_current_user)]
 
 
 def get_templates() -> Jinja2Templates:
@@ -46,17 +49,17 @@ def _status_html(message: str) -> str:
 async def get_chat_history(
     request: Request,
     db: DbDep,
+    current_user: CurrentUser,
     doc_id: uuid.UUID,
 ) -> HTMLResponse | list[ChatMessageResponse]:
     try:
-        doc = await document_service.get_document(db, doc_id)
+        doc = await document_service.get_document(db, doc_id, current_user.id)
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
 
-    messages = await chat_service.list_chat_messages(db, doc_id)
+    messages = await chat_service.list_chat_messages(db, doc_id, current_user.id)
 
     # First-open: no messages yet and document has an overview.
-    # Return an SSE wrapper immediately — the /stream endpoint does the heavy work.
     if not messages and doc.overview and request.headers.get("HX-Request"):
         wrapper = (
             f'<div id="chat-stream-wrapper"'
@@ -82,11 +85,12 @@ async def get_chat_history(
 async def stream_chat_init(
     request: Request,
     db: DbDep,
+    current_user: CurrentUser,
     doc_id: uuid.UUID,
 ) -> StreamingResponse:
     """SSE stream that runs research → fetch → plan and pushes stage updates."""
     try:
-        doc = await document_service.get_document(db, doc_id)
+        doc = await document_service.get_document(db, doc_id, current_user.id)
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
 
@@ -94,14 +98,10 @@ async def stream_chat_init(
         raise HTTPException(status_code=400, detail="Document has no overview")
 
     overview = doc.overview
+    user_id = current_user.id
     tmpl = get_templates()
 
     def _messages_oob(msgs: list[ChatMessageResponse]) -> str:
-        """Render messages into an OOB swap that replaces #chat-history.
-
-        Replacing #chat-history (which contains #chat-stream-wrapper) removes
-        the sse-connect element from the DOM, stopping HTMX SSE from reconnecting.
-        """
         html = "".join(
             tmpl.get_template("partials/chat_message.html").render({"msg": m, "request": request})
             for m in msgs
@@ -113,9 +113,7 @@ async def stream_chat_init(
         from writer.services.content_fetcher import fetch_url_content
         from writer.services.indexer import run_indexing
 
-        # Guard: if already initialised (e.g. SSE auto-reconnect after first run),
-        # replace the SSE wrapper with existing messages and stop — no LLM calls.
-        existing = await chat_service.list_chat_messages(db, doc_id)
+        existing = await chat_service.list_chat_messages(db, doc_id, user_id)
         if existing:
             logger.info("Stream: already initialised for doc=%s — skipping", doc_id)
             yield _sse(_messages_oob(existing))
@@ -124,7 +122,7 @@ async def stream_chat_init(
         try:
             yield _sse(_status_html("Researching relevant sources\u2026"))
             logger.info("Stream: researching for doc=%s", doc_id)
-            raw_sources = await agent_service.invoke_research_agent(overview)
+            raw_sources = await agent_service.invoke_research_agent(overview, user_id)
 
             target_sources = 5
 
@@ -146,6 +144,7 @@ async def stream_chat_init(
                             content=content,
                             url=url,
                         ),
+                        user_id,
                     )
                     results.append(source)
                 return results
@@ -165,27 +164,28 @@ async def stream_chat_init(
                 )
                 yield _sse(_status_html(f"Finding {needed} more source(s)\u2026"))
                 extra_raw = await agent_service.invoke_research_agent(
-                    overview, exclude_urls=exclude
+                    overview, user_id, exclude_urls=exclude
                 )
                 extra_sources = await _fetch_and_save(extra_raw[:needed])
                 saved_sources.extend(extra_sources)
 
             await db.commit()
             for source in saved_sources:
-                await run_indexing(source_id=source.id, db=db)
+                await run_indexing(source_id=source.id, db=db, user_id=user_id)
 
             yield _sse(_status_html("Generating your document plan\u2026"))
             logger.info("Stream: planning for doc=%s", doc_id)
-            plan_text = await agent_service.invoke_planner(overview, saved_sources, doc_id)
+            plan_text = await agent_service.invoke_planner(overview, saved_sources, doc_id, user_id)
 
-            user_msg = await chat_service.create_chat_message(db, doc_id, overview, ChatRole.user)
+            user_msg = await chat_service.create_chat_message(
+                db, doc_id, user_id, overview, ChatRole.user
+            )
             assistant_msg = await chat_service.create_chat_message(
-                db, doc_id, plan_text, ChatRole.assistant
+                db, doc_id, user_id, plan_text, ChatRole.assistant
             )
             await db.commit()
             logger.info("Stream: complete for doc=%s", doc_id)
 
-            # OOB: replace #chat-history (removes sse-connect), refresh source list
             source_oob = (
                 f'<ul id="source-list"'
                 f' hx-get="/api/documents/{doc_id}/sources"'
@@ -214,27 +214,26 @@ async def stream_chat_init(
 async def post_chat_message(
     request: Request,
     db: DbDep,
+    current_user: CurrentUser,
     doc_id: uuid.UUID,
     content: Annotated[str, Form()],
 ) -> HTMLResponse | list[ChatMessageResponse]:
     try:
-        doc = await document_service.get_document(db, doc_id)
+        doc = await document_service.get_document(db, doc_id, current_user.id)
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
 
-    # Validate via schema
     ChatMessageCreate(content=content)
 
-    # Persist user message
-    user_msg = await chat_service.create_chat_message(db, doc_id, content, ChatRole.user)
+    user_msg = await chat_service.create_chat_message(
+        db, doc_id, current_user.id, content, ChatRole.user
+    )
 
-    # Load full history (includes the just-persisted user message)
-    history = await chat_service.list_chat_messages(db, doc_id)
+    history = await chat_service.list_chat_messages(db, doc_id, current_user.id)
 
-    # Invoke agent and persist assistant reply
     try:
         assistant_msg, new_doc_content, sources_added = await chat_service.process_chat(
-            db, doc_id, history, doc.content or ""
+            db, doc_id, current_user.id, history, doc.content or "", doc.is_private
         )
     except Exception as exc:
         logger.exception("ChatAgent error for doc=%s: %s", doc_id, exc)
@@ -248,12 +247,11 @@ async def post_chat_message(
             tmpl.get_template("partials/chat_message.html").render({"msg": m, "request": request})
             for m in (user_msg, assistant_msg)
         )
-        # If the agent added sources, render them directly into an OOB swap
         oob = ""
         if sources_added:
             from writer.services import source_service as _src_svc
 
-            updated_sources = await _src_svc.list_sources(db, doc_id)
+            updated_sources = await _src_svc.list_sources(db, doc_id, current_user.id)
             if updated_sources:
                 items_html = "".join(
                     tmpl.get_template("partials/sources.html").render(
@@ -264,7 +262,6 @@ async def post_chat_message(
             else:
                 items_html = '<li class="source-empty-state">No sources added yet.</li>'
             oob += f'<ul id="source-list" hx-swap-oob="true">{items_html}</ul>'
-        # If the agent edited the document, push an OOB swap to update the textarea
         if new_doc_content is not None:
             escaped = html_lib.escape(new_doc_content)
             oob = (
