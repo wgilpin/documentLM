@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import logging
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -21,10 +22,35 @@ from writer.services import document_service, settings_service
 from writer.services.document_service import DocumentNotFoundError
 
 
+async def _seed_document(email: str, log: logging.Logger) -> None:
+    from sqlalchemy import select
+
+    from writer.core.database import _get_session_factory
+    from writer.models.db import User
+    from writer.models.schemas import DocumentCreate
+
+    async with _get_session_factory()() as db:
+        result = await db.execute(select(User).where(User.email == email.strip().lower()))
+        user = result.scalar_one_or_none()
+        if user is None:
+            log.warning("--seed-doc: no user found with email=%r — skipping", email)
+            return
+        await document_service.create_document(
+            db,
+            DocumentCreate(
+                title="Welcome to AI Document Workbench",
+                content="<p>This is your seed document. Start writing!</p>",
+                overview="Dev seed document",
+            ),
+            user.id,
+        )
+        await db.commit()
+        log.info("--seed-doc: created seed document for user=%r", email)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_logging()
-    import logging
     import os
 
     log = logging.getLogger("writer.startup")
@@ -36,6 +62,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     if not settings.secret_key:
         log.warning("SECRET_KEY is not set — using insecure dev key, do not use in production")
+
+    if settings.dev_seed_doc_email:
+        await _seed_document(settings.dev_seed_doc_email, log)
 
     yield
     await _get_engine().dispose()

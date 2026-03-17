@@ -29,7 +29,7 @@ async def login_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("login.html", {"request": request})
 
 
-@router.post("/login")
+@router.post("/login", response_model=None)
 async def login(
     request: Request,
     db: DbDep,
@@ -56,7 +56,7 @@ async def register_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("register.html", {"request": request})
 
 
-@router.post("/register")
+@router.post("/register", response_model=None)
 async def register(
     request: Request,
     db: DbDep,

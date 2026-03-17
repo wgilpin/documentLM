@@ -72,6 +72,7 @@ class TestRegisterUser:
         from writer.services.auth_service import register_user
 
         db = AsyncMock()
+        db.add = MagicMock()
         invite = _make_invite()
         user = _make_user()
 
@@ -134,6 +135,7 @@ class TestRegisterUser:
         from writer.services.auth_service import DuplicateEmailError, register_user
 
         db = AsyncMock()
+        db.add = MagicMock()
         invite = _make_invite()
 
         mock_result = MagicMock()
@@ -194,6 +196,7 @@ class TestCreateInviteCodes:
         from writer.services.auth_service import create_invite_codes
 
         db = AsyncMock()
+        db.add = MagicMock()
         db.flush = AsyncMock()
 
         result = await create_invite_codes(db, count=3)
@@ -203,6 +206,7 @@ class TestCreateInviteCodes:
         from writer.services.auth_service import create_invite_codes
 
         db = AsyncMock()
+        db.add = MagicMock()
         db.flush = AsyncMock()
 
         result = await create_invite_codes(db, count=2)
@@ -214,6 +218,7 @@ class TestCreateInviteCodes:
         from writer.services.auth_service import create_invite_codes
 
         db = AsyncMock()
+        db.add = MagicMock()
         db.flush = AsyncMock()
 
         result = await create_invite_codes(db, count=5)
@@ -223,6 +228,7 @@ class TestCreateInviteCodes:
         from writer.services.auth_service import create_invite_codes
 
         db = AsyncMock()
+        db.add = MagicMock()
         db.flush = AsyncMock()
 
         await create_invite_codes(db, count=2)

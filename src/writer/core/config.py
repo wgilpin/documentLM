@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
     chroma_path: str = "./data/chroma"
     undo_buffer_size: int = 1000
-    dev_seed_doc: bool = False
+    dev_seed_doc_email: str = ""
     # Must be set in .env: at least 32 random bytes (e.g. secrets.token_hex(32))
     secret_key: str = ""
 
