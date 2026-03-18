@@ -63,3 +63,22 @@ function switchTab(name) {
 
 function lockEditor()   { window.tiptapEditor?.setEditable(false); }
 function unlockEditor() { window.tiptapEditor?.setEditable(true); }
+
+(function () {
+    function initChatEnterSubmit() {
+        const textarea = document.querySelector('.chat-input-textarea');
+        if (!textarea) return;
+        textarea.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                textarea.closest('form').requestSubmit();
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initChatEnterSubmit);
+    } else {
+        initChatEnterSubmit();
+    }
+}());
