@@ -13,3 +13,4 @@
 [x] multi-user
 [] enter to send message
 [] start new chat
+[] view on pdf should open page

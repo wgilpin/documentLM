@@ -126,30 +126,7 @@ fmtButtons.code.addEventListener('click', () => editor.chain().focus().toggleCod
 document.getElementById('fmt-hr').addEventListener('click', () => editor.chain().focus().setHorizontalRule().run());
 
 // ── AI block button → open modal with block as context ────────────────────
-
-// Find a block's markdown line by matching plain text, searching forward from minOffset.
-function findBlockInMarkdown(lines, nodeText, minOffset = 0) {
-    let offset = 0;
-    for (const line of lines) {
-        if (offset >= minOffset) {
-            const plain = line
-                .replace(/^#{1,6}\s+/, '')
-                .replace(/^[-*+]\s+/, '')
-                .replace(/^\d+\.\s+/, '')
-                .replace(/^>\s*/, '')
-                .replace(/\*\*(.+?)\*\*/g, '$1')
-                .replace(/\*(.+?)\*/g, '$1')
-                .replace(/`(.+?)`/g, '$1')
-                .replace(/~~(.+?)~~/g, '$1')
-                .trim();
-            if (plain === nodeText) {
-                return { start: offset, end: offset + line.length };
-            }
-        }
-        offset += line.length + 1;
-    }
-    return null;
-}
+import { findBlockInMarkdown } from '/static/editor-utils.js';
 
 // Highlight DOM nodes for a set of ProseMirror positions, return cleanup fn.
 function highlightBlocks(positions) {
@@ -177,11 +154,13 @@ aiBtn.addEventListener('click', (e) => {
     let selStart, selEnd, selText;
     let blockPositions = [];
 
+    console.log('[AI btn] click — empty:', empty, 'activeBlockPos:', activeBlockPos, 'node:', activeBlockNode?.textContent?.slice(0, 40));
     if (empty) {
         // Cursor only — use active block
-        if (activeBlockPos === null || !activeBlockNode) return;
+        if (activeBlockPos === null || !activeBlockNode) { console.warn('[AI btn] no active block — pos:', activeBlockPos, 'node:', activeBlockNode); return; }
         const nodeText = activeBlockNode.textContent.trim();
         const found = findBlockInMarkdown(lines, nodeText);
+        console.log('[AI btn] nodeText:', nodeText.slice(0, 60), '| found:', !!found);
         if (!found) return;
         selStart = found.start;
         selEnd   = found.end;
@@ -195,17 +174,17 @@ aiBtn.addEventListener('click', (e) => {
                 blocks.push({ text: node.textContent.trim(), pos });
             }
         });
-        if (blocks.length === 0) return;
+        if (blocks.length === 0) { console.warn('[AI btn] no blocks in selection'); return; }
 
         // Find first block, then subsequent blocks searching forward to avoid
         // false matches when two blocks have identical text.
         const first = findBlockInMarkdown(lines, blocks[0].text);
-        if (!first) return;
+        if (!first) { console.warn('[AI btn] first block not found in markdown:', blocks[0].text.slice(0, 60)); return; }
         let last = first;
         let searchFrom = first.end;
         for (let i = 1; i < blocks.length; i++) {
             const found = findBlockInMarkdown(lines, blocks[i].text, searchFrom);
-            if (!found) return;
+            if (!found) { console.warn('[AI btn] block not found:', blocks[i].text.slice(0, 60)); return; }
             last = found;
             searchFrom = found.end;
         }
@@ -216,7 +195,7 @@ aiBtn.addEventListener('click', (e) => {
         blockPositions = blocks.map(b => b.pos);
     }
 
-    if (!selText) return;
+    if (!selText) { console.warn('[AI btn] empty selText'); return; }
 
     clearAiHighlight?.();
     clearAiHighlight = highlightBlocks(blockPositions);
