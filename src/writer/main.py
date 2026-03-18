@@ -17,7 +17,7 @@ from writer.core.config import settings
 from writer.core.database import _get_engine, _get_session_factory, get_db
 from writer.core.logging import configure_logging
 from writer.core.templates import templates
-from writer.models.db import Document, User
+from writer.models.db import Document, Source, User
 from writer.models.schemas import UserResponse
 from writer.services import document_service, settings_service
 from writer.services.document_service import DocumentNotFoundError
@@ -60,7 +60,11 @@ Some `inline code` and a short numbered list:
 
 
 async def _seed_document(email: str, log: logging.Logger) -> None:
+    import asyncio
+
     from sqlalchemy import select
+
+    from writer.services import vector_store
 
     async with _get_session_factory()() as db, db.begin():
         result = await db.execute(select(User).where(User.email == email.strip().lower()))
@@ -71,7 +75,21 @@ async def _seed_document(email: str, log: logging.Logger) -> None:
         existing = await db.execute(select(Document).where(Document.id == _SEED_DOC_ID))
         doc = existing.scalar_one_or_none()
         if doc is not None:
+            sources_result = await db.execute(
+                select(Source).where(Source.document_id == _SEED_DOC_ID)
+            )
+            for source in sources_result.scalars().all():
+                try:
+                    await asyncio.to_thread(
+                        vector_store.delete_source_chunks, source.id, user.id
+                    )
+                except Exception as exc:
+                    log.warning(
+                        "--seed-doc: failed to delete ChromaDB chunks for source %s: %s",
+                        source.id, exc,
+                    )
             await db.delete(doc)
+            await db.flush()  # must flush before re-adding the same PK
         db.add(Document(id=_SEED_DOC_ID, user_id=user.id, title=_SEED_TITLE, content=_SEED_CONTENT))
     log.info("--seed-doc: reset seed doc → /documents/%s (user=%r)", _SEED_DOC_ID, email)
 
