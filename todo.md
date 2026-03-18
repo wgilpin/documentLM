@@ -8,6 +8,7 @@
 [x] add new sources
 [x] open sources
 [x] agents can call a "get new sources" tool 
-[] Share all rag db for a given user
-[] allow a doc to be marked private - it then doesnt share rag
-[] multi-user
+[x] Share all rag db for a given user
+[x] allow a doc to be marked private - it then doesnt share rag
+[x] multi-user
+[] enter to send message

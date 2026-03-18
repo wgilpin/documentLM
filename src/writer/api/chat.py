@@ -22,8 +22,10 @@ from writer.models.schemas import (
     SourceResponse,
     UserResponse,
 )
-from writer.services import chat_service, document_service
+from writer.services import agent_service, chat_service, document_service, source_service
+from writer.services.content_fetcher import fetch_url_content
 from writer.services.document_service import DocumentNotFoundError
+from writer.services.indexer import run_indexing
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -109,10 +111,6 @@ async def stream_chat_init(
         return f'<div id="chat-history" hx-swap-oob="outerHTML">{html}</div>'
 
     async def generate() -> AsyncGenerator[str]:
-        from writer.services import agent_service, source_service
-        from writer.services.content_fetcher import fetch_url_content
-        from writer.services.indexer import run_indexing
-
         existing = await chat_service.list_chat_messages(db, doc_id, user_id)
         if existing:
             logger.info("Stream: already initialised for doc=%s — skipping", doc_id)
@@ -218,6 +216,18 @@ async def post_chat_message(
     doc_id: uuid.UUID,
     content: Annotated[str, Form()],
 ) -> HTMLResponse | list[ChatMessageResponse]:
+    import logging as _lg, sys as _sys
+    _root = _lg.getLogger()
+    # Write directly to stderr, bypassing all logging machinery
+    _sys.stderr.write(f"[DIAG-DIRECT] root.handlers={_root.handlers} root.level={_root.level}\n")
+    _sys.stderr.flush()
+    # Force-add a handler and test
+    _h = _lg.StreamHandler(_sys.stderr)
+    _root.addHandler(_h)
+    _root.warning("[DIAG-FORCED] root.warning with freshly added handler")
+    _root.removeHandler(_h)
+    logger.warning("[DIAG-CHAT-LOGGER] warning via chat logger")
+
     try:
         doc = await document_service.get_document(db, doc_id, current_user.id)
     except DocumentNotFoundError as exc:
@@ -249,9 +259,7 @@ async def post_chat_message(
         )
         oob = ""
         if sources_added:
-            from writer.services import source_service as _src_svc
-
-            updated_sources = await _src_svc.list_sources(db, doc_id, current_user.id)
+            updated_sources = await source_service.list_sources(db, doc_id, current_user.id)
             if updated_sources:
                 items_html = "".join(
                     tmpl.get_template("partials/sources.html").render(

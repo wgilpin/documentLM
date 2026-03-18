@@ -10,6 +10,7 @@
       "Bash(uv run ruff *)",
       "Bash(git diff *)",
       "Bash(git show *)",
+      "Bash(git log *)",
       "Bash(uv run mypy *)",
       "Bash(find *)",
       "Bash(ls *)",

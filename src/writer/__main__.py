@@ -4,6 +4,7 @@ import argparse
 import os
 
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m writer")
     parser.add_argument(
