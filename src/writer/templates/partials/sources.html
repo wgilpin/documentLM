@@ -12,6 +12,8 @@
             hx-target="#source-note-modal-body"
             hx-swap="innerHTML"
             hx-on::after-request="document.getElementById('source-note-modal').showModal()">View</button>
+  {% elif source.source_type.value == 'pdf' and source.file_path %}
+    <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/pdf" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
   {% else %}
     <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/view" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
   {% endif %}

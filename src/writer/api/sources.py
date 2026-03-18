@@ -14,7 +14,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -132,6 +132,25 @@ async def view_source(
     return HTMLResponse(
         tmpl.get_template("source_view.html").render({"source": source, "request": request})
     )
+
+
+@router.get("/{doc_id}/sources/{source_id}/pdf", response_model=None)
+async def view_source_pdf(
+    db: DbDep, current_user: CurrentUser, doc_id: uuid.UUID, source_id: uuid.UUID
+) -> FileResponse:
+    try:
+        source = await source_service.get_source(db, source_id, current_user.id)
+    except SourceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Source not found") from exc
+    if source.document_id != doc_id:
+        raise HTTPException(status_code=404, detail="Source not found")
+    if not source.file_path:
+        raise HTTPException(status_code=404, detail="PDF file not available")
+    from pathlib import Path
+
+    if not Path(source.file_path).exists():
+        raise HTTPException(status_code=404, detail="PDF file not found on disk")
+    return FileResponse(source.file_path, media_type="application/pdf", filename=f"{source.title}.pdf")
 
 
 @router.delete("/{doc_id}/sources/{source_id}", response_model=None)

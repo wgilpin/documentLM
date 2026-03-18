@@ -3,10 +3,12 @@
 import asyncio
 import uuid
 from io import BytesIO
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from writer.core.config import settings
 from writer.core.logging import get_logger
 from writer.models.db import Source
 from writer.models.enums import SourceType
@@ -91,7 +93,14 @@ async def add_source_pdf(
     db.add(source)
     await db.flush()
     await db.refresh(source)
-    logger.info("Added PDF source id=%s", source.id)
+    pdf_dir = Path(settings.pdf_storage_path)
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+    file_path = pdf_dir / f"{source.id}.pdf"
+    file_path.write_bytes(file_bytes)
+    source.file_path = str(file_path)
+    await db.flush()
+    await db.refresh(source)
+    logger.info("Added PDF source id=%s file=%s", source.id, file_path)
     return SourceResponse.model_validate(source)
 
 
@@ -131,6 +140,11 @@ async def delete_source(db: AsyncSession, source_id: uuid.UUID, user_id: uuid.UU
     except Exception as exc:
         logger.error("Failed to delete ChromaDB chunks for source id=%s: %s", source_id, exc)
         raise
+    if source.file_path:
+        try:
+            Path(source.file_path).unlink(missing_ok=True)
+        except Exception as exc:
+            logger.warning("Failed to delete PDF file %s: %s", source.file_path, exc)
     await db.delete(source)
     await db.flush()
     logger.info("Deleted source id=%s", source_id)

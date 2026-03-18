@@ -20,6 +20,7 @@ def _make_source(**kwargs: object) -> MagicMock:
         "url": None,
         "indexing_status": IndexingStatus.completed,
         "error_message": None,
+        "file_path": None,
         "created_at": datetime.now(UTC),
     }
     defaults.update(kwargs)

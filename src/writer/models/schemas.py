@@ -99,6 +99,7 @@ class SourceResponse(BaseModel):
     url: str | None
     indexing_status: IndexingStatus
     error_message: str | None
+    file_path: str | None = None
     created_at: datetime
 
 

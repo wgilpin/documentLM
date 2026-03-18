@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
     chroma_path: str = "./data/chroma"
+    pdf_storage_path: str = "./data/pdfs"
     undo_buffer_size: int = 1000
     dev_seed_doc_email: str = ""
     # Must be set in .env: at least 32 random bytes (e.g. secrets.token_hex(32))
