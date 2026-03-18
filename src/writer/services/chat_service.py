@@ -58,6 +58,8 @@ def make_find_more_sources_tool(
     document_id: uuid.UUID,
     user_id: uuid.UUID,
     db: "AsyncSession",
+    title: str = "",
+    overview: str = "",
 ) -> tuple[Callable[..., Any], Callable[[], bool]]:
     """Return (tool, was_called) where was_called() is True after any successful source fetch."""
     _called = [False]
@@ -81,7 +83,7 @@ def make_find_more_sources_tool(
 
         logger.info("find_more_sources called: query=%r document=%s", query[:100], document_id)
 
-        raw_sources = await agent_service.invoke_research_agent(query, user_id)
+        raw_sources = await agent_service.invoke_research_agent(query, user_id, title=title)
         if not raw_sources:
             logger.info("find_more_sources: no sources returned for query=%r", query[:80])
             return "No additional sources found for that query."
@@ -295,6 +297,8 @@ async def process_chat(
     history: list[ChatMessageResponse],
     document_content: str = "",
     is_private_doc: bool = False,
+    title: str = "",
+    overview: str = "",
 ) -> tuple[ChatMessageResponse, str | None, bool]:
     """Call the ChatAgent with history; return (assistant_msg, new_content, sources_added).
 
@@ -305,7 +309,9 @@ async def process_chat(
     from writer.services import document_service, settings_service
 
     user_settings = await settings_service.get_settings(db, user_id)
-    find_more_sources, sources_were_added = make_find_more_sources_tool(document_id, user_id, db)
+    find_more_sources, sources_were_added = make_find_more_sources_tool(
+        document_id, user_id, db, title=title, overview=overview
+    )
 
     try:
         reply_text, new_content = await invoke_chat_agent(

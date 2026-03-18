@@ -132,6 +132,7 @@ async def invoke_drafter(
 async def invoke_research_agent(
     overview: str,
     user_id: uuid.UUID,
+    title: str = "",
     exclude_urls: list[str] | None = None,
 ) -> list[dict[str, str]]:
     """Invoke the Research agent to find sources for the given overview.
@@ -152,11 +153,11 @@ async def invoke_research_agent(
         session_service=session_service,
     )
 
-    prompt = overview
+    prompt = f"Title: {title}\nOverview: {overview}" if title else overview
     if exclude_urls:
         exclusion_list = "\n".join(f"- {u}" for u in exclude_urls)
         prompt = (
-            f"{overview}\n\nDo NOT return any of these URLs — find different sources:\n"
+            f"{prompt}\n\nDo NOT return any of these URLs — find different sources:\n"
             f"{exclusion_list}"
         )
 

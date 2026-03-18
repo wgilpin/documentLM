@@ -83,6 +83,56 @@ async def get_chat_history(
     return messages  # type: ignore[return-value]
 
 
+def _action_buttons_html(doc_id: uuid.UUID) -> str:
+    return (
+        f'<div id="chat-action-buttons" class="chat-action-buttons">'
+        f'<button class="btn btn-secondary btn-sm"'
+        f' hx-post="/api/documents/{doc_id}/chat/find-sources"'
+        f' hx-swap="none"'
+        f' hx-disabled-elt="this"'
+        f' hx-on::before-request="this.classList.add(\'btn--loading\')"'
+        f' hx-on::after-request="this.classList.remove(\'btn--loading\')">'
+        f'Find relevant sources</button>'
+        f'<button class="btn btn-secondary btn-sm"'
+        f' hx-post="/api/documents/{doc_id}/chat/suggest-outline"'
+        f' hx-target="#chat-history"'
+        f' hx-swap="beforeend"'
+        f' hx-disabled-elt="this"'
+        f' hx-on::before-request="this.classList.add(\'btn--loading\')"'
+        f' hx-on::after-request="this.classList.remove(\'btn--loading\')">Suggest Outline</button>'
+        f'</div>'
+    )
+
+
+async def _fetch_and_save_sources(
+    candidates: list[dict[str, str]],
+    doc_id: uuid.UUID,
+    user_id: uuid.UUID,
+    db: AsyncSession,
+) -> list[SourceResponse]:
+    results = []
+    for s in candidates:
+        url = s.get("url")
+        try:
+            content = await fetch_url_content(url) if url else s.get("summary", "")
+        except Exception as exc:
+            logger.warning("fetch-sources: failed to fetch %s: %s", url, exc)
+            continue
+        source = await source_service.add_source(
+            db,
+            SourceCreate(
+                document_id=doc_id,
+                source_type=SourceType.url,
+                title=s.get("title", "Source"),
+                content=content,
+                url=url,
+            ),
+            user_id,
+        )
+        results.append(source)
+    return results
+
+
 @router.get("/api/documents/{doc_id}/chat/stream")
 async def stream_chat_init(
     request: Request,
@@ -90,7 +140,7 @@ async def stream_chat_init(
     current_user: CurrentUser,
     doc_id: uuid.UUID,
 ) -> StreamingResponse:
-    """SSE stream that runs research → fetch → plan and pushes stage updates."""
+    """SSE stream: saves the overview as the first user message and shows action buttons."""
     try:
         doc = await document_service.get_document(db, doc_id, current_user.id)
     except DocumentNotFoundError as exc:
@@ -103,12 +153,12 @@ async def stream_chat_init(
     user_id = current_user.id
     tmpl = get_templates()
 
-    def _messages_oob(msgs: list[ChatMessageResponse]) -> str:
+    def _messages_oob(msgs: list[ChatMessageResponse], extra_html: str = "") -> str:
         html = "".join(
             tmpl.get_template("partials/chat_message.html").render({"msg": m, "request": request})
             for m in msgs
         )
-        return f'<div id="chat-history" hx-swap-oob="outerHTML">{html}</div>'
+        return f'<div id="chat-history" hx-swap-oob="outerHTML">{html}{extra_html}</div>'
 
     async def generate() -> AsyncGenerator[str]:
         existing = await chat_service.list_chat_messages(db, doc_id, user_id)
@@ -118,81 +168,12 @@ async def stream_chat_init(
             return
 
         try:
-            yield _sse(_status_html("Researching relevant sources\u2026"))
-            logger.info("Stream: researching for doc=%s", doc_id)
-            raw_sources = await agent_service.invoke_research_agent(overview, user_id)
-
-            target_sources = 5
-
-            async def _fetch_and_save(candidates: list[dict[str, str]]) -> list[SourceResponse]:
-                results = []
-                for s in candidates:
-                    url = s.get("url")
-                    try:
-                        content = await fetch_url_content(url) if url else s.get("summary", "")
-                    except Exception as exc:
-                        logger.warning("Stream: failed to fetch %s: %s", url, exc)
-                        continue
-                    source = await source_service.add_source(
-                        db,
-                        SourceCreate(
-                            document_id=doc_id,
-                            source_type=SourceType.url,
-                            title=s.get("title", "Source"),
-                            content=content,
-                            url=url,
-                        ),
-                        user_id,
-                    )
-                    results.append(source)
-                return results
-
-            yield _sse(_status_html(f"Fetching content from {len(raw_sources)} source(s)\u2026"))
-            logger.info("Stream: fetching %d sources for doc=%s", len(raw_sources), doc_id)
-            saved_sources = await _fetch_and_save(raw_sources)
-
-            if len(saved_sources) < target_sources:
-                exclude = [s.url for s in saved_sources if s.url]
-                needed = target_sources - len(saved_sources)
-                logger.info(
-                    "Stream: only %d sources saved, fetching %d more for doc=%s",
-                    len(saved_sources),
-                    needed,
-                    doc_id,
-                )
-                yield _sse(_status_html(f"Finding {needed} more source(s)\u2026"))
-                extra_raw = await agent_service.invoke_research_agent(
-                    overview, user_id, exclude_urls=exclude
-                )
-                extra_sources = await _fetch_and_save(extra_raw[:needed])
-                saved_sources.extend(extra_sources)
-
-            await db.commit()
-            for source in saved_sources:
-                await run_indexing(source_id=source.id, db=db, user_id=user_id)
-
-            yield _sse(_status_html("Generating your document plan\u2026"))
-            logger.info("Stream: planning for doc=%s", doc_id)
-            plan_text = await agent_service.invoke_planner(overview, saved_sources, doc_id, user_id)
-
             user_msg = await chat_service.create_chat_message(
                 db, doc_id, user_id, overview, ChatRole.user
             )
-            assistant_msg = await chat_service.create_chat_message(
-                db, doc_id, user_id, plan_text, ChatRole.assistant
-            )
             await db.commit()
-            logger.info("Stream: complete for doc=%s", doc_id)
-
-            source_oob = (
-                f'<ul id="source-list"'
-                f' hx-get="/api/documents/{doc_id}/sources"'
-                f' hx-trigger="load"'
-                f' hx-swap="innerHTML"'
-                f' hx-swap-oob="true"></ul>'
-            )
-            yield _sse(_messages_oob([user_msg, assistant_msg]) + source_oob)
-
+            logger.info("Stream: initial message saved for doc=%s", doc_id)
+            yield _sse(_messages_oob([user_msg], _action_buttons_html(doc_id)))
         except Exception as exc:
             logger.exception("Stream init failed for doc=%s: %s", doc_id, exc)
             yield _sse(
@@ -206,6 +187,94 @@ async def stream_chat_init(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.post("/api/documents/{doc_id}/chat/find-sources", response_model=None)
+async def find_sources_action(
+    request: Request,
+    db: DbDep,
+    current_user: CurrentUser,
+    doc_id: uuid.UUID,
+) -> HTMLResponse:
+    """Find relevant sources for the document and add them to the source panel."""
+    try:
+        doc = await document_service.get_document(db, doc_id, current_user.id)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Document not found") from exc
+
+    if not doc.overview:
+        raise HTTPException(status_code=400, detail="Document has no overview")
+
+    overview = doc.overview
+    user_id = current_user.id
+    target_sources = 5
+
+    logger.info("find-sources: researching for doc=%s", doc_id)
+    raw_sources = await agent_service.invoke_research_agent(overview, user_id, title=doc.title)
+    saved_sources = await _fetch_and_save_sources(raw_sources, doc_id, user_id, db)
+
+    if len(saved_sources) < target_sources:
+        exclude = [s.url for s in saved_sources if s.url]
+        needed = target_sources - len(saved_sources)
+        extra_raw = await agent_service.invoke_research_agent(
+            overview, user_id, title=doc.title, exclude_urls=exclude
+        )
+        extra = await _fetch_and_save_sources(extra_raw[:needed], doc_id, user_id, db)
+        saved_sources.extend(extra)
+
+    await db.commit()
+    for source in saved_sources:
+        await run_indexing(source_id=source.id, db=db, user_id=user_id)
+
+    logger.info("find-sources: saved %d sources for doc=%s", len(saved_sources), doc_id)
+
+    # OOB: refresh source list + remove action buttons
+    source_oob = (
+        f'<ul id="source-list"'
+        f' hx-get="/api/documents/{doc_id}/sources"'
+        f' hx-trigger="load"'
+        f' hx-swap="innerHTML"'
+        f' hx-swap-oob="true"></ul>'
+    )
+    buttons_oob = '<div id="chat-action-buttons" hx-swap-oob="outerHTML"></div>'
+    return HTMLResponse(source_oob + buttons_oob)
+
+
+@router.post("/api/documents/{doc_id}/chat/suggest-outline", response_model=None)
+async def suggest_outline_action(
+    request: Request,
+    db: DbDep,
+    current_user: CurrentUser,
+    doc_id: uuid.UUID,
+) -> HTMLResponse:
+    """Generate a document outline and add it as an assistant message in chat."""
+    try:
+        doc = await document_service.get_document(db, doc_id, current_user.id)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Document not found") from exc
+
+    if not doc.overview:
+        raise HTTPException(status_code=400, detail="Document has no overview")
+
+    overview = doc.overview
+    user_id = current_user.id
+
+    logger.info("suggest-outline: planning for doc=%s", doc_id)
+    sources = await source_service.list_sources(db, doc_id, user_id)
+    plan_text = await agent_service.invoke_planner(overview, sources, doc_id, user_id)
+
+    assistant_msg = await chat_service.create_chat_message(
+        db, doc_id, user_id, plan_text, ChatRole.assistant
+    )
+    await db.commit()
+    logger.info("suggest-outline: complete for doc=%s", doc_id)
+
+    tmpl = get_templates()
+    msg_html = tmpl.get_template("partials/chat_message.html").render(
+        {"msg": assistant_msg, "request": request}
+    )
+    buttons_oob = '<div id="chat-action-buttons" hx-swap-oob="outerHTML"></div>'
+    return HTMLResponse(msg_html + buttons_oob)
 
 
 @router.post("/api/documents/{doc_id}/chat", response_model=None)
@@ -243,7 +312,8 @@ async def post_chat_message(
 
     try:
         assistant_msg, new_doc_content, sources_added = await chat_service.process_chat(
-            db, doc_id, current_user.id, history, doc.content or "", doc.is_private
+            db, doc_id, current_user.id, history, doc.content or "", doc.is_private,
+            title=doc.title, overview=doc.overview or "",
         )
     except Exception as exc:
         logger.exception("ChatAgent error for doc=%s: %s", doc_id, exc)
