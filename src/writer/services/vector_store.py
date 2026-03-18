@@ -99,6 +99,72 @@ def query_sources(
     return docs
 
 
+def query_sources_tiered(
+    query_text: str,
+    user_id: uuid.UUID,
+    doc_id: uuid.UUID,
+    is_private_doc: bool = False,
+    top_k: int = 5,
+    max_distance: float = 1.0,
+) -> tuple[list[str], list[str]]:
+    """Return (doc_chunks, other_chunks) for the top_k most relevant chunks.
+
+    Runs a single ChromaDB query then buckets results by whether the chunk
+    belongs to doc_id or another document.  Chunks whose squared-L2 distance
+    exceeds max_distance are discarded before bucketing.
+
+    Default max_distance=1.0 corresponds to cosine similarity ≥ 0.5 for
+    normalised embeddings (squared L2 = 2 × (1 − cosine)).
+
+    When is_private_doc=True: only this document's chunks are searched;
+    other_chunks will always be empty.
+    """
+    collection = get_collection(user_id)
+
+    count = collection.count()
+    if count == 0:
+        logger.info("query_sources_tiered: empty collection for user=%s", user_id)
+        return [], []
+
+    where: dict[str, object] = (
+        {"document_id": {"$eq": str(doc_id)}} if is_private_doc else {"is_private": False}
+    )
+
+    result = collection.query(
+        query_texts=[query_text],
+        n_results=min(top_k, count),
+        where=where,  # type: ignore[arg-type]
+        include=["documents", "metadatas", "distances"],  # type: ignore[list-item]
+    )
+
+    raw_docs: list[str] = result["documents"][0] if result["documents"] else []
+    raw_metas: list[dict[str, object]] = result["metadatas"][0] if result["metadatas"] else []
+    raw_dists: list[float] = result["distances"][0] if result["distances"] else []
+
+    doc_chunks: list[str] = []
+    other_chunks: list[str] = []
+    doc_id_str = str(doc_id)
+    for text, meta, dist in zip(raw_docs, raw_metas, raw_dists):
+        if dist > max_distance:
+            logger.debug("query_sources_tiered: dropping chunk dist=%.3f > %.3f", dist, max_distance)
+            continue
+        if meta.get("document_id") == doc_id_str:
+            doc_chunks.append(text)
+        else:
+            other_chunks.append(text)
+
+    logger.info(
+        "query_sources_tiered query=%r user=%s doc=%s max_dist=%.2f → %d doc chunks, %d other chunks",
+        query_text[:80],
+        user_id,
+        doc_id,
+        max_distance,
+        len(doc_chunks),
+        len(other_chunks),
+    )
+    return doc_chunks, other_chunks
+
+
 def delete_source_chunks(source_id: uuid.UUID, user_id: uuid.UUID) -> None:
     """Remove all ChromaDB chunks belonging to the given source from the user's collection."""
     collection = get_collection(user_id)

@@ -123,6 +123,98 @@ class TestQuerySources:
         mock_collection.query.assert_not_called()
 
 
+class TestQuerySourcesTiered:
+    def test_buckets_chunks_by_document_id(self) -> None:
+        from writer.services.vector_store import query_sources_tiered
+
+        user_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+        other_doc_id = uuid.uuid4()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 10
+        mock_collection.query.return_value = {
+            "documents": [["this doc chunk", "other doc chunk"]],
+            "metadatas": [
+                [
+                    {"document_id": str(doc_id), "source_id": "x", "is_private": False},
+                    {"document_id": str(other_doc_id), "source_id": "y", "is_private": False},
+                ]
+            ],
+            "distances": [[0.3, 0.4]],
+        }
+
+        with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
+            doc_chunks, other_chunks = query_sources_tiered("query", user_id, doc_id)
+
+        assert doc_chunks == ["this doc chunk"]
+        assert other_chunks == ["other doc chunk"]
+
+    def test_drops_chunks_exceeding_max_distance(self) -> None:
+        from writer.services.vector_store import query_sources_tiered
+
+        user_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+        other_doc_id = uuid.uuid4()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 10
+        mock_collection.query.return_value = {
+            "documents": [["close chunk", "far chunk"]],
+            "metadatas": [
+                [
+                    {"document_id": str(doc_id), "source_id": "x", "is_private": False},
+                    {"document_id": str(other_doc_id), "source_id": "y", "is_private": False},
+                ]
+            ],
+            "distances": [[0.5, 1.5]],
+        }
+
+        with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
+            doc_chunks, other_chunks = query_sources_tiered(
+                "query", user_id, doc_id, max_distance=1.0
+            )
+
+        assert doc_chunks == ["close chunk"]
+        assert other_chunks == []  # 1.5 > 1.0, discarded
+
+    def test_returns_empty_tuples_when_collection_empty(self) -> None:
+        from writer.services.vector_store import query_sources_tiered
+
+        user_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+
+        with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
+            doc_chunks, other_chunks = query_sources_tiered("query", user_id, doc_id)
+
+        assert doc_chunks == []
+        assert other_chunks == []
+        mock_collection.query.assert_not_called()
+
+    def test_private_doc_only_queries_this_document(self) -> None:
+        from writer.services.vector_store import query_sources_tiered
+
+        user_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 5
+        mock_collection.query.return_value = {
+            "documents": [["chunk A"]],
+            "metadatas": [[{"document_id": str(doc_id), "source_id": "x", "is_private": True}]],
+            "distances": [[0.2]],
+        }
+
+        with patch("writer.services.vector_store.get_collection", return_value=mock_collection):
+            doc_chunks, other_chunks = query_sources_tiered(
+                "query", user_id, doc_id, is_private_doc=True
+            )
+
+        assert doc_chunks == ["chunk A"]
+        assert other_chunks == []
+        call_kwargs = mock_collection.query.call_args.kwargs
+        assert call_kwargs["where"] == {"document_id": {"$eq": str(doc_id)}}
+
+
 class TestDeleteSourceChunks:
     def test_calls_delete_with_source_id_filter(self) -> None:
         from writer.services.vector_store import delete_source_chunks

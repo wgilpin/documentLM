@@ -190,17 +190,33 @@ async def invoke_chat_agent(
     last_user_content = next((m.content for m in reversed(history) if m.role == ChatRole.user), "")
 
     if last_user_content:
-        chunks = await asyncio.to_thread(
-            vector_store.query_sources,
+        doc_chunks, other_chunks = await asyncio.to_thread(
+            vector_store.query_sources_tiered,
             last_user_content,
             user_id,
             document_id,
             is_private_doc,
         )
-        logger.info("chat: injecting %d source chunks into context", len(chunks))
-        if chunks:
-            source_block = "\n".join(chunks)
-            prompt_parts.append(f"--- RELEVANT SOURCES ---\n{source_block}\n--- END SOURCES ---")
+        logger.info(
+            "chat: injecting %d doc chunks + %d other chunks into context",
+            len(doc_chunks),
+            len(other_chunks),
+        )
+        if doc_chunks:
+            prompt_parts.append(
+                "--- SOURCES FOR THIS DOCUMENT ---\n"
+                + "\n".join(doc_chunks)
+                + "\n--- END SOURCES ---"
+            )
+            # Only surface other-document chunks when the doc has its own sources to
+            # anchor the context — avoids injecting unrelated material when there are
+            # no doc sources at all.
+            if other_chunks:
+                prompt_parts.append(
+                    "--- OTHER INFORMATION (only use if directly relevant to the question) ---\n"
+                    + "\n".join(other_chunks)
+                    + "\n--- END OTHER INFORMATION ---"
+                )
 
     prior_turns = history[:-1]  # everything except the new user message at the end
     if prior_turns:

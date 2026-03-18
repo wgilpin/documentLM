@@ -49,6 +49,12 @@ _INSTRUCTION = (
     "answer, call find_more_sources with a focused search query. The tool will search for, "
     "fetch, and index relevant sources so they become available as context. Only call it when "
     "the existing sources are clearly insufficient — not on every turn.\n\n"
+    "The prompt may include two context sections:\n"
+    "- SOURCES FOR THIS DOCUMENT: material the user has explicitly added as sources. Use this "
+    "freely.\n"
+    "- OTHER INFORMATION: material from the user's other projects. Treat this as background "
+    "noise. Do NOT cite it, summarise it, or let it shape your answer unless the user "
+    "explicitly asks about that specific topic. If in doubt, ignore it.\n\n"
     "Respond conversationally. When you edit the document, briefly describe what you changed."
 )
 

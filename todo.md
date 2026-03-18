@@ -12,3 +12,4 @@
 [x] allow a doc to be marked private - it then doesnt share rag
 [x] multi-user
 [] enter to send message
+[] start new chat
