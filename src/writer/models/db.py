@@ -12,6 +12,7 @@ from writer.models.enums import (
     ChatRole,
     CommentStatus,
     IndexingStatus,
+    SessionStatus,
     SourceType,
     SuggestionStatus,
 )
@@ -19,10 +20,12 @@ from writer.models.enums import (
 __all__ = [
     "ChatMessage",
     "ChatRole",
+    "ChatSession",
     "CommentStatus",
     "Document",
     "IndexingStatus",
     "InviteCode",
+    "SessionStatus",
     "Source",
     "Comment",
     "Suggestion",
@@ -161,6 +164,24 @@ class UserSettings(Base):
     )
 
 
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[SessionStatus] = mapped_column(
+        Enum(SessionStatus), nullable=False, default=SessionStatus.active
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
@@ -170,6 +191,9 @@ class ChatMessage(Base):
     )
     document_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False
     )
     role: Mapped[ChatRole] = mapped_column(Enum(ChatRole), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)

@@ -29,11 +29,18 @@ async def create_chat_message(
     db: AsyncSession,
     document_id: uuid.UUID,
     user_id: uuid.UUID,
+    session_id: uuid.UUID,
     content: str,
     role: ChatRole,
 ) -> ChatMessageResponse:
     """Persist a single chat message and return the response schema."""
-    orm = ChatMessage(document_id=document_id, user_id=user_id, role=role, content=content)
+    orm = ChatMessage(
+        document_id=document_id,
+        user_id=user_id,
+        session_id=session_id,
+        role=role,
+        content=content,
+    )
     db.add(orm)
     await db.flush()
     await db.refresh(orm)
@@ -42,13 +49,13 @@ async def create_chat_message(
 
 async def list_chat_messages(
     db: AsyncSession,
-    document_id: uuid.UUID,
+    session_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> list[ChatMessageResponse]:
-    """Return all chat messages for a document ordered oldest-first."""
+    """Return all chat messages for a session ordered oldest-first."""
     result = await db.execute(
         select(ChatMessage)
-        .where(ChatMessage.document_id == document_id, ChatMessage.user_id == user_id)
+        .where(ChatMessage.session_id == session_id, ChatMessage.user_id == user_id)
         .order_by(ChatMessage.created_at)
     )
     return [ChatMessageResponse.model_validate(m) for m in result.scalars().all()]
@@ -294,6 +301,7 @@ async def process_chat(
     db: AsyncSession,
     document_id: uuid.UUID,
     user_id: uuid.UUID,
+    session_id: uuid.UUID,
     history: list[ChatMessageResponse],
     document_content: str = "",
     is_private_doc: bool = False,
@@ -333,7 +341,9 @@ async def process_chat(
         )
         logger.info("ChatAgent edited document=%s", document_id)
 
-    msg = await create_chat_message(db, document_id, user_id, reply_text, ChatRole.assistant)
+    msg = await create_chat_message(
+        db, document_id, user_id, session_id, reply_text, ChatRole.assistant
+    )
     return msg, new_content, sources_were_added()
 
 
@@ -341,6 +351,7 @@ async def initialize_chat_with_overview(
     db: AsyncSession,
     document_id: uuid.UUID,
     user_id: uuid.UUID,
+    session_id: uuid.UUID,
     overview: str,
 ) -> list[ChatMessageResponse]:
     """Seed the chat on first open.
@@ -390,9 +401,11 @@ async def initialize_chat_with_overview(
     plan_text = await agent_service.invoke_planner(overview, saved_sources, document_id, user_id)
 
     # 4. Persist chat messages
-    user_msg = await create_chat_message(db, document_id, user_id, overview, ChatRole.user)
+    user_msg = await create_chat_message(
+        db, document_id, user_id, session_id, overview, ChatRole.user
+    )
     assistant_msg = await create_chat_message(
-        db, document_id, user_id, plan_text, ChatRole.assistant
+        db, document_id, user_id, session_id, plan_text, ChatRole.assistant
     )
 
     logger.info("Chat initialized for document=%s", document_id)

@@ -233,6 +233,20 @@
         <!-- Meta-chat panel -->
         <div class="meta-chat-panel">
             <div class="meta-chat-header">Meta Chat</div>
+            <div class="meta-chat-sessions">
+                <div id="chat-session-dropdown"
+                     hx-get="/api/documents/{{ doc.id }}/chat/sessions"
+                     hx-trigger="load"
+                     hx-swap="outerHTML">
+                </div>
+                <button id="chat-new-btn"
+                        class="btn btn-secondary btn-sm"
+                        hx-post="/api/documents/{{ doc.id }}/chat/sessions"
+                        hx-target="#chat-history"
+                        hx-swap="outerHTML">
+                    New Chat
+                </button>
+            </div>
             <div id="chat-history"
                  hx-get="/api/documents/{{ doc.id }}/chat"
                  hx-trigger="load"

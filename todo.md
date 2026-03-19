@@ -13,4 +13,5 @@
 [x] multi-user
 [x] enter to send message
 [] start new chat
-[] view on pdf should open page
+[x] view on pdf should open page
+[] Use opendataloader instead of sending pdfs to gemini: https://github.com/opendataloader-project/opendataloader-pdf

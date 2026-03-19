@@ -31,3 +31,8 @@ class IndexingStatus(enum.Enum):
     processing = "processing"
     completed = "completed"
     failed = "failed"
+
+
+class SessionStatus(enum.Enum):
+    active = "active"
+    archived = "archived"

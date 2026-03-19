@@ -138,15 +138,17 @@ def query_sources_tiered(
     )
 
     raw_docs: list[str] = result["documents"][0] if result["documents"] else []
-    raw_metas: list[dict[str, object]] = result["metadatas"][0] if result["metadatas"] else []
+    raw_metas: list[dict[str, object]] = result["metadatas"][0] if result["metadatas"] else []  # type: ignore[assignment]
     raw_dists: list[float] = result["distances"][0] if result["distances"] else []
 
     doc_chunks: list[str] = []
     other_chunks: list[str] = []
     doc_id_str = str(doc_id)
-    for text, meta, dist in zip(raw_docs, raw_metas, raw_dists):
+    for text, meta, dist in zip(raw_docs, raw_metas, raw_dists, strict=False):
         if dist > max_distance:
-            logger.debug("query_sources_tiered: dropping chunk dist=%.3f > %.3f", dist, max_distance)
+            logger.debug(
+                "query_sources_tiered: dropping chunk dist=%.3f > %.3f", dist, max_distance
+            )
             continue
         if meta.get("document_id") == doc_id_str:
             doc_chunks.append(text)
@@ -154,7 +156,8 @@ def query_sources_tiered(
             other_chunks.append(text)
 
     logger.info(
-        "query_sources_tiered query=%r user=%s doc=%s max_dist=%.2f → %d doc chunks, %d other chunks",
+        "query_sources_tiered query=%r user=%s doc=%s max_dist=%.2f"
+        " \u2192 %d doc chunks, %d other chunks",
         query_text[:80],
         user_id,
         doc_id,
