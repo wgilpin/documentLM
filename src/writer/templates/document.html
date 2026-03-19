@@ -4,7 +4,95 @@
 
 {% block content %}
 <div class="editor-layout">
-    <!-- Left: Editor pane -->
+
+    <!-- COL 1: Sources panel (left) -->
+    {% if doc %}
+    <div class="sources-panel">
+        <h3 class="sources-panel-header">Research Sources</h3>
+
+        <details class="source-add-details">
+            <summary class="source-add-summary"><span class="material-symbols-outlined" style="font-size:1rem">add</span> Add Source</summary>
+
+            <div class="source-tabs">
+                <button class="tab-btn active" onclick="switchTab('note')">Note</button>
+                <button class="tab-btn" onclick="switchTab('url')">URL</button>
+                <button class="tab-btn" onclick="switchTab('pdf')">PDF</button>
+            </div>
+
+            <div id="tab-note" class="tab-panel active">
+                <div id="source-error-note" class="source-error-container"></div>
+                <form hx-post="/api/documents/{{ doc.id }}/sources"
+                      hx-target="#source-list"
+                      hx-swap="beforeend"
+                      hx-on::after-request="this.reset()">
+                    <input type="hidden" name="source_type" value="note">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" name="title" placeholder="Note title" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Content</label>
+                        <textarea name="content" rows="3" placeholder="Type your note…"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Add Note</button>
+                </form>
+            </div>
+
+            <div id="tab-url" class="tab-panel">
+                <div id="source-error-url" class="source-error-container"></div>
+                <form hx-post="/api/documents/{{ doc.id }}/sources"
+                      hx-target="#source-list"
+                      hx-swap="beforeend"
+                      hx-on::after-request="this.reset()">
+                    <input type="hidden" name="source_type" value="url">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" name="title" placeholder="Reference title" required>
+                    </div>
+                    <div class="form-group">
+                        <label>URL</label>
+                        <input type="url" name="url" placeholder="https://…" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Summary</label>
+                        <textarea name="content" rows="2" placeholder="Optional summary…"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Add URL</button>
+                </form>
+            </div>
+
+            <div id="tab-pdf" class="tab-panel">
+                <div id="source-error-pdf" class="source-error-container"></div>
+                <form hx-post="/api/documents/{{ doc.id }}/sources"
+                      hx-target="#source-list"
+                      hx-swap="beforeend"
+                      hx-encoding="multipart/form-data"
+                      hx-on::after-request="this.reset()">
+                    <input type="hidden" name="source_type" value="pdf">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" name="title" placeholder="PDF title" required>
+                    </div>
+                    <div class="form-group">
+                        <label>PDF file</label>
+                        <input type="file" name="file" accept=".pdf" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Upload PDF</button>
+                </form>
+            </div>
+        </details>
+
+        <ul id="source-list"
+            hx-get="/api/documents/{{ doc.id }}/sources"
+            hx-trigger="load"
+            hx-swap="innerHTML">
+        </ul>
+    </div>
+    {% else %}
+    <div class="sources-panel"></div>
+    {% endif %}
+
+    <!-- COL 2: Editor pane (center) -->
     <div class="editor-pane">
         {% if doc %}
         <input type="text" id="doc-title" value="{{ doc.title }}"
@@ -137,133 +225,54 @@
         {% endif %}
     </div>
 
-    <!-- Resize handle -->
+    <!-- COL 3: Resize handle -->
     {% if doc %}
     <div class="resize-handle" id="resize-handle"></div>
     {% endif %}
 
-    <!-- Right: Sidebar -->
+    <!-- COL 4: Chat panel (right) -->
     {% if doc %}
-    <div class="sidebar">
-        <!-- Sources section -->
-        <div class="sidebar-section">
-            <details class="source-list-details">
-                <summary class="source-list-summary">Sources</summary>
-                <ul id="source-list"
-                    hx-get="/api/documents/{{ doc.id }}/sources"
-                    hx-trigger="load"
-                    hx-swap="innerHTML">
-                </ul>
-            </details>
-
-            <!-- US4: Collapsed source entry -->
-            <details class="source-add-details">
-                <summary class="source-add-summary">Add Source</summary>
-
-                <div class="source-tabs">
-                    <button class="tab-btn active" onclick="switchTab('note')">Note</button>
-                    <button class="tab-btn" onclick="switchTab('url')">URL</button>
-                    <button class="tab-btn" onclick="switchTab('pdf')">PDF</button>
-                </div>
-
-                <div id="tab-note" class="tab-panel active">
-                    <div id="source-error-note" class="source-error-container"></div>
-                    <form hx-post="/api/documents/{{ doc.id }}/sources"
-                          hx-target="#source-list"
-                          hx-swap="beforeend"
-                          hx-on::after-request="this.reset()">
-                        <input type="hidden" name="source_type" value="note">
-                        <div class="form-group">
-                            <label>Title</label>
-                            <input type="text" name="title" placeholder="Note title" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Content</label>
-                            <textarea name="content" rows="3" placeholder="Type your note…"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm">Add Note</button>
-                    </form>
-                </div>
-
-                <div id="tab-url" class="tab-panel">
-                    <div id="source-error-url" class="source-error-container"></div>
-                    <form hx-post="/api/documents/{{ doc.id }}/sources"
-                          hx-target="#source-list"
-                          hx-swap="beforeend"
-                          hx-on::after-request="this.reset()">
-                        <input type="hidden" name="source_type" value="url">
-                        <div class="form-group">
-                            <label>Title</label>
-                            <input type="text" name="title" placeholder="Reference title" required>
-                        </div>
-                        <div class="form-group">
-                            <label>URL</label>
-                            <input type="url" name="url" placeholder="https://…" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Summary</label>
-                            <textarea name="content" rows="2" placeholder="Optional summary…"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm">Add URL</button>
-                    </form>
-                </div>
-
-                <div id="tab-pdf" class="tab-panel">
-                    <div id="source-error-pdf" class="source-error-container"></div>
-                    <form hx-post="/api/documents/{{ doc.id }}/sources"
-                          hx-target="#source-list"
-                          hx-swap="beforeend"
-                          hx-encoding="multipart/form-data"
-                          hx-on::after-request="this.reset()">
-                        <input type="hidden" name="source_type" value="pdf">
-                        <div class="form-group">
-                            <label>Title</label>
-                            <input type="text" name="title" placeholder="PDF title" required>
-                        </div>
-                        <div class="form-group">
-                            <label>PDF file</label>
-                            <input type="file" name="file" accept=".pdf" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm">Upload PDF</button>
-                    </form>
-                </div>
-            </details>
+    <div class="chat-panel">
+        <div class="chat-panel-header">
+            <div class="chat-panel-header-title">
+                <span class="material-symbols-outlined">auto_awesome</span>
+                AI Research Assistant
+            </div>
         </div>
-
-        <!-- Meta-chat panel -->
-        <div class="meta-chat-panel">
-            <div class="meta-chat-header">Meta Chat</div>
-            <div class="meta-chat-sessions">
-                <div id="chat-session-dropdown"
-                     hx-get="/api/documents/{{ doc.id }}/chat/sessions"
-                     hx-trigger="load"
-                     hx-swap="outerHTML">
-                </div>
-                <button id="chat-new-btn"
-                        class="btn btn-secondary btn-sm"
-                        hx-post="/api/documents/{{ doc.id }}/chat/sessions"
-                        hx-target="#chat-history"
-                        hx-swap="outerHTML">
-                    New Chat
-                </button>
-            </div>
-            <div id="chat-history"
-                 hx-get="/api/documents/{{ doc.id }}/chat"
+        <div class="meta-chat-sessions">
+            <div id="chat-session-dropdown"
+                 hx-get="/api/documents/{{ doc.id }}/chat/sessions"
                  hx-trigger="load"
-                 hx-swap="innerHTML">
+                 hx-swap="outerHTML">
             </div>
+            <button id="chat-new-btn"
+                    class="btn btn-secondary btn-sm"
+                    hx-post="/api/documents/{{ doc.id }}/chat/sessions"
+                    hx-target="#chat-history"
+                    hx-swap="outerHTML">
+                New Chat
+            </button>
+        </div>
+        <div id="chat-history"
+             hx-get="/api/documents/{{ doc.id }}/chat"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+        </div>
+        <div id="chat-action-buttons"></div>
+        <div class="chat-input-wrap">
             <form class="chat-input-form"
                   hx-post="/api/documents/{{ doc.id }}/chat"
                   hx-target="#chat-history"
                   hx-swap="beforeend"
                   hx-on::before-request="lockEditor(); document.getElementById('chat-send-btn').classList.add('btn--loading')"
                   hx-on::after-request="unlockEditor(); document.getElementById('chat-send-btn').classList.remove('btn--loading'); this.reset()">
-                <textarea name="content" class="chat-input-textarea" rows="2" placeholder="Ask the AI anything about your document…" required></textarea>
+                <textarea name="content" class="chat-input-textarea" rows="2" placeholder="Ask about sources/document…" required></textarea>
                 <button type="submit" id="chat-send-btn" class="btn btn-primary btn-sm">Send</button>
             </form>
         </div>
     </div>
     {% endif %}
+
 </div>
 
 <!-- Source note viewer modal -->
@@ -279,6 +288,18 @@
 <!-- AI Instruction modal -->
 {% if doc %}
 <dialog id="command-modal">
+    <!-- Header -->
+    <div class="ai-modal-header">
+        <div class="ai-modal-header-brand">
+            <span class="material-symbols-outlined ai-modal-icon">auto_awesome</span>
+            <span class="ai-modal-label">AI Assistant</span>
+        </div>
+        <button type="button" class="ai-modal-close"
+                onclick="document.getElementById('command-modal').close()"
+                aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
     <form id="modal-comment-form"
           hx-post="/api/documents/{{ doc.id }}/comments"
           hx-target="#inline-suggestions"
@@ -288,9 +309,68 @@
         <input type="hidden" name="selection_start" id="modal-sel-start" value="0">
         <input type="hidden" name="selection_end" id="modal-sel-end" value="0">
         <input type="hidden" name="selected_text" id="modal-sel-text" value="">
-        <div class="modal-input-wrap">
-            <textarea name="body" class="modal-body-input" placeholder="Instruction to the AI…" required></textarea>
-            <button type="submit" id="modal-submit-btn" class="modal-submit-btn" aria-label="Submit">&#9654;</button>
+        <!-- Input -->
+        <div class="ai-modal-input-section">
+            <textarea name="body" class="modal-body-input" placeholder="Rewrite this as a list…" required></textarea>
+            <button type="submit" class="ai-modal-send" aria-label="Send">
+                <span class="material-symbols-outlined">send</span>
+            </button>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="ai-modal-quick-actions">
+            <button type="button" class="ai-quick-action"
+                    onclick="document.querySelector('.modal-body-input').value='Rewrite for clarity'; document.getElementById('modal-comment-form').requestSubmit()">
+                <span class="material-symbols-outlined">edit_note</span>
+                <div>
+                    <div class="ai-quick-action-title">Rewrite</div>
+                    <div class="ai-quick-action-sub">Enhance for clarity</div>
+                </div>
+            </button>
+            <button type="button" class="ai-quick-action"
+                    onclick="document.querySelector('.modal-body-input').value='Summarize the main points'; document.getElementById('modal-comment-form').requestSubmit()">
+                <span class="material-symbols-outlined">reorder</span>
+                <div>
+                    <div class="ai-quick-action-title">Summarize</div>
+                    <div class="ai-quick-action-sub">Condense main points</div>
+                </div>
+            </button>
+            <button type="button" class="ai-quick-action"
+                    onclick="document.querySelector('.modal-body-input').value='Find supporting evidence'; document.getElementById('modal-comment-form').requestSubmit()">
+                <span class="material-symbols-outlined">library_books</span>
+                <div>
+                    <div class="ai-quick-action-title">Evidence</div>
+                    <div class="ai-quick-action-sub">Find supporting data</div>
+                </div>
+            </button>
+            <button type="button" class="ai-quick-action"
+                    onclick="document.querySelector('.modal-body-input').value='Change the tone to professional'; document.getElementById('modal-comment-form').requestSubmit()">
+                <span class="material-symbols-outlined">psychology</span>
+                <div>
+                    <div class="ai-quick-action-title">Tone</div>
+                    <div class="ai-quick-action-sub">Change to professional</div>
+                </div>
+            </button>
+        </div>
+
+        <!-- Selected text preview -->
+        <div class="ai-modal-context-preview" id="modal-sel-preview" hidden>
+            <div class="ai-modal-context-header">
+                <span class="material-symbols-outlined">history_edu</span>
+                <span>Selected Text</span>
+            </div>
+            <p class="ai-modal-context-text" id="modal-sel-preview-text"></p>
+        </div>
+
+        <!-- Footer -->
+        <div class="ai-modal-footer">
+            <button type="button" class="ai-modal-cancel"
+                    onclick="document.getElementById('command-modal').close()">
+                Cancel
+            </button>
+            <button type="submit" id="modal-submit-btn" class="modal-submit-btn ai-modal-apply">
+                Apply Change
+            </button>
         </div>
     </form>
 </dialog>

@@ -53,3 +53,4 @@ nul
 
 # ChromaDB vector store data
 data/chroma/
+/stitch_designs

@@ -11,7 +11,7 @@
         if (!handle || !layout) return;
 
         function setWidth(w) {
-            layout.style.gridTemplateColumns = `1fr 5px ${w}px`;
+            layout.style.gridTemplateColumns = `256px 1fr 5px ${w}px`;
         }
 
         const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);

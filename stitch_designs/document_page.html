@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Editorial Workspace - The Future of AI in Design</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-container": "#ffece6",
+              "secondary-container": "#85f6e5",
+              "on-secondary": "#ffffff",
+              "surface": "#f8f9fa",
+              "tertiary-container": "#c24100",
+              "outline": "#747688",
+              "background": "#f8f9fa",
+              "on-surface": "#191c1d",
+              "inverse-surface": "#2e3132",
+              "on-primary": "#ffffff",
+              "secondary-fixed-dim": "#67d9c9",
+              "primary-fixed": "#e0e0ff",
+              "on-error-container": "#93000a",
+              "secondary": "#006a60",
+              "on-secondary-container": "#007166",
+              "on-tertiary-fixed-variant": "#812800",
+              "on-background": "#191c1d",
+              "on-primary-fixed-variant": "#343d96",
+              "primary-container": "#5c65bf",
+              "surface-container-low": "#f3f4f5",
+              "surface-container-highest": "#e1e3e4",
+              "surface-container-lowest": "#ffffff",
+              "surface-dim": "#d9dadb",
+              "on-surface-variant": "#434656",
+              "on-secondary-fixed-variant": "#005048",
+              "on-error": "#ffffff",
+              "primary": "#434ca5",
+              "inverse-on-surface": "#f0f1f2",
+              "surface-tint": "#4c56af",
+              "primary-fixed-dim": "#bdc2ff",
+              "surface-bright": "#f8f9fa",
+              "on-primary-container": "#f0eeff",
+              "outline-variant": "#c4c5d9",
+              "on-tertiary-fixed": "#380d00",
+              "surface-variant": "#e1e3e4",
+              "secondary-fixed": "#85f6e5",
+              "inverse-primary": "#bdc2ff",
+              "error-container": "#ffdad6",
+              "on-primary-fixed": "#000767",
+              "tertiary-fixed-dim": "#ffb59b",
+              "surface-container-high": "#e7e8e9",
+              "on-tertiary": "#ffffff",
+              "tertiary-fixed": "#ffdbcf",
+              "surface-container": "#edeeef",
+              "tertiary": "#993100",
+              "on-secondary-fixed": "#00201c",
+              "error": "#ba1a1a"
+            },
+            fontFamily: {
+              "headline": ["Newsreader"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface overflow-hidden">
+<!-- Top Navigation Bar -->
+<nav class="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-16 bg-[#ffffff] dark:bg-slate-900">
+<div class="flex items-center gap-8">
+<span class="font-['Newsreader'] text-xl font-bold text-[#2E5BFF] italic">The Editorial Workspace</span>
+<div class="hidden md:flex gap-6 items-center">
+<a class="font-['Newsreader'] text-lg font-medium tracking-tight text-[#2E5BFF] border-b-2 border-[#2E5BFF] pb-1 font-bold" href="#">Drafts</a>
+<a class="font-['Newsreader'] text-lg font-medium tracking-tight text-slate-500 hover:text-slate-900 transition-colors" href="#">Library</a>
+<a class="font-['Newsreader'] text-lg font-medium tracking-tight text-slate-500 hover:text-slate-900 transition-colors" href="#">Archive</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 mr-4">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label text-xs uppercase tracking-widest font-semibold text-outline">Draft</span>
+</div>
+<button class="px-4 py-1.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-low transition-all text-sm font-medium">Share</button>
+<button class="px-6 py-1.5 rounded-lg bg-primary text-on-primary hover:bg-gradient-to-br from-primary to-primary-container scale-95 active:scale-90 transition-all text-sm font-semibold">Export</button>
+<div class="flex items-center gap-2 ml-4">
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">settings</span>
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
+</div>
+</div>
+</nav>
+<div class="flex h-screen pt-16">
+<!-- Left Sidebar: Sources -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] flex flex-col p-4 bg-[#edeeef] dark:bg-slate-900 w-64 border-r border-transparent">
+<div class="mb-6 px-2">
+<h3 class="font-label text-xs uppercase tracking-widest font-semibold text-outline mb-4">Research Sources</h3>
+<button class="w-full py-2.5 rounded-lg border-2 border-dashed border-outline-variant text-outline hover:border-primary hover:text-primary transition-all text-sm font-medium flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span>
+                    + New Draft
+                </button>
+</div>
+<div class="flex-1 overflow-y-auto no-scrollbar space-y-2">
+<!-- Source Card 1 -->
+<div class="p-3 bg-surface-container-lowest rounded-lg shadow-sm border border-transparent hover:border-outline-variant transition-all cursor-pointer group">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5">description</span>
+<div>
+<p class="font-body text-sm font-semibold text-on-surface line-clamp-1">PDF: Market Trends 2024</p>
+<p class="font-body text-[10px] text-outline mt-1 uppercase tracking-wider">32 Pages • Analysis</p>
+</div>
+</div>
+</div>
+<!-- Source Card 2 -->
+<div class="p-3 bg-transparent hover:bg-surface-container-lowest rounded-lg transition-all cursor-pointer group">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-outline group-hover:text-primary mt-0.5">link</span>
+<div>
+<p class="font-body text-sm font-medium text-on-surface line-clamp-1">Link: Competitor Analysis</p>
+<p class="font-body text-[10px] text-outline mt-1 uppercase tracking-wider">TechCrunch • 5m ago</p>
+</div>
+</div>
+</div>
+<!-- Source Card 3 -->
+<div class="p-3 bg-transparent hover:bg-surface-container-lowest rounded-lg transition-all cursor-pointer group">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-outline group-hover:text-primary mt-0.5">auto_stories</span>
+<div>
+<p class="font-body text-sm font-medium text-on-surface line-clamp-1">Whitepaper: UX Futures</p>
+<p class="font-body text-[10px] text-outline mt-1 uppercase tracking-wider">MIT Media Lab</p>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-4 space-y-1">
+<a class="flex items-center gap-3 p-2 rounded-lg text-slate-600 hover:bg-surface-container-lowest transition-all" href="#">
+<span class="material-symbols-outlined text-sm">help_outline</span>
+<span class="font-label text-[10px] uppercase tracking-widest font-semibold">Help</span>
+</a>
+<a class="flex items-center gap-3 p-2 rounded-lg text-slate-600 hover:bg-surface-container-lowest transition-all" href="#">
+<span class="material-symbols-outlined text-sm">logout</span>
+<span class="font-label text-[10px] uppercase tracking-widest font-semibold">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Editor Canvas -->
+<main class="flex-1 ml-64 mr-80 bg-surface-container-lowest overflow-y-auto no-scrollbar">
+<div class="max-w-3xl mx-auto px-12 pb-32">
+<!-- Header Spacing -->
+<div class="h-28"></div>
+<h1 class="font-headline text-5xl font-bold tracking-tight text-on-surface mb-12">The Future of AI in Design</h1>
+<article class="font-headline text-xl leading-[1.7] text-on-surface-variant space-y-8">
+<p>
+                        Design has always been a conversation between the hand and the tool. From the first charcoal sketches on cave walls to the precision of vector-based interfaces, our medium has dictated our reach. However, we are entering an era where the tool doesn't just execute; it participates.
+                    </p>
+<div class="my-12 relative group">
+<div class="aspect-[16/9] bg-surface-container-high rounded-xl overflow-hidden flex items-center justify-center border border-outline-variant/10">
+<img class="w-full h-full object-cover mix-blend-multiply opacity-80" data-alt="Abstract geometric 3D render with soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1N5klOUq2mp3d57eELJ8VReBw1BQyG0hSDx3rCpiVCYG2z7b0nfnmv2gTMd1eK3jXdeNXVy-O5rtpIFcjBm6ROJ0xyDCggSAvMBq1AFJFAICzD7tn1G2sqBlpKfx1o5aARfakzBlME8_NRIqP0s2LCTxNgjeXVAoJmzfL9VtNwmACQu6fJ0ZT9jEnQ4J6cgfNnHbFjxFgsepCdksE8iUkPW4UeNGTYpdZrDvFJ1cYS99UGftXMYMSIUM4ZfgcCUk4wd6zPrXtiw"/>
+<div class="absolute inset-0 flex flex-col items-center justify-center bg-black/5">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant/40 mb-2">image</span>
+<span class="font-label text-xs uppercase tracking-[0.2em] font-bold text-on-surface-variant/40">Editorial Visual Asset</span>
+</div>
+</div>
+<p class="mt-4 font-body text-xs text-outline italic text-center">Fig 1.1 — The convergence of generative patterns and structural intentionality.</p>
+</div>
+<p>
+                        The introduction of large-scale generative models into the creative workflow represents a tectonic shift. It is no longer about the 
+                        <!-- Selected Text Block -->
+<span class="relative inline-block bg-primary/10 border-b-2 border-primary group">
+                            automation of pixel placement, but rather the orchestration of intent
+                            <!-- Floating AI Command Menu -->
+</span></p><div class="absolute -top-12 left-1/2 -translate-x-1/2 flex items-center bg-on-surface text-surface-container-lowest rounded-full px-1 py-1 shadow-xl z-20 whitespace-nowrap">
+<button class="flex items-center gap-1.5 px-3 py-1 hover:bg-white/10 rounded-full transition-colors">
+<span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-label text-[10px] uppercase font-bold tracking-wider">Rewrite</span>
+</button>
+<div class="w-px h-4 bg-white/20 mx-1"></div>
+<button class="flex items-center gap-1.5 px-3 py-1 hover:bg-white/10 rounded-full transition-colors">
+<span class="font-label text-[10px] uppercase font-bold tracking-wider">Summarize</span>
+</button>
+<div class="w-px h-4 bg-white/20 mx-1"></div>
+<button class="p-1 hover:bg-white/10 rounded-full">
+<span class="material-symbols-outlined text-base">more_vert</span>
+</button>
+</div>
+.
+                        In this new atelier, the designer becomes the editor, the curator, and the moral compass of the machine's infinite output.
+                    <p></p>
+<p>
+                        We must ask ourselves: what remains uniquely human in an age of automated aesthetics? The answer lies in the messy, the imperfect, and the contextually nuanced decisions that a machine—no matter how well-trained—cannot replicate without a soul.
+                    </p>
+</article>
+</div>
+</main>
+<!-- Right Sidebar: AI Chat -->
+<aside class="fixed right-0 top-16 h-[calc(100vh-64px)] w-80 flex flex-col bg-surface-bright/80 backdrop-blur-xl border-l border-transparent z-40">
+<div class="p-6 border-b border-outline-variant/10">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<h3 class="font-label text-xs uppercase tracking-widest font-bold text-on-surface">AI Research Assistant</h3>
+</div>
+<p class="font-body text-[10px] text-outline">Grounded in 3 active sources</p>
+</div>
+<!-- Chat History -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+<!-- User Message -->
+<div class="flex flex-col items-end">
+<div class="max-w-[85%] p-3 rounded-xl rounded-tr-none border border-outline-variant/20 font-body text-sm text-on-surface">
+                        Can you find evidence in the "Market Trends" PDF about the decline of traditional wireframing?
+                    </div>
+</div>
+<!-- AI Response -->
+<div class="flex flex-col items-start">
+<div class="max-w-[90%] p-4 rounded-xl rounded-tl-none bg-surface-container-high font-body text-sm text-on-surface-variant relative shadow-sm">
+                        According to the <span class="text-primary font-semibold underline decoration-primary/30">Market Trends 2024</span> (page 14), 72% of design leaders are moving towards "Direct-to-High-Fidelity" workflows. 
+                        <br/><br/>
+                        The report suggests that AI-assisted prototyping renders the low-fidelity wireframing stage redundant for 80% of standard UI tasks.
+                        
+                        <!-- Suggestion Chip -->
+<div class="mt-4 flex flex-wrap gap-2">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px]">link</span>
+                                Source: Page 14
+                            </span>
+</div>
+</div>
+</div>
+<!-- AI Suggestion Highlight -->
+<div class="p-4 rounded-xl bg-tertiary-fixed border border-tertiary/10 shadow-sm">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-tertiary text-sm">tips_and_updates</span>
+<span class="font-label text-[10px] uppercase font-bold text-tertiary">Writing Suggestion</span>
+</div>
+<p class="font-body text-xs text-on-tertiary-fixed-variant leading-relaxed">
+                        The tone of your second paragraph is quite academic. Would you like to make it more "Editorial" to match the first section?
+                    </p>
+<div class="mt-3 flex gap-2">
+<button class="px-3 py-1 bg-tertiary text-on-tertiary text-[10px] font-bold rounded-lg uppercase">Apply</button>
+<button class="px-3 py-1 bg-transparent border border-tertiary/20 text-tertiary text-[10px] font-bold rounded-lg uppercase">Dismiss</button>
+</div>
+</div>
+</div>
+<!-- Chat Input -->
+<div class="p-6 bg-surface-container-lowest border-t border-outline-variant/10">
+<div class="relative">
+<textarea class="w-full bg-transparent border-b border-outline-variant/30 focus:border-primary focus:ring-0 resize-none font-body text-sm py-2 px-0 transition-all placeholder:text-outline/50" placeholder="Ask about sources/document" rows="1"></textarea>
+<button class="absolute right-0 bottom-2 p-1.5 bg-primary text-on-primary rounded-lg hover:bg-primary-container transition-all">
+<span class="material-symbols-outlined text-sm">arrow_upward</span>
+</button>
+</div>
+<div class="mt-3 flex justify-between items-center">
+<div class="flex gap-3">
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">attach_file</span>
+</button>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">mic</span>
+</button>
+</div>
+<span class="font-label text-[10px] text-outline uppercase tracking-tighter">Enter to send</span>
+</div>
+</div>
+</aside>
+</div>
+</body></html>

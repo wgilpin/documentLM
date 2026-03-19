@@ -205,6 +205,15 @@ aiBtn.addEventListener('click', (e) => {
     document.getElementById('modal-sel-end').value   = selEnd;
     document.getElementById('modal-sel-text').value  = selText;
 
+    const preview = document.getElementById('modal-sel-preview');
+    const previewText = document.getElementById('modal-sel-preview-text');
+    if (selText) {
+        previewText.textContent = `"${selText.length > 200 ? selText.slice(0, 200) + '…' : selText}"`;
+        preview.removeAttribute('hidden');
+    } else {
+        preview.setAttribute('hidden', '');
+    }
+
     const modal = document.getElementById('command-modal');
     modal.style.cssText = '';
     modal.showModal();

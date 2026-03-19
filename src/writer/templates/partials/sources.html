@@ -1,25 +1,35 @@
 <li class="source-item" id="source-{{ source.id }}">
-  <div class="source-meta">
-    <span class="type-badge">{{ source.source_type.value }}</span>
-    <span class="source-title">{{ source.title }}</span>
-    <span class="source-date">{{ source.created_at.strftime('%b %d, %Y') }}</span>
+  <div class="source-meta" style="display:flex; align-items:flex-start; gap:0.75rem; flex:1; min-width:0;">
+    {% if source.source_type.value == 'url' %}
+      <span class="material-symbols-outlined source-type-icon">link</span>
+    {% elif source.source_type.value == 'pdf' %}
+      <span class="material-symbols-outlined source-type-icon">description</span>
+    {% else %}
+      <span class="material-symbols-outlined source-type-icon">auto_stories</span>
+    {% endif %}
+    <div style="min-width:0;">
+      <div class="source-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ source.title }}</div>
+      <div class="source-date">{{ source.source_type.value }} · {{ source.created_at.strftime('%b %d') }}</div>
+    </div>
   </div>
-  {% if source.source_type.value == 'url' and source.url %}
-    <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
-  {% elif source.source_type.value == 'note' %}
-    <button class="btn btn-ghost btn-xs"
-            hx-get="/api/documents/{{ doc_id }}/sources/{{ source.id }}/view"
-            hx-target="#source-note-modal-body"
-            hx-swap="innerHTML"
-            hx-on::after-request="document.getElementById('source-note-modal').showModal()">View</button>
-  {% elif source.source_type.value == 'pdf' and source.file_path %}
-    <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/pdf" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
-  {% else %}
-    <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/view" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
-  {% endif %}
-  <button class="btn btn-ghost-danger btn-xs"
-          hx-delete="/api/documents/{{ source.document_id }}/sources/{{ source.id }}"
-          hx-target="#source-{{ source.id }}"
-          hx-swap="outerHTML"
-          hx-confirm="Remove this source?">🗑</button>
+  <div style="display:flex; gap:0.25rem; flex-shrink:0;">
+    {% if source.source_type.value == 'url' and source.url %}
+      <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
+    {% elif source.source_type.value == 'note' %}
+      <button class="btn btn-ghost btn-xs"
+              hx-get="/api/documents/{{ doc_id }}/sources/{{ source.id }}/view"
+              hx-target="#source-note-modal-body"
+              hx-swap="innerHTML"
+              hx-on::after-request="document.getElementById('source-note-modal').showModal()">View</button>
+    {% elif source.source_type.value == 'pdf' and source.file_path %}
+      <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/pdf" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
+    {% else %}
+      <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/view" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-xs">View</a>
+    {% endif %}
+    <button class="btn btn-ghost-danger btn-xs"
+            hx-delete="/api/documents/{{ source.document_id }}/sources/{{ source.id }}"
+            hx-target="#source-{{ source.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Remove this source?">🗑</button>
+  </div>
 </li>
