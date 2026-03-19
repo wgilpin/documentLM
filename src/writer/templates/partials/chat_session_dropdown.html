@@ -1,0 +1,10 @@
+<select id="chat-session-dropdown"
+        hx-post="/api/documents/{{ doc_id }}/chat/sessions/activate"
+        hx-target="#chat-history"
+        hx-swap="innerHTML"
+        hx-trigger="change"
+        hx-vals="js:{session_id: this.value}">
+    {% for s in sessions %}
+    <option value="{{ s.id }}"{% if s.status.value == 'active' %} selected{% endif %}>{{ s.label }}</option>
+    {% endfor %}
+</select>

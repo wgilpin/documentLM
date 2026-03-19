@@ -80,13 +80,12 @@ async def _seed_document(email: str, log: logging.Logger) -> None:
             )
             for source in sources_result.scalars().all():
                 try:
-                    await asyncio.to_thread(
-                        vector_store.delete_source_chunks, source.id, user.id
-                    )
+                    await asyncio.to_thread(vector_store.delete_source_chunks, source.id, user.id)
                 except Exception as exc:
                     log.warning(
                         "--seed-doc: failed to delete ChromaDB chunks for source %s: %s",
-                        source.id, exc,
+                        source.id,
+                        exc,
                     )
             await db.delete(doc)
             await db.flush()  # must flush before re-adding the same PK

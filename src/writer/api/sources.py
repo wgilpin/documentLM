@@ -150,7 +150,9 @@ async def view_source_pdf(
 
     if not Path(source.file_path).exists():
         raise HTTPException(status_code=404, detail="PDF file not found on disk")
-    return FileResponse(source.file_path, media_type="application/pdf", filename=f"{source.title}.pdf")
+    return FileResponse(
+        source.file_path, media_type="application/pdf", filename=f"{source.title}.pdf"
+    )
 
 
 @router.delete("/{doc_id}/sources/{source_id}", response_model=None)

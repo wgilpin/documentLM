@@ -18,11 +18,18 @@ from writer.models.enums import ChatRole, SourceType
 from writer.models.schemas import (
     ChatMessageCreate,
     ChatMessageResponse,
+    ChatSessionResponse,
     SourceCreate,
     SourceResponse,
     UserResponse,
 )
-from writer.services import agent_service, chat_service, document_service, source_service
+from writer.services import (
+    agent_service,
+    chat_service,
+    chat_session_service,
+    document_service,
+    source_service,
+)
 from writer.services.content_fetcher import fetch_url_content
 from writer.services.document_service import DocumentNotFoundError
 from writer.services.indexer import run_indexing
@@ -59,7 +66,8 @@ async def get_chat_history(
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
 
-    messages = await chat_service.list_chat_messages(db, doc_id, current_user.id)
+    session = await chat_session_service.get_or_create_active_session(db, current_user.id, doc_id)
+    messages = await chat_service.list_chat_messages(db, session.id, current_user.id)
 
     # First-open: no messages yet and document has an overview.
     if not messages and doc.overview and request.headers.get("HX-Request"):
@@ -90,17 +98,17 @@ def _action_buttons_html(doc_id: uuid.UUID) -> str:
         f' hx-post="/api/documents/{doc_id}/chat/find-sources"'
         f' hx-swap="none"'
         f' hx-disabled-elt="this"'
-        f' hx-on::before-request="this.classList.add(\'btn--loading\')"'
-        f' hx-on::after-request="this.classList.remove(\'btn--loading\')">'
-        f'Find relevant sources</button>'
+        f" hx-on::before-request=\"this.classList.add('btn--loading')\""
+        f" hx-on::after-request=\"this.classList.remove('btn--loading')\">"
+        f"Find relevant sources</button>"
         f'<button class="btn btn-secondary btn-sm"'
         f' hx-post="/api/documents/{doc_id}/chat/suggest-outline"'
         f' hx-target="#chat-history"'
         f' hx-swap="beforeend"'
         f' hx-disabled-elt="this"'
-        f' hx-on::before-request="this.classList.add(\'btn--loading\')"'
-        f' hx-on::after-request="this.classList.remove(\'btn--loading\')">Suggest Outline</button>'
-        f'</div>'
+        f" hx-on::before-request=\"this.classList.add('btn--loading')\""
+        f" hx-on::after-request=\"this.classList.remove('btn--loading')\">Suggest Outline</button>"
+        f"</div>"
     )
 
 
@@ -161,7 +169,8 @@ async def stream_chat_init(
         return f'<div id="chat-history" hx-swap-oob="outerHTML">{html}{extra_html}</div>'
 
     async def generate() -> AsyncGenerator[str]:
-        existing = await chat_service.list_chat_messages(db, doc_id, user_id)
+        session = await chat_session_service.get_or_create_active_session(db, user_id, doc_id)
+        existing = await chat_service.list_chat_messages(db, session.id, user_id)
         if existing:
             logger.info("Stream: already initialised for doc=%s — skipping", doc_id)
             yield _sse(_messages_oob(existing))
@@ -169,7 +178,7 @@ async def stream_chat_init(
 
         try:
             user_msg = await chat_service.create_chat_message(
-                db, doc_id, user_id, overview, ChatRole.user
+                db, doc_id, user_id, session.id, overview, ChatRole.user
             )
             await db.commit()
             logger.info("Stream: initial message saved for doc=%s", doc_id)
@@ -260,11 +269,12 @@ async def suggest_outline_action(
     user_id = current_user.id
 
     logger.info("suggest-outline: planning for doc=%s", doc_id)
+    session = await chat_session_service.get_or_create_active_session(db, user_id, doc_id)
     sources = await source_service.list_sources(db, doc_id, user_id)
     plan_text = await agent_service.invoke_planner(overview, sources, doc_id, user_id)
 
     assistant_msg = await chat_service.create_chat_message(
-        db, doc_id, user_id, plan_text, ChatRole.assistant
+        db, doc_id, user_id, session.id, plan_text, ChatRole.assistant
     )
     await db.commit()
     logger.info("suggest-outline: complete for doc=%s", doc_id)
@@ -285,18 +295,6 @@ async def post_chat_message(
     doc_id: uuid.UUID,
     content: Annotated[str, Form()],
 ) -> HTMLResponse | list[ChatMessageResponse]:
-    import logging as _lg, sys as _sys
-    _root = _lg.getLogger()
-    # Write directly to stderr, bypassing all logging machinery
-    _sys.stderr.write(f"[DIAG-DIRECT] root.handlers={_root.handlers} root.level={_root.level}\n")
-    _sys.stderr.flush()
-    # Force-add a handler and test
-    _h = _lg.StreamHandler(_sys.stderr)
-    _root.addHandler(_h)
-    _root.warning("[DIAG-FORCED] root.warning with freshly added handler")
-    _root.removeHandler(_h)
-    logger.warning("[DIAG-CHAT-LOGGER] warning via chat logger")
-
     try:
         doc = await document_service.get_document(db, doc_id, current_user.id)
     except DocumentNotFoundError as exc:
@@ -304,16 +302,25 @@ async def post_chat_message(
 
     ChatMessageCreate(content=content)
 
+    session = await chat_session_service.get_or_create_active_session(db, current_user.id, doc_id)
+
     user_msg = await chat_service.create_chat_message(
-        db, doc_id, current_user.id, content, ChatRole.user
+        db, doc_id, current_user.id, session.id, content, ChatRole.user
     )
 
-    history = await chat_service.list_chat_messages(db, doc_id, current_user.id)
+    history = await chat_service.list_chat_messages(db, session.id, current_user.id)
 
     try:
         assistant_msg, new_doc_content, sources_added = await chat_service.process_chat(
-            db, doc_id, current_user.id, history, doc.content or "", doc.is_private,
-            title=doc.title, overview=doc.overview or "",
+            db,
+            doc_id,
+            current_user.id,
+            session.id,
+            history,
+            doc.content or "",
+            doc.is_private,
+            title=doc.title,
+            overview=doc.overview or "",
         )
     except Exception as exc:
         logger.exception("ChatAgent error for doc=%s: %s", doc_id, exc)
@@ -353,3 +360,119 @@ async def post_chat_message(
             )
         return HTMLResponse(messages_html + oob)
     return [user_msg, assistant_msg]  # type: ignore[return-value]
+
+
+# ---------------------------------------------------------------------------
+# Session management endpoints (T012, T018, T019)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/api/documents/{doc_id}/chat/sessions", response_model=None)
+async def create_chat_session(
+    request: Request,
+    db: DbDep,
+    current_user: CurrentUser,
+    doc_id: uuid.UUID,
+) -> HTMLResponse | dict[str, object]:
+    """Start a new chat session. Archives the current active session if it has messages."""
+    try:
+        await document_service.get_document(db, doc_id, current_user.id)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Document not found") from exc
+
+    new_session = await chat_session_service.create_new_session(db, current_user.id, doc_id)
+    await db.commit()
+
+    if request.headers.get("HX-Request"):
+        sessions = await chat_session_service.list_sessions(db, current_user.id, doc_id)
+        tmpl = get_templates()
+        dropdown_html = tmpl.get_template("partials/chat_session_dropdown.html").render(
+            {"sessions": sessions, "doc_id": doc_id, "request": request}
+        )
+        dropdown_oob = dropdown_html.replace(
+            'id="chat-session-dropdown"',
+            'id="chat-session-dropdown" hx-swap-oob="outerHTML"',
+            1,
+        )
+        return HTMLResponse('<div id="chat-history"></div>' + dropdown_oob)
+
+    active_session = await chat_session_service.get_or_create_active_session(
+        db, current_user.id, doc_id
+    )
+    target = new_session if new_session is not None else active_session
+    return {
+        "session": ChatSessionResponse(
+            id=target.id,
+            document_id=target.document_id,
+            status=target.status,
+            created_at=target.created_at,
+            label="Current Chat",
+        ).model_dump(mode="json")
+    }
+
+
+@router.get("/api/documents/{doc_id}/chat/sessions", response_model=None)
+async def list_chat_sessions(
+    request: Request,
+    db: DbDep,
+    current_user: CurrentUser,
+    doc_id: uuid.UUID,
+) -> HTMLResponse | dict[str, object]:
+    """List all sessions for the session dropdown."""
+    try:
+        await document_service.get_document(db, doc_id, current_user.id)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Document not found") from exc
+
+    sessions = await chat_session_service.list_sessions(db, current_user.id, doc_id)
+
+    if request.headers.get("HX-Request"):
+        tmpl = get_templates()
+        html = tmpl.get_template("partials/chat_session_dropdown.html").render(
+            {"sessions": sessions, "doc_id": doc_id, "request": request}
+        )
+        return HTMLResponse(html)
+
+    return {"sessions": [s.model_dump(mode="json") for s in sessions]}
+
+
+@router.post("/api/documents/{doc_id}/chat/sessions/activate", response_model=None)
+async def activate_chat_session(
+    request: Request,
+    db: DbDep,
+    current_user: CurrentUser,
+    doc_id: uuid.UUID,
+    session_id: Annotated[uuid.UUID, Form()],
+) -> HTMLResponse | dict[str, object]:
+    """Reactivate an archived session (archiving the current active one)."""
+    try:
+        await document_service.get_document(db, doc_id, current_user.id)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Document not found") from exc
+
+    try:
+        session = await chat_session_service.activate_session(db, current_user.id, session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    await db.commit()
+
+    if request.headers.get("HX-Request"):
+        messages = await chat_session_service.get_session_messages(db, session.id, current_user.id)
+        tmpl = get_templates()
+        history_html = "".join(
+            tmpl.get_template("partials/chat_message.html").render({"msg": m, "request": request})
+            for m in messages
+        )
+        sessions = await chat_session_service.list_sessions(db, current_user.id, doc_id)
+        dropdown_html = tmpl.get_template("partials/chat_session_dropdown.html").render(
+            {"sessions": sessions, "doc_id": doc_id, "request": request}
+        )
+        dropdown_oob = dropdown_html.replace(
+            'id="chat-session-dropdown"',
+            'id="chat-session-dropdown" hx-swap-oob="outerHTML"',
+            1,
+        )
+        return HTMLResponse(f'<div id="chat-history">{history_html}</div>' + dropdown_oob)
+
+    return {"session_id": str(session.id), "status": session.status.value}

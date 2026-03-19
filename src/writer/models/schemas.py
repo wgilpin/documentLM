@@ -10,6 +10,7 @@ from writer.models.enums import (
     ChatRole,
     CommentStatus,
     IndexingStatus,
+    SessionStatus,
     SourceType,
     SuggestionStatus,
 )
@@ -150,6 +151,16 @@ class UserSettingsResponse(BaseModel):
     updated_at: datetime
 
 
+class ChatSessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    status: SessionStatus
+    created_at: datetime
+    label: str
+
+
 class ChatMessageCreate(BaseModel):
     content: str
 
@@ -158,6 +169,7 @@ class ChatMessageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    session_id: uuid.UUID
     document_id: uuid.UUID
     role: ChatRole
     content: str

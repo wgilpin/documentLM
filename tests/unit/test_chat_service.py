@@ -13,6 +13,7 @@ from writer.models.schemas import ChatMessageResponse
 def _msg(**kwargs: object) -> ChatMessageResponse:
     defaults: dict[str, object] = {
         "id": uuid.uuid4(),
+        "session_id": uuid.uuid4(),
         "document_id": uuid.uuid4(),
         "role": ChatRole.user,
         "content": "Hello",
@@ -29,6 +30,7 @@ def _msg(**kwargs: object) -> ChatMessageResponse:
 
 def _orm_msg(
     id: uuid.UUID | None = None,
+    session_id: uuid.UUID | None = None,
     document_id: uuid.UUID | None = None,
     role: ChatRole = ChatRole.user,
     content: str = "Hello",
@@ -36,6 +38,7 @@ def _orm_msg(
 ) -> MagicMock:
     m = MagicMock()
     m.id = id or uuid.uuid4()
+    m.session_id = session_id or uuid.uuid4()
     m.document_id = document_id or uuid.uuid4()
     m.role = role
     m.content = content
@@ -64,6 +67,7 @@ async def test_create_chat_message_stores_user_role() -> None:
     with patch("writer.services.chat_service.ChatMessage") as MockChatMessage:
         mock_instance = MagicMock()
         mock_instance.id = orm_result.id
+        mock_instance.session_id = orm_result.session_id
         mock_instance.document_id = orm_result.document_id
         mock_instance.role = ChatRole.user
         mock_instance.content = "Test message"
@@ -71,8 +75,9 @@ async def test_create_chat_message_stores_user_role() -> None:
         MockChatMessage.return_value = mock_instance
 
         user_id = uuid.uuid4()
+        session_id = uuid.uuid4()
         result = await chat_service.create_chat_message(
-            db, doc_id, user_id, "Test message", ChatRole.user
+            db, doc_id, user_id, session_id, "Test message", ChatRole.user
         )
 
     assert result.role == ChatRole.user
@@ -103,7 +108,8 @@ async def test_list_chat_messages_ordered_by_created_at() -> None:
     mock_result.scalars.return_value.all.return_value = [msg1, msg2]
     db.execute = AsyncMock(return_value=mock_result)
 
-    results = await chat_service.list_chat_messages(db, doc_id, uuid.uuid4())
+    session_id = uuid.uuid4()
+    results = await chat_service.list_chat_messages(db, session_id, uuid.uuid4())
 
     assert len(results) == 2
     assert results[0].content == "first"
@@ -144,9 +150,10 @@ async def test_process_chat_calls_agent_and_returns_assistant_message() -> None:
         )
 
         user_id = uuid.uuid4()
+        session_id = uuid.uuid4()
         db = AsyncMock()
         result, new_content, sources_added = await chat_service.process_chat(
-            db, doc_id, user_id, history
+            db, doc_id, user_id, session_id, history
         )
 
     call_args = mock_agent.call_args
@@ -155,7 +162,9 @@ async def test_process_chat_calls_agent_and_returns_assistant_message() -> None:
     assert call_args.args[2] == user_id
     assert len(call_args.kwargs["extra_tools"]) == 1
     assert callable(call_args.kwargs["extra_tools"][0])
-    mock_create.assert_called_once_with(db, doc_id, user_id, agent_reply, ChatRole.assistant)
+    mock_create.assert_called_once_with(
+        db, doc_id, user_id, session_id, agent_reply, ChatRole.assistant
+    )
     assert result.role == ChatRole.assistant
     assert result.content == agent_reply
     assert new_content is None
