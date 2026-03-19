@@ -12,7 +12,8 @@ body {
     background: #f9f9f9;
 }
 
-header, .site-header {
+header,
+.site-header {
     background: #ffffff;
     padding: 0 2rem;
     height: 64px;
@@ -69,7 +70,9 @@ main:has(.editor-layout) {
     font-weight: 500;
 }
 
-.doc-item a:hover { text-decoration: underline; }
+.doc-item a:hover {
+    text-decoration: underline;
+}
 
 .doc-item .meta {
     font-size: 0.8rem;
@@ -87,25 +90,31 @@ main:has(.editor-layout) {
 }
 
 .btn-primary {
-    background: #2563eb;
+    background: #343d96;
     color: #fff;
 }
 
-.btn-primary:hover { background: #1d4ed8; }
+.btn-primary:hover {
+    background: #1d4ed8;
+}
 
 .btn-danger {
     background: #dc2626;
     color: #fff;
 }
 
-.btn-danger:hover { background: #b91c1c; }
+.btn-danger:hover {
+    background: #b91c1c;
+}
 
 .btn-secondary {
     background: #e5e7eb;
     color: #374151;
 }
 
-.btn-secondary:hover { background: #d1d5db; }
+.btn-secondary:hover {
+    background: #d1d5db;
+}
 
 /* Editor layout */
 .editor-layout {
@@ -140,7 +149,7 @@ main:has(.editor-layout) {
 .chat-panel {
     display: flex;
     flex-direction: column;
-    background: rgba(248,249,250,0.85);
+    background: rgba(248, 249, 250, 0.85);
     backdrop-filter: blur(12px);
     border-left: none;
     overflow: hidden;
@@ -149,7 +158,7 @@ main:has(.editor-layout) {
 
 .chat-panel-header {
     padding: 1.25rem 1.5rem 0.75rem;
-    border-bottom: 1px solid rgba(196,197,217,0.2);
+    border-bottom: 1px solid rgba(196, 197, 217, 0.2);
     flex-shrink: 0;
 }
 
@@ -173,7 +182,7 @@ main:has(.editor-layout) {
 .chat-input-wrap {
     padding: 1rem 1.5rem;
     background: #ffffff;
-    border-top: 1px solid rgba(196,197,217,0.2);
+    border-top: 1px solid rgba(196, 197, 217, 0.2);
     flex-shrink: 0;
 }
 
@@ -236,7 +245,7 @@ main:has(.editor-layout) {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255,255,255,0.8);
+    background: rgba(255, 255, 255, 0.8);
     border-radius: 4px;
     z-index: 10;
 }
@@ -295,8 +304,13 @@ main:has(.editor-layout) {
     margin-bottom: 0.2em;
 }
 
-.tiptap-editor .ProseMirror strong { font-weight: 600; }
-.tiptap-editor .ProseMirror em { font-style: italic; }
+.tiptap-editor .ProseMirror strong {
+    font-weight: 600;
+}
+
+.tiptap-editor .ProseMirror em {
+    font-style: italic;
+}
 
 .tiptap-editor .ProseMirror code {
     background: #f3f4f6;
@@ -447,11 +461,13 @@ main:has(.editor-layout) {
     border-radius: 0.5rem;
     background: #ffffff;
     font-size: 0.85rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     transition: border-color 0.15s;
 }
 
-.source-item:hover { border-color: #c4c5d9; }
+.source-item:hover {
+    border-color: #c4c5d9;
+}
 
 .source-type-icon {
     color: #434ca5;
@@ -486,27 +502,164 @@ main:has(.editor-layout) {
 
 .source-tabs {
     display: flex;
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
+    gap: 1.5rem;
+    border-bottom: 1px solid rgba(196, 197, 217, 0.3);
+    margin-bottom: 1.5rem;
+    padding-left: 0.25rem;
+    margin-top: 1rem;
 }
 
 .tab-btn {
-    padding: 0.25rem 0.6rem;
-    border: 1px solid #d1d5db;
-    border-radius: 3px;
+    padding: 0 0 0.5rem 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.075em;
+    text-transform: uppercase;
+    border: none;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    color: #747688;
     cursor: pointer;
-    background: #fff;
-    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: #191c1d;
 }
 
 .tab-btn.active {
-    background: #2563eb;
-    color: #fff;
-    border-color: #2563eb;
+    border-bottom-color: #434ca5;
+    color: #434ca5;
 }
 
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
+/* Specific overrides for Add Source section inputs */
+.sources-panel .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.sources-panel .form-group label {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #747688;
+    font-weight: 600;
+}
+
+.sources-panel .form-group input {
+    width: 100%;
+    background: transparent;
+    border: none !important;
+    border-bottom: 1px solid rgba(196, 197, 217, 0.5) !important;
+    border-radius: 0 !important;
+    padding: 0.5rem 0 !important;
+    font-size: 1.1rem !important;
+    font-family: 'Newsreader', Georgia, serif;
+    font-style: italic;
+    color: #191c1d;
+}
+
+.sources-panel .form-group input:focus {
+    outline: none;
+    border-bottom-color: #434ca5 !important;
+    box-shadow: none !important;
+}
+
+.sources-panel .form-group input::placeholder {
+    color: #c4c5d9;
+}
+
+/* Specific styling for file inputs to appear clean and grey */
+.sources-panel .form-group input[type="file"] {
+    font-family: 'Inter', sans-serif !important;
+    font-style: normal !important;
+    font-size: 0.85rem !important;
+    color: #747688 !important;
+    border: none !important;
+    padding: 0.5rem 0 !important;
+    cursor: pointer;
+}
+
+.sources-panel .form-group input[type="file"]::file-selector-button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #434656;
+    background: #f3f4f5;
+    border: 1px solid rgba(196, 197, 217, 0.5);
+    border-radius: 4px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    margin-right: 1rem;
+    transition: all 0.2s ease;
+}
+
+.sources-panel .form-group input[type="file"]::file-selector-button:hover {
+    background: #e1e3e4;
+    border-color: #747688;
+}
+
+.sources-panel .form-group textarea {
+    width: 100%;
+    background: #f3f4f5 !important;
+    border-radius: 0.5rem !important;
+    padding: 1rem !important;
+    border: none !important;
+    color: #191c1d;
+    line-height: 1.6;
+    font-family: 'Inter', sans-serif !important;
+    resize: vertical;
+}
+
+.sources-panel .form-group textarea::placeholder {
+    color: rgba(196, 197, 217, 0.8);
+}
+
+.sources-panel .form-group textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(67, 76, 165, 0.2) !important;
+}
+
+.sources-panel form button[type="submit"] {
+    position: relative;
+    padding: 0.6rem 1.25rem !important;
+    background: #434ca5 !important;
+    color: #ffffff !important;
+    border-radius: 0.5rem !important;
+    font-weight: 600 !important;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px 0 rgba(67, 76, 165, 0.2) !important;
+    border: none !important;
+    cursor: pointer;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100% !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.02em;
+    margin-top: 0.5rem;
+}
+
+.sources-panel form button[type="submit"]:hover {
+    background: #343d96 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px 0 rgba(67, 76, 165, 0.25) !important;
+}
+
+.sources-panel form button[type="submit"]:active {
+    transform: scale(0.98);
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+}
 
 .form-group {
     display: flex;
@@ -590,7 +743,10 @@ main:has(.editor-layout) {
     font-style: italic;
 }
 
-h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+h1 {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+}
 
 .page-header {
     display: flex;
@@ -606,21 +762,21 @@ dialog {
     border-radius: 6px;
     padding: 0;
     max-width: 95vw;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
     overflow: hidden;
     margin: auto;
 }
 
 dialog::backdrop {
-    background: rgba(0,0,0,0.2);
+    background: rgba(0, 0, 0, 0.2);
 }
 
 /* AI command modal — Stitch design */
 #command-modal {
     width: 36rem;
-    border: 1px solid rgba(103,217,201,0.20);
+    border: 1px solid rgba(103, 217, 201, 0.20);
     border-radius: 0.5rem;
-    box-shadow: 0 12px 40px rgba(25,28,29,0.06), 0 0 15px rgba(103,217,201,0.20);
+    box-shadow: 0 12px 40px rgba(25, 28, 29, 0.06), 0 0 15px rgba(103, 217, 201, 0.20);
     background: #ffffff;
     font-family: 'Inter', system-ui, sans-serif;
     color: #191c1d;
@@ -632,7 +788,7 @@ dialog::backdrop {
     justify-content: space-between;
     padding: 1rem 1.5rem;
     background: #f3f4f5;
-    border-bottom: 1px solid rgba(196,197,217,0.3);
+    border-bottom: 1px solid rgba(196, 197, 217, 0.3);
 }
 
 .ai-modal-header-brand {
@@ -666,7 +822,9 @@ dialog::backdrop {
     font-size: 1rem;
 }
 
-.ai-modal-close:hover { color: #191c1d; }
+.ai-modal-close:hover {
+    color: #191c1d;
+}
 
 .ai-modal-input-section {
     padding: 1.5rem 1.5rem 0.5rem;
@@ -678,7 +836,7 @@ dialog::backdrop {
     width: 100%;
     padding: 0.75rem 2.5rem 0.75rem 0;
     border: none;
-    border-bottom: 1px solid rgba(196,197,217,0.5);
+    border-bottom: 1px solid rgba(196, 197, 217, 0.5);
     outline: none;
     font-size: 1rem;
     font-family: 'Newsreader', Georgia, serif;
@@ -695,7 +853,9 @@ dialog::backdrop {
     border-bottom-color: #434ca5;
 }
 
-.modal-body-input::placeholder { color: #c4c5d9; }
+.modal-body-input::placeholder {
+    color: #c4c5d9;
+}
 
 .ai-modal-send {
     position: absolute;
@@ -710,7 +870,9 @@ dialog::backdrop {
     padding: 0;
 }
 
-.ai-modal-send:hover { opacity: 0.8; }
+.ai-modal-send:hover {
+    opacity: 0.8;
+}
 
 .ai-modal-quick-actions {
     display: grid;
@@ -734,8 +896,8 @@ dialog::backdrop {
 }
 
 .ai-quick-action:hover {
-    background: rgba(133,246,229,0.2);
-    border-color: rgba(103,217,201,0.3);
+    background: rgba(133, 246, 229, 0.2);
+    border-color: rgba(103, 217, 201, 0.3);
 }
 
 .ai-quick-action .material-symbols-outlined {
@@ -762,8 +924,8 @@ dialog::backdrop {
     margin: 0 1.5rem 1.5rem;
     padding: 1rem;
     border-radius: 0.25rem;
-    background: rgba(255,219,207,0.10);
-    border: 1px solid rgba(255,181,155,0.3);
+    background: rgba(255, 219, 207, 0.10);
+    border: 1px solid rgba(255, 181, 155, 0.3);
 }
 
 .ai-modal-context-header {
@@ -798,7 +960,7 @@ dialog::backdrop {
     gap: 1rem;
     padding: 1rem 1.5rem;
     background: #f3f4f5;
-    border-top: 1px solid rgba(196,197,217,0.3);
+    border-top: 1px solid rgba(196, 197, 217, 0.3);
 }
 
 .ai-modal-cancel {
@@ -813,7 +975,9 @@ dialog::backdrop {
     transition: color 0.15s;
 }
 
-.ai-modal-cancel:hover { color: #191c1d; }
+.ai-modal-cancel:hover {
+    color: #191c1d;
+}
 
 .ai-modal-apply {
     padding: 0.5rem 1.5rem;
@@ -825,12 +989,17 @@ dialog::backdrop {
     font-weight: 600;
     cursor: pointer;
     transition: opacity 0.15s, transform 0.1s;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     position: relative;
 }
 
-.ai-modal-apply:hover { opacity: 0.9; }
-.ai-modal-apply:active { transform: scale(0.97); }
+.ai-modal-apply:hover {
+    opacity: 0.9;
+}
+
+.ai-modal-apply:active {
+    transform: scale(0.97);
+}
 
 .modal-submit-btn--loading {
     color: transparent;
@@ -842,7 +1011,7 @@ dialog::backdrop {
     position: absolute;
     width: 0.85rem;
     height: 0.85rem;
-    border: 2px solid rgba(255,255,255,0.4);
+    border: 2px solid rgba(255, 255, 255, 0.4);
     border-top-color: #ffffff;
     border-radius: 50%;
     animation: chat-spin 0.8s linear infinite;
@@ -871,7 +1040,7 @@ dialog::backdrop {
 .suggestion-card--inline {
     pointer-events: all;
     background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 /* US4: Source entry collapse (details/summary) */
@@ -899,7 +1068,9 @@ dialog::backdrop {
     transition: border-color 0.15s, color 0.15s;
 }
 
-.source-add-summary::-webkit-details-marker { display: none; }
+.source-add-summary::-webkit-details-marker {
+    display: none;
+}
 
 .source-add-summary:hover {
     border-color: #434ca5;
@@ -961,7 +1132,7 @@ details[open] .source-add-summary {
     gap: 0.5rem;
     padding: 0.5rem 1rem;
     flex-shrink: 0;
-    border-bottom: 1px solid rgba(196,197,217,0.15);
+    border-bottom: 1px solid rgba(196, 197, 217, 0.15);
 }
 
 .meta-chat-sessions select {
@@ -1001,7 +1172,7 @@ details[open] .source-add-summary {
 
 .chat-turn--user {
     background: transparent;
-    border: 1px solid rgba(196,197,217,0.3);
+    border: 1px solid rgba(196, 197, 217, 0.3);
     border-radius: 0.75rem 0.75rem 0 0.75rem;
     align-self: flex-end;
     max-width: 90%;
@@ -1033,11 +1204,24 @@ details[open] .source-add-summary {
     line-height: 1.5;
 }
 
-.chat-content--markdown p { margin: 0 0 0.5em; }
-.chat-content--markdown p:last-child { margin-bottom: 0; }
+.chat-content--markdown p {
+    margin: 0 0 0.5em;
+}
+
+.chat-content--markdown p:last-child {
+    margin-bottom: 0;
+}
+
 .chat-content--markdown ul,
-.chat-content--markdown ol { margin: 0 0 0.5em 1.2em; padding: 0; }
-.chat-content--markdown li { margin-bottom: 0.2em; }
+.chat-content--markdown ol {
+    margin: 0 0 0.5em 1.2em;
+    padding: 0;
+}
+
+.chat-content--markdown li {
+    margin-bottom: 0.2em;
+}
+
 .chat-content--markdown code {
     background: #f3f4f6;
     border-radius: 3px;
@@ -1045,6 +1229,7 @@ details[open] .source-add-summary {
     font-size: 0.85em;
     font-family: monospace;
 }
+
 .chat-content--markdown pre {
     background: #f3f4f6;
     border-radius: 4px;
@@ -1052,9 +1237,19 @@ details[open] .source-add-summary {
     overflow-x: auto;
     margin: 0 0 0.5em;
 }
-.chat-content--markdown pre code { background: none; padding: 0; }
-.chat-content--markdown strong { font-weight: 600; }
-.chat-content--markdown em { font-style: italic; }
+
+.chat-content--markdown pre code {
+    background: none;
+    padding: 0;
+}
+
+.chat-content--markdown strong {
+    font-weight: 600;
+}
+
+.chat-content--markdown em {
+    font-style: italic;
+}
 
 .chat-action-buttons {
     display: flex;
@@ -1075,7 +1270,7 @@ details[open] .source-add-summary {
     width: 100%;
     padding: 0.5rem 2.5rem 0.5rem 0;
     border: none;
-    border-bottom: 1px solid rgba(196,197,217,0.4);
+    border-bottom: 1px solid rgba(196, 197, 217, 0.4);
     border-radius: 0;
     background: transparent;
     font-size: 0.875rem;
@@ -1146,7 +1341,9 @@ details[open] .source-add-summary {
 }
 
 @keyframes chat-spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Editor toolbar (undo/redo) */
@@ -1240,4 +1437,3 @@ details[open] .source-add-summary {
     justify-content: flex-end;
     margin-top: 1rem;
 }
-
