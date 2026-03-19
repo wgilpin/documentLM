@@ -1,29 +1,49 @@
-<div class="suggestion-card suggestion-card--inline" id="suggestion-{{ s.id }}">
-    <div class="original">{{ s.original_text }}</div>
-    <div class="suggested">{{ s.suggested_text }}</div>
-    <div class="suggestion-actions">
-        <button class="btn btn-primary"
-                style="padding:0.2rem 0.6rem;font-size:0.8rem"
-                hx-post="/api/suggestions/{{ s.id }}/accept"
-                hx-swap="none"
-                hx-on::before-request="lockEditor()"
-                hx-on::after-request="
-                    unlockEditor();
-                    if (event.detail.successful) {
-                        const content = event.detail.xhr.responseText;
-                        window.tiptapEditor.commands.setContent(content, false);
-                        const ta = document.getElementById('document-content');
-                        if (ta) ta.value = content;
-                        document.getElementById('suggestion-{{ s.id }}').remove();
-                    } else {
-                        const card = document.getElementById('suggestion-{{ s.id }}');
-                        card.innerHTML = '<div class=\'suggestion-stale\'>Suggestion is outdated — the document changed. <button class=\'btn btn-ghost btn-xs\' onclick=\'this.closest(&quot;.suggestion-card--inline&quot;).remove()\'>Dismiss</button></div>';
-                    }
-                ">Accept</button>
-        <button class="btn btn-secondary"
-                style="padding:0.2rem 0.6rem;font-size:0.8rem"
-                hx-post="/api/suggestions/{{ s.id }}/reject"
-                hx-target="#suggestion-{{ s.id }}"
-                hx-swap="outerHTML">Reject</button>
-    </div>
+<div class="suggestion-card suggestion-card--inline" id="suggestion-{{ s.id }}" style="padding: 0.4rem; border-radius: 9999px; display: inline-flex; align-items: center; gap: 0.4rem; background: #fff; border: 1px solid #e0e0e0; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 0.5rem;">
+    <button class="btn"
+            style="padding: 0.3rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; cursor: pointer; transition: all 0.2s;"
+            onmouseover="this.style.backgroundColor='#dcfce7'"
+            onmouseout="this.style.backgroundColor='#f0fdf4'"
+            title="Accept"
+            hx-post="/api/suggestions/{{ s.id }}/accept"
+            hx-swap="none"
+            hx-on::before-request="lockEditor()"
+            hx-on::after-request="
+                unlockEditor();
+                if (event.detail.successful) {
+                    const content = event.detail.xhr.responseText;
+                    window.tiptapEditor.commands.setContent(content, false);
+                    const ta = document.getElementById('document-content');
+                    if (ta) ta.value = content;
+                    document.getElementById('suggestion-{{ s.id }}').remove();
+                } else {
+                    this.closest('.suggestion-card').innerHTML = '<div class=\'suggestion-stale\' style=\'padding:0.2rem 0.6rem;\'>Outdated ✕</div>';
+                }
+            ">
+        <span class="material-symbols-outlined" style="font-size: 1.1rem; font-weight: 600;">check</span>
+    </button>
+    
+    <div style="width: 1px; height: 1.2rem; background: #e0e0e0;"></div>
+
+    <button class="btn"
+            style="padding: 0.3rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; cursor: pointer; transition: all 0.2s;"
+            onmouseover="this.style.backgroundColor='#fee2e2'"
+            onmouseout="this.style.backgroundColor='#fef2f2'"
+            title="Reject"
+            hx-post="/api/suggestions/{{ s.id }}/reject"
+            hx-swap="none"
+            hx-on::before-request="lockEditor()"
+            hx-on::after-request="
+                unlockEditor();
+                if (event.detail.successful) {
+                    const content = event.detail.xhr.responseText;
+                    window.tiptapEditor.commands.setContent(content, false);
+                    const ta = document.getElementById('document-content');
+                    if (ta) ta.value = content;
+                    document.getElementById('suggestion-{{ s.id }}').remove();
+                } else {
+                    this.closest('.suggestion-card').innerHTML = '<div class=\'suggestion-stale\' style=\'padding:0.2rem 0.6rem;\'>Outdated ✕</div>';
+                }
+            ">
+        <span class="material-symbols-outlined" style="font-size: 1.1rem; font-weight: 600;">close</span>
+    </button>
 </div>

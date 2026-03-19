@@ -11,7 +11,8 @@
         <h3 class="sources-panel-header">Research Sources</h3>
 
         <details class="source-add-details">
-            <summary class="source-add-summary"><span class="material-symbols-outlined" style="font-size:1rem">add</span> Add Source</summary>
+            <summary class="source-add-summary"><span class="material-symbols-outlined"
+                    style="font-size:1rem">add</span> Add Source</summary>
 
             <div class="source-tabs">
                 <button class="tab-btn active" onclick="switchTab('note')">Note</button>
@@ -21,10 +22,8 @@
 
             <div id="tab-note" class="tab-panel active">
                 <div id="source-error-note" class="source-error-container"></div>
-                <form hx-post="/api/documents/{{ doc.id }}/sources"
-                      hx-target="#source-list"
-                      hx-swap="beforeend"
-                      hx-on::after-request="this.reset()">
+                <form hx-post="/api/documents/{{ doc.id }}/sources" hx-target="#source-list" hx-swap="beforeend"
+                    hx-on::after-request="this.reset()">
                     <input type="hidden" name="source_type" value="note">
                     <div class="form-group">
                         <label>Title</label>
@@ -43,10 +42,8 @@
 
             <div id="tab-url" class="tab-panel">
                 <div id="source-error-url" class="source-error-container"></div>
-                <form hx-post="/api/documents/{{ doc.id }}/sources"
-                      hx-target="#source-list"
-                      hx-swap="beforeend"
-                      hx-on::after-request="this.reset()">
+                <form hx-post="/api/documents/{{ doc.id }}/sources" hx-target="#source-list" hx-swap="beforeend"
+                    hx-on::after-request="this.reset()">
                     <input type="hidden" name="source_type" value="url">
                     <div class="form-group">
                         <label>Title</label>
@@ -69,11 +66,8 @@
 
             <div id="tab-pdf" class="tab-panel">
                 <div id="source-error-pdf" class="source-error-container"></div>
-                <form hx-post="/api/documents/{{ doc.id }}/sources"
-                      hx-target="#source-list"
-                      hx-swap="beforeend"
-                      hx-encoding="multipart/form-data"
-                      hx-on::after-request="this.reset()">
+                <form hx-post="/api/documents/{{ doc.id }}/sources" hx-target="#source-list" hx-swap="beforeend"
+                    hx-encoding="multipart/form-data" hx-on::after-request="this.reset()">
                     <input type="hidden" name="source_type" value="pdf">
                     <div class="form-group">
                         <label>Title</label>
@@ -91,10 +85,7 @@
             </div>
         </details>
 
-        <ul id="source-list"
-            hx-get="/api/documents/{{ doc.id }}/sources"
-            hx-trigger="load"
-            hx-swap="innerHTML">
+        <ul id="source-list" hx-get="/api/documents/{{ doc.id }}/sources" hx-trigger="load" hx-swap="innerHTML">
         </ul>
     </div>
     {% else %}
@@ -104,105 +95,100 @@
     <!-- COL 2: Editor pane (center) -->
     <div class="editor-pane">
         {% if doc %}
-        <input type="text" id="doc-title" value="{{ doc.title }}"
-               hx-put="/api/documents/{{ doc.id }}"
-               hx-ext="json-enc"
-               hx-trigger="change"
-               hx-vals='js:{"title": document.getElementById("doc-title").value, "content": document.getElementById("document-content").value}'
-               hx-swap="none">
-        <textarea id="document-content"
-                  hx-put="/api/documents/{{ doc.id }}"
-                  hx-ext="json-enc"
-                  hx-trigger="tiptap-changed delay:1s"
-                  hx-vals='js:{"content": document.getElementById("document-content").value, "title": document.getElementById("doc-title").value}'
-                  hx-swap="none"
-                  style="display:none">{{ doc.content | e }}</textarea>
+        <input type="text" id="doc-title" value="{{ doc.title }}" hx-put="/api/documents/{{ doc.id }}" hx-ext="json-enc"
+            hx-trigger="change"
+            hx-vals='js:{"title": document.getElementById("doc-title").value, "content": document.getElementById("document-content").value}'
+            hx-swap="none">
+        <textarea id="document-content" hx-put="/api/documents/{{ doc.id }}" hx-ext="json-enc"
+            hx-trigger="tiptap-changed delay:1s"
+            hx-vals='js:{"content": document.getElementById("document-content").value, "title": document.getElementById("doc-title").value}'
+            hx-swap="none" style="display:none">{{ doc.content | e }}</textarea>
 
         <div class="editor-toolbar">
             <button id="undo-btn" class="toolbar-btn" disabled title="Undo" aria-label="Undo">&#8630;</button>
             <button id="redo-btn" class="toolbar-btn" disabled title="Redo" aria-label="Redo">&#8631;</button>
             <span class="toolbar-sep"></span>
             <button id="fmt-bold" class="toolbar-btn" title="Bold" aria-label="Bold"><strong>B</strong></button>
-            <button id="fmt-italic" class="toolbar-btn" title="Italic" aria-label="Italic"><em style="font-family: Georgia, 'Times New Roman', serif;">I</em></button>
+            <button id="fmt-italic" class="toolbar-btn" title="Italic" aria-label="Italic"><em
+                    style="font-family: Georgia, 'Times New Roman', serif;">I</em></button>
             <span class="toolbar-sep"></span>
             <button id="fmt-h1" class="toolbar-btn" title="Heading 1" aria-label="Heading 1">H1</button>
             <button id="fmt-h2" class="toolbar-btn" title="Heading 2" aria-label="Heading 2">H2</button>
             <button id="fmt-h3" class="toolbar-btn" title="Heading 3" aria-label="Heading 3">H3</button>
             <span class="toolbar-sep"></span>
-            <button id="fmt-ul" class="toolbar-btn" title="Bullet list" aria-label="Bullet list"><span style="font-size: 1.2em; line-height: 1;">&#8226;</span></button>
+            <button id="fmt-ul" class="toolbar-btn" title="Bullet list" aria-label="Bullet list"><span
+                    style="font-size: 1.2em; line-height: 1;">&#8226;</span></button>
             <button id="fmt-ol" class="toolbar-btn" title="Numbered list" aria-label="Numbered list">1.</button>
-            <button id="fmt-quote" class="toolbar-btn" title="Blockquote" aria-label="Blockquote"><span style="font-size: 1.2em; line-height: 1;">&#10077;</span></button>
+            <button id="fmt-quote" class="toolbar-btn" title="Blockquote" aria-label="Blockquote"><span
+                    style="font-size: 1.2em; line-height: 1;">&#10077;</span></button>
             <button id="fmt-code" class="toolbar-btn" title="Code block" aria-label="Code block">&lt;/&gt;</button>
-            <button id="fmt-hr" class="toolbar-btn" title="Horizontal rule" aria-label="Horizontal rule">&#8212;</button>
+            <button id="fmt-hr" class="toolbar-btn" title="Horizontal rule"
+                aria-label="Horizontal rule">&#8212;</button>
             <button type="button" class="toolbar-btn" title="Settings" aria-label="Settings"
-                    onclick="document.getElementById('settings-dialog').showModal()">&#9881;</button>
+                onclick="document.getElementById('settings-dialog').showModal()">&#9881;</button>
             <button id="privacy-toggle-btn" class="toolbar-btn{% if doc.is_private %} toolbar-btn--active{% endif %}"
-                    title="{% if doc.is_private %}Private — click to make public{% else %}Public — click to make private{% endif %}"
-                    aria-label="Toggle privacy"
-                    hx-patch="/api/documents/{{ doc.id }}/privacy"
-                    hx-ext="json-enc"
-                    hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}'
-                    hx-swap="none"
-                    hx-on::after-request="window.location.reload()">{% if doc.is_private %}&#128274;{% else %}&#128275;{% endif %}</button>
-            <button id="delete-doc-btn" class="toolbar-btn toolbar-btn--danger" title="Delete document" aria-label="Delete document"
-                    onclick="document.getElementById('delete-confirm-dialog').showModal()">&#128465;</button>
+                title="{% if doc.is_private %}Private — click to make public{% else %}Public — click to make private{% endif %}"
+                aria-label="Toggle privacy" hx-patch="/api/documents/{{ doc.id }}/privacy" hx-ext="json-enc"
+                hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}' hx-swap="none"
+                hx-on::after-request="window.location.reload()">{% if doc.is_private %}&#128274;{% else %}&#128275;{%
+                endif %}</button>
+            <button id="delete-doc-btn" class="toolbar-btn toolbar-btn--danger" title="Delete document"
+                aria-label="Delete document"
+                onclick="document.getElementById('delete-confirm-dialog').showModal()">&#128465;</button>
         </div>
 
         <dialog id="delete-confirm-dialog" style="padding: 1.5rem;">
             <p>Delete <strong>{{ doc.title }}</strong>? This cannot be undone.</p>
             <div class="dialog-actions">
-                <button type="button" class="btn btn-danger"
-                        hx-delete="/api/documents/{{ doc.id }}"
-                        hx-on::after-request="window.location.href='/'">Delete</button>
-                <button type="button" class="btn" onclick="document.getElementById('delete-confirm-dialog').close()">Cancel</button>
+                <button type="button" class="btn btn-danger" hx-delete="/api/documents/{{ doc.id }}"
+                    hx-on::after-request="window.location.href='/'">Delete</button>
+                <button type="button" class="btn"
+                    onclick="document.getElementById('delete-confirm-dialog').close()">Cancel</button>
             </div>
         </dialog>
 
         <dialog id="settings-dialog" style="padding: 1.5rem; min-width: 28rem;">
             <h2 style="margin-top:0">Settings</h2>
-            <form id="settings-form"
-                  hx-post="/api/settings"
-                  hx-ext="json-enc"
-                  hx-swap="none"
-                  hx-on::after-request="if(event.detail.successful) document.getElementById('settings-dialog').close()">
+            <form id="settings-form" hx-post="/api/settings" hx-ext="json-enc" hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) document.getElementById('settings-dialog').close()">
                 <div class="form-group">
                     <label for="settings-name">Your name</label>
                     <input type="text" id="settings-name" name="display_name"
-                           value="{{ user_settings.display_name or '' }}"
-                           placeholder="e.g. Alice">
+                        value="{{ user_settings.display_name or '' }}" placeholder="e.g. Alice">
                 </div>
                 <div class="form-group">
                     <label for="settings-language">Language</label>
                     <select id="settings-language" name="language_code">
                         {% set lang = user_settings.language_code %}
-                        <option value="en"    {% if lang == 'en'    %}selected{% endif %}>English</option>
-                        <option value="en-GB" {% if lang == 'en-GB' %}selected{% endif %}>English (UK)</option>
-                        <option value="fr"    {% if lang == 'fr'    %}selected{% endif %}>French</option>
-                        <option value="de"    {% if lang == 'de'    %}selected{% endif %}>German</option>
-                        <option value="es"    {% if lang == 'es'    %}selected{% endif %}>Spanish</option>
-                        <option value="it"    {% if lang == 'it'    %}selected{% endif %}>Italian</option>
-                        <option value="pt"    {% if lang == 'pt'    %}selected{% endif %}>Portuguese</option>
-                        <option value="nl"    {% if lang == 'nl'    %}selected{% endif %}>Dutch</option>
-                        <option value="ja"    {% if lang == 'ja'    %}selected{% endif %}>Japanese</option>
-                        <option value="zh"    {% if lang == 'zh'    %}selected{% endif %}>Chinese (Simplified)</option>
-                        <option value="ar"    {% if lang == 'ar'    %}selected{% endif %}>Arabic</option>
+                        <option value="en" {% if lang=='en' %}selected{% endif %}>English</option>
+                        <option value="en-GB" {% if lang=='en-GB' %}selected{% endif %}>English (UK)</option>
+                        <option value="fr" {% if lang=='fr' %}selected{% endif %}>French</option>
+                        <option value="de" {% if lang=='de' %}selected{% endif %}>German</option>
+                        <option value="es" {% if lang=='es' %}selected{% endif %}>Spanish</option>
+                        <option value="it" {% if lang=='it' %}selected{% endif %}>Italian</option>
+                        <option value="pt" {% if lang=='pt' %}selected{% endif %}>Portuguese</option>
+                        <option value="nl" {% if lang=='nl' %}selected{% endif %}>Dutch</option>
+                        <option value="ja" {% if lang=='ja' %}selected{% endif %}>Japanese</option>
+                        <option value="zh" {% if lang=='zh' %}selected{% endif %}>Chinese (Simplified)</option>
+                        <option value="ar" {% if lang=='ar' %}selected{% endif %}>Arabic</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="settings-ai-instructions">
                         Universal AI instructions
-                        <span id="ai-instr-count" style="font-weight:normal; color:#888; margin-left:.5rem; font-size:.85em;">
+                        <span id="ai-instr-count"
+                            style="font-weight:normal; color:#888; margin-left:.5rem; font-size:.85em;">
                             {{ (user_settings.ai_instructions or '') | length }}/2000
                         </span>
                     </label>
-                    <textarea id="settings-ai-instructions" name="ai_instructions"
-                              rows="5" maxlength="2000"
-                              placeholder="e.g. Always respond in a formal academic tone."
-                              oninput="document.getElementById('ai-instr-count').textContent=this.value.length+'/2000'">{{ user_settings.ai_instructions or '' }}</textarea>
+                    <textarea id="settings-ai-instructions" name="ai_instructions" rows="5" maxlength="2000"
+                        placeholder="e.g. Always respond in a formal academic tone."
+                        oninput="document.getElementById('ai-instr-count').textContent=this.value.length+'/2000'">{{ user_settings.ai_instructions or '' }}</textarea>
                 </div>
                 <div class="dialog-actions">
                     <button type="submit" class="btn btn-primary">Save</button>
-                    <button type="button" class="btn" onclick="document.getElementById('settings-dialog').close()">Cancel</button>
+                    <button type="button" class="btn"
+                        onclick="document.getElementById('settings-dialog').close()">Cancel</button>
                 </div>
             </form>
         </dialog>
@@ -212,10 +198,8 @@
         </div>
 
         <!-- US3: Inline suggestions overlay -->
-        <div id="inline-suggestions"
-             hx-get="/api/documents/{{ doc.id }}/suggestions"
-             hx-trigger="load"
-             hx-swap="innerHTML">
+        <div id="inline-suggestions" hx-get="/api/documents/{{ doc.id }}/suggestions" hx-trigger="load"
+            hx-swap="innerHTML">
         </div>
 
         {% else %}
@@ -227,7 +211,7 @@
             <div class="form-group">
                 <label for="doc-overview">Overview</label>
                 <textarea id="doc-overview" name="overview" rows="4"
-                          placeholder="Describe what this document is about — the AI will research and plan it for you…"></textarea>
+                    placeholder="Describe what this document is about — the AI will research and plan it for you…"></textarea>
             </div>
             <button type="submit" class="btn btn-primary" style="margin-top:0.5rem">Create Document</button>
         </form>
@@ -249,33 +233,24 @@
             </div>
         </div>
         <div class="meta-chat-sessions">
-            <div id="chat-session-dropdown"
-                 hx-get="/api/documents/{{ doc.id }}/chat/sessions"
-                 hx-trigger="load"
-                 hx-swap="outerHTML">
+            <div id="chat-session-dropdown" hx-get="/api/documents/{{ doc.id }}/chat/sessions" hx-trigger="load"
+                hx-swap="outerHTML">
             </div>
-            <button id="chat-new-btn"
-                    class="btn btn-secondary btn-sm"
-                    hx-post="/api/documents/{{ doc.id }}/chat/sessions"
-                    hx-target="#chat-history"
-                    hx-swap="outerHTML">
+            <button id="chat-new-btn" class="btn btn-secondary btn-sm"
+                hx-post="/api/documents/{{ doc.id }}/chat/sessions" hx-target="#chat-history" hx-swap="outerHTML">
                 New Chat
             </button>
         </div>
-        <div id="chat-history"
-             hx-get="/api/documents/{{ doc.id }}/chat"
-             hx-trigger="load"
-             hx-swap="innerHTML">
+        <div id="chat-history" hx-get="/api/documents/{{ doc.id }}/chat" hx-trigger="load" hx-swap="innerHTML">
         </div>
         <div id="chat-action-buttons"></div>
         <div class="chat-input-wrap">
-            <form class="chat-input-form"
-                  hx-post="/api/documents/{{ doc.id }}/chat"
-                  hx-target="#chat-history"
-                  hx-swap="beforeend"
-                  hx-on::before-request="lockEditor(); document.getElementById('chat-send-btn').classList.add('btn--loading')"
-                  hx-on::after-request="unlockEditor(); document.getElementById('chat-send-btn').classList.remove('btn--loading'); this.reset()">
-                <textarea name="content" class="chat-input-textarea" rows="2" placeholder="Ask about sources/document…" required></textarea>
+            <form class="chat-input-form" hx-post="/api/documents/{{ doc.id }}/chat" hx-target="#chat-history"
+                hx-swap="beforeend"
+                hx-on::before-request="lockEditor(); document.getElementById('chat-send-btn').classList.add('btn--loading')"
+                hx-on::after-request="unlockEditor(); document.getElementById('chat-send-btn').classList.remove('btn--loading'); this.reset()">
+                <textarea name="content" class="chat-input-textarea" rows="2" placeholder="Ask about sources/document…"
+                    required></textarea>
                 <button type="submit" id="chat-send-btn" class="btn btn-primary btn-sm">Send</button>
             </form>
         </div>
@@ -287,10 +262,10 @@
 <!-- Source note viewer modal -->
 {% if doc %}
 <dialog id="source-note-modal" style="padding: 1.5rem; min-width: 32rem; max-width: 60rem; max-height: 80vh;">
-  <div id="source-note-modal-body"></div>
-  <div class="dialog-actions" style="margin-top: 1rem;">
-    <form method="dialog"><button class="btn">Close</button></form>
-  </div>
+    <div id="source-note-modal-body"></div>
+    <div class="dialog-actions" style="margin-top: 1rem;">
+        <form method="dialog"><button class="btn">Close</button></form>
+    </div>
 </dialog>
 {% endif %}
 
@@ -303,18 +278,22 @@
             <span class="material-symbols-outlined ai-modal-icon">auto_awesome</span>
             <span class="ai-modal-label">AI Assistant</span>
         </div>
-        <button type="button" class="ai-modal-close"
-                onclick="document.getElementById('command-modal').close()"
-                aria-label="Close">
+        <button type="button" class="ai-modal-close" onclick="document.getElementById('command-modal').close()"
+            aria-label="Close">
             <span class="material-symbols-outlined">close</span>
         </button>
     </div>
-    <form id="modal-comment-form"
-          hx-post="/api/documents/{{ doc.id }}/comments"
-          hx-target="#inline-suggestions"
-          hx-swap="beforeend"
-          hx-on::before-request="lockEditor(); document.getElementById('modal-submit-btn').classList.add('modal-submit-btn--loading')"
-          hx-on::after-request="unlockEditor(); document.getElementById('modal-submit-btn').classList.remove('modal-submit-btn--loading'); document.getElementById('command-modal').close(); this.reset()">
+    <form id="modal-comment-form" hx-post="/api/documents/{{ doc.id }}/comments" hx-target="#inline-suggestions"
+        hx-swap="beforeend"
+        hx-on:suggestion-created="
+            if (window.tiptapEditor && event.detail && event.detail.value) {
+                window.tiptapEditor.commands.setContent(event.detail.value, false);
+                const ta = document.getElementById('document-content');
+                if (ta) ta.value = event.detail.value;
+            }
+        "
+        hx-on::before-request="lockEditor(); document.getElementById('modal-submit-btn')?.classList.add('modal-submit-btn--loading')"
+        hx-on::after-request="unlockEditor(); document.getElementById('modal-submit-btn')?.classList.remove('modal-submit-btn--loading'); document.getElementById('command-modal').close(); this.reset()">
         <input type="hidden" name="selection_start" id="modal-sel-start" value="0">
         <input type="hidden" name="selection_end" id="modal-sel-end" value="0">
         <input type="hidden" name="selected_text" id="modal-sel-text" value="">
@@ -329,7 +308,7 @@
         <!-- Quick actions -->
         <div class="ai-modal-quick-actions">
             <button type="button" class="ai-quick-action"
-                    onclick="document.querySelector('.modal-body-input').value='Rewrite for clarity'; document.getElementById('modal-comment-form').requestSubmit()">
+                onclick="document.querySelector('.modal-body-input').value='Rewrite for clarity'; document.getElementById('modal-comment-form').requestSubmit()">
                 <span class="material-symbols-outlined">edit_note</span>
                 <div>
                     <div class="ai-quick-action-title">Rewrite</div>
@@ -337,15 +316,15 @@
                 </div>
             </button>
             <button type="button" class="ai-quick-action"
-                    onclick="document.querySelector('.modal-body-input').value='Summarize the main points'; document.getElementById('modal-comment-form').requestSubmit()">
-                <span class="material-symbols-outlined">reorder</span>
+                onclick="document.querySelector('.modal-body-input').value='Expand this section'; document.getElementById('modal-comment-form').requestSubmit()">
+                <span class="material-symbols-outlined">expand</span>
                 <div>
-                    <div class="ai-quick-action-title">Summarize</div>
-                    <div class="ai-quick-action-sub">Condense main points</div>
+                    <div class="ai-quick-action-title">Expand</div>
+                    <div class="ai-quick-action-sub">Expand this section</div>
                 </div>
             </button>
             <button type="button" class="ai-quick-action"
-                    onclick="document.querySelector('.modal-body-input').value='Find supporting evidence'; document.getElementById('modal-comment-form').requestSubmit()">
+                onclick="document.querySelector('.modal-body-input').value='Find supporting evidence'; document.getElementById('modal-comment-form').requestSubmit()">
                 <span class="material-symbols-outlined">library_books</span>
                 <div>
                     <div class="ai-quick-action-title">Evidence</div>
@@ -353,7 +332,7 @@
                 </div>
             </button>
             <button type="button" class="ai-quick-action"
-                    onclick="document.querySelector('.modal-body-input').value='Change the tone to professional'; document.getElementById('modal-comment-form').requestSubmit()">
+                onclick="document.querySelector('.modal-body-input').value='Change the tone to professional'; document.getElementById('modal-comment-form').requestSubmit()">
                 <span class="material-symbols-outlined">psychology</span>
                 <div>
                     <div class="ai-quick-action-title">Tone</div>
@@ -373,8 +352,7 @@
 
         <!-- Footer -->
         <div class="ai-modal-footer">
-            <button type="button" class="ai-modal-cancel"
-                    onclick="document.getElementById('command-modal').close()">
+            <button type="button" class="ai-modal-cancel" onclick="document.getElementById('command-modal').close()">
                 Cancel
             </button>
             <button type="submit" id="modal-submit-btn" class="modal-submit-btn ai-modal-apply">

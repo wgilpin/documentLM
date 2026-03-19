@@ -96,6 +96,26 @@ async def submit_comment(
         suggested_text=suggested_text,
     )
     db.add(suggestion_orm)
+
+    # Insert the markdown directly into the document via the service layer
+    from writer.models.schemas import DocumentUpdate
+    from writer.services.document_service import is_selection_valid
+    
+    content = doc.content or ""
+    if is_selection_valid(content, comment.selection_start, comment.selection_end, selected_text):
+        # We append a universally unique plaintext boundary marker to protect against TipTap AST normalization.
+        inline_text = f"[[[{suggestion_orm.id}]]]~~{selected_text}~~ ***{suggested_text}***[[[/{suggestion_orm.id}]]]"
+        new_content = (
+            content[:comment.selection_start]
+            + inline_text
+            + content[comment.selection_end:]
+        )
+        await document_service.update_document(
+            db, doc_id, DocumentUpdate(content=new_content), current_user.id
+        )
+        comment_orm.selection_end = comment.selection_start + len(inline_text)
+        comment_orm.selected_text = inline_text
+
     await db.flush()
     await db.refresh(suggestion_orm)
     await db.commit()
@@ -103,11 +123,17 @@ async def submit_comment(
     suggestion = SuggestionResponse.model_validate(suggestion_orm)
 
     if request.headers.get("HX-Request"):
+        import json
         tmpl = get_templates()
         html = tmpl.get_template("partials/suggestion.html").render(
             {"s": suggestion, "request": request}
         )
-        return HTMLResponse(html)
+        response = HTMLResponse(html)
+        if 'new_content' in locals():
+            response.headers["HX-Trigger"] = json.dumps({
+                "suggestionCreated": new_content
+            })
+        return response
     return suggestion
 
 
@@ -146,6 +172,7 @@ async def accept(
     except SuggestionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Suggestion not found") from exc
     except ValueError as exc:
+        await db.commit()
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if request.headers.get("HX-Request"):
@@ -156,13 +183,17 @@ async def accept(
 @router.post("/api/suggestions/{suggestion_id}/reject", response_model=None)
 async def reject(
     request: Request, db: DbDep, suggestion_id: uuid.UUID
-) -> HTMLResponse | SuggestionResponse:
+) -> PlainTextResponse | SuggestionResponse:
     try:
-        suggestion = await reject_suggestion(db, suggestion_id)
+        suggestion, doc = await reject_suggestion(db, suggestion_id)
         await db.commit()
     except SuggestionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Suggestion not found") from exc
+    except ValueError as exc:
+        await db.commit()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if request.headers.get("HX-Request"):
-        return HTMLResponse("")
+        # We return PlainTextResponse to update the editor via hx-swap=none
+        return PlainTextResponse(doc.content or "")
     return suggestion

@@ -138,18 +138,32 @@ async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> Docum
         raise DocumentNotFoundError(comment.document_id)
 
     content = doc.content or ""
-    if not is_selection_valid(
-        content, comment.selection_start, comment.selection_end, comment.selected_text
-    ):
-        suggestion.status = SuggestionStatus.stale
-        await db.flush()
-        raise ValueError("Selection is stale — document was edited after suggestion was created")
-
-    doc.content = (
-        content[: comment.selection_start]
-        + suggestion.suggested_text
-        + content[comment.selection_end :]
-    )
+    
+    start_marker = f"[[[{suggestion_id}]]]"
+    end_marker = f"[[[/{suggestion_id}]]]"
+    
+    start_idx = content.find(start_marker)
+    end_idx = content.find(end_marker)
+    
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        doc.content = (
+            content[:start_idx]
+            + suggestion.suggested_text
+            + content[end_idx + len(end_marker):]
+        )
+    else:
+        # Fallback if markers were stripped or not present for old suggestions
+        if is_selection_valid(content, comment.selection_start, comment.selection_end, comment.selected_text):
+            doc.content = (
+                content[: comment.selection_start]
+                + suggestion.suggested_text
+                + content[comment.selection_end :]
+            )
+        else:
+            suggestion.status = SuggestionStatus.stale
+            await db.flush()
+            raise ValueError(f"Selection is stale — document overrides failed. UUID markers not found.")
+            
     suggestion.status = SuggestionStatus.accepted
     comment.status = CommentStatus.resolved
     await db.flush()
@@ -167,7 +181,7 @@ def is_selection_valid(content: str, start: int, end: int, selected_text: str) -
     return content[start:end] == selected_text
 
 
-async def reject_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> SuggestionResponse:
+async def reject_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> tuple[SuggestionResponse, Document]:
     result = await db.execute(select(Suggestion).where(Suggestion.id == suggestion_id))
     suggestion = result.scalar_one_or_none()
     if suggestion is None:
@@ -175,11 +189,45 @@ async def reject_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> Sugge
 
     comment_result = await db.execute(select(Comment).where(Comment.id == suggestion.comment_id))
     comment = comment_result.scalar_one_or_none()
+    if comment is None:
+        raise DocumentNotFoundError(suggestion.comment_id)
+        
+    doc_result = await db.execute(select(Document).where(Document.id == comment.document_id))
+    doc = doc_result.scalar_one_or_none()
+    if doc is None:
+        raise DocumentNotFoundError(comment.document_id)
 
     suggestion.status = SuggestionStatus.rejected
-    if comment is not None:
-        comment.status = CommentStatus.resolved
+    comment.status = CommentStatus.resolved
+
+    content = doc.content or ""
+    
+    start_marker = f"[[[{suggestion_id}]]]"
+    end_marker = f"[[[/{suggestion_id}]]]"
+    
+    start_idx = content.find(start_marker)
+    end_idx = content.find(end_marker)
+
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        doc.content = (
+            content[:start_idx]
+            + suggestion.original_text
+            + content[end_idx + len(end_marker):]
+        )
+    else:
+        if is_selection_valid(content, comment.selection_start, comment.selection_end, comment.selected_text):
+            doc.content = (
+                content[: comment.selection_start]
+                + suggestion.original_text
+                + content[comment.selection_end :]
+            )
+        else:
+            suggestion.status = SuggestionStatus.stale
+            await db.flush()
+            raise ValueError("Selection is stale — UUID block markers not found and selection is compromised.")
+
     await db.flush()
     await db.refresh(suggestion)
     logger.info("Rejected suggestion id=%s", suggestion_id)
-    return SuggestionResponse.model_validate(suggestion)
+    return SuggestionResponse.model_validate(suggestion), doc
+
