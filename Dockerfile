@@ -4,8 +4,10 @@ WORKDIR /app
 
 RUN pip install uv
 
-COPY pyproject.toml uv.lock* ./
-COPY src/ src/
+COPY documentLM/pyproject.toml documentLM/uv.lock documentLM/README.md ./
+COPY documentLM/src/ src/
+COPY documentLM/static/ static/
+COPY nlp_utils/ /nlp_utils/
 
 RUN uv sync --no-dev
 

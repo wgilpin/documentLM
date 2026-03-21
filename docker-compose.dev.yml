@@ -1,0 +1,8 @@
+# docker-compose.dev.yml
+services:
+  postgres:
+    ports:
+      - "5432:5432" # Exposed for local DB tools
+  app:
+    ports:
+      - "8000:8000" # Exposed for local browser testing

@@ -2,23 +2,41 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: writer
-      POSTGRES_USER: writer
-      POSTGRES_PASSWORD: writer
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${DB_NAME:-writer}
+      POSTGRES_USER: ${DB_USER:-writer}
+      POSTGRES_PASSWORD: ${DB_PASSWORD} # Pull from .env
+    # REMOVED: ports 5432:5432 (Only the app needs to see the DB)
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
 
   app:
-    build: .
+    build:
+      context: ..
+      dockerfile: documentLM/Dockerfile
     depends_on:
       - postgres
     env_file: .env
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
-      - ./data/chroma:/app/data/chroma
+      - ./data/chroma:/home/appuser/app/data/chroma
+    networks:
+      - frontend
+      - backend
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    networks:
+      - frontend
+
+networks:
+  frontend: # Connects Tunnel to App
+  backend:  # Connects App to DB
+    internal: true # This network has NO internet access
 
 volumes:
   postgres_data:
