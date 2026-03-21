@@ -1,5 +1,31 @@
 # Product Requirements Document: AI Document Workbench
 
+## Deployment & First-Time Setup
+
+### Running with Docker
+
+```bash
+docker compose up -d --build
+```
+
+### Creating the first user
+
+The app uses invite codes for registration. Generate one with:
+
+```bash
+docker compose exec writer uv run python -m writer.cli.admin generate-invite
+```
+
+This runs inside the `writer` app container. Then go to `/register` in the app and enter the printed code to create your account.
+
+### Resetting a password
+
+```bash
+docker compose exec writer uv run python -m writer.cli.admin reset-password <email> <new_password>
+```
+
+---
+
 ## 1. Product Vision & Core Concept
 
 The AI Document Workbench is a tool designed to shift the primary AI interaction model from "chat as the artifact" to "document as the artifact." It combines the grounded, corpus-based generation of NotebookLM with the autonomous data-gathering of Gemini Deep Research.

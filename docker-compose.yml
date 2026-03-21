@@ -4,39 +4,31 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-writer}
       POSTGRES_USER: ${DB_USER:-writer}
-      POSTGRES_PASSWORD: ${DB_PASSWORD} # Pull from .env
-    # REMOVED: ports 5432:5432 (Only the app needs to see the DB)
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
 
-  app:
+  writer:
     build:
       context: ..
       dockerfile: documentLM/Dockerfile
     depends_on:
       - postgres
     env_file: .env
-    ports:
-      - "8001:8000"
+    # No ports exposed here for security
     volumes:
       - ./data/chroma:/home/appuser/app/data/chroma
     networks:
-      - frontend
+      - gateway_net
       - backend
 
-  tunnel:
-    image: cloudflare/cloudflared:latest
-    restart: always
-    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
-    networks:
-      - frontend
-
 networks:
-  frontend: # Connects Tunnel to App
-  backend:  # Connects App to DB
-    internal: true # This network has NO internet access
+  gateway_net:
+    external: true # The "Front Door" shared with the tunnel
+  backend:
+    internal: true # The "Back Hallway" shared only with the DB
 
 volumes:
   postgres_data:
