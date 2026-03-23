@@ -481,9 +481,9 @@ main:has(.editor-layout) {
 
 .source-item {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.4rem;
+    position: relative;
     padding: 0.75rem;
     border: 1px solid transparent;
     border-radius: 0.5rem;
@@ -504,11 +504,32 @@ main:has(.editor-layout) {
     margin-top: 1px;
 }
 
+.source-meta {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.source-info {
+    flex: 1;
+    min-width: 0;
+}
+
 .source-title {
     font-size: 0.8rem;
     font-weight: 600;
     color: #191c1d;
     line-height: 1.3;
+    word-break: break-word;
+}
+
+.source-actions {
+    display: flex;
+    gap: 0.15rem;
+    position: absolute;
+    bottom: 0.4rem;
+    right: 0.4rem;
 }
 
 .source-date {
@@ -1111,16 +1132,41 @@ details[open] .source-add-summary {
     color: #434ca5;
 }
 
-/* US5: Hover-only delete button */
-.btn-ghost-danger {
-    visibility: hidden;
+/* Source action icon buttons */
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: transparent;
-    color: #9ca3af;
     border: none;
     cursor: pointer;
-    padding: 0.1rem 0.3rem;
-    font-size: 0.85rem;
-    border-radius: 3px;
+    padding: 0.2rem;
+    border-radius: 4px;
+    color: #9ca3af;
+    text-decoration: none;
+    line-height: 1;
+}
+
+.btn-icon .material-symbols-outlined {
+    font-size: 1rem;
+}
+
+.source-view-btn {
+    visibility: hidden;
+}
+
+.source-view-btn:hover {
+    color: #434ca5;
+    background: #eef2ff;
+}
+
+.source-item:hover .source-view-btn {
+    visibility: visible;
+}
+
+/* Hover-only delete button */
+.btn-ghost-danger {
+    visibility: hidden;
 }
 
 .source-item:hover .btn-ghost-danger {
