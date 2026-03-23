@@ -30,6 +30,7 @@ dependencies = [
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
+    "pytest-playwright>=0.5.0",
     "ruff>=0.7.0",
     "mypy>=1.13.0",
 ]
@@ -58,8 +59,15 @@ disallow_any_generics = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "--ignore=tests/integration"
-markers = ["integration: requires a live PostgreSQL database (run with docker-compose up -d postgres)"]
+# integration tests require a live postgres; e2e tests require a display server
+addopts = "--ignore=tests/integration --ignore=tests/e2e"
+markers = [
+    "integration: requires a live PostgreSQL database (run with docker-compose up -d postgres)",
+    "e2e: end-to-end Playwright tests (run with uv run pytest tests/e2e/ --headed)",
+]
 
 [tool.uv.sources]
 nlp-utils = { path = "../nlp_utils" }
+
+[dependency-groups]
+dev = []
