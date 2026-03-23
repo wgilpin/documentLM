@@ -10,6 +10,8 @@ source .env
 set +a
 export DATABASE_URL="${DATABASE_URL//@postgres:/@localhost:}"
 
+export DEV_PASSWORD=devPassword1234
+
 # Run migrations then start the app
 uv run alembic upgrade head
 uv run uvicorn writer.main:app --reload

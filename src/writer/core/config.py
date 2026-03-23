@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     pdf_storage_path: str = "./data/pdfs"
     undo_buffer_size: int = 2000
     dev_seed_doc_email: str = ""
+    # When set, this password is accepted for any valid account (dev only).
+    # NEVER set this in production — a loud warning is logged at startup if present.
+    dev_password: str = ""
     # Must be set in .env: at least 32 random bytes (e.g. secrets.token_hex(32))
     secret_key: str = ""
 

@@ -108,6 +108,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     if not settings.secret_key:
         log.warning("SECRET_KEY is not set — using insecure dev key, do not use in production")
 
+    if settings.dev_password:
+        log.error(
+            "DEV_PASSWORD is set — any valid account can log in with this password. "
+            "NEVER run with DEV_PASSWORD set in production."
+        )
+
     if settings.dev_seed_doc_email:
         await _seed_document(settings.dev_seed_doc_email, log)
 
