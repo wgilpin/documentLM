@@ -2,23 +2,33 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: writer
-      POSTGRES_USER: writer
-      POSTGRES_PASSWORD: writer
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${DB_NAME:-writer}
+      POSTGRES_USER: ${DB_USER:-writer}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
 
-  app:
-    build: .
+  writer:
+    build:
+      context: ..
+      dockerfile: documentLM/Dockerfile
     depends_on:
       - postgres
     env_file: .env
-    ports:
-      - "8000:8000"
+    # No ports exposed here for security
     volumes:
-      - ./data/chroma:/app/data/chroma
+      - ./data/chroma:/home/appuser/app/data/chroma
+    networks:
+      - gateway_net
+      - backend
+
+networks:
+  gateway_net:
+    external: true # The "Front Door" shared with the tunnel
+  backend:
+    internal: true # The "Back Hallway" shared only with the DB
 
 volumes:
   postgres_data:
