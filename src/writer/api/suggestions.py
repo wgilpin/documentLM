@@ -96,6 +96,7 @@ async def submit_comment(
         suggested_text=suggested_text,
     )
     db.add(suggestion_orm)
+    await db.flush()
 
     # Insert the markdown directly into the document via the service layer
     from writer.models.schemas import DocumentUpdate
@@ -103,8 +104,12 @@ async def submit_comment(
     
     content = doc.content or ""
     if is_selection_valid(content, comment.selection_start, comment.selection_end, selected_text):
-        # We append a universally unique plaintext boundary marker to protect against TipTap AST normalization.
-        inline_text = f"[[[{suggestion_orm.id}]]]~~{selected_text}~~ ***{suggested_text}***[[[/{suggestion_orm.id}]]]"
+        # Format multi-line blocks line-by-line so markdown tags do not break across paragraphs
+        old_lines = [f"~~{line.strip()}~~" if line.strip() else "" for line in selected_text.split("\n")]
+        new_lines = [f"***{line.strip()}***" if line.strip() else "" for line in suggested_text.split("\n")]
+        
+        inline_text = "\n".join(old_lines) + "\n" + "\n".join(new_lines)
+
         new_content = (
             content[:comment.selection_start]
             + inline_text

@@ -282,7 +282,8 @@ class TestAcceptRejectSuggestion:
             r.scalar_one_or_none.return_value = val
             return r
 
-        db.execute = AsyncMock(side_effect=[make_result(suggestion), make_result(comment)])
+        doc_obj = _make_doc(content="old text here")
+        db.execute = AsyncMock(side_effect=[make_result(suggestion), make_result(comment), make_result(doc_obj)])
 
-        result = await reject_suggestion(db, suggestion.id)
+        result, _ = await reject_suggestion(db, suggestion.id)
         assert isinstance(result, SuggestionResponse)

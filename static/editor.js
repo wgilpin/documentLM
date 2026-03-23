@@ -10,6 +10,56 @@ const aiBtn        = document.getElementById('ai-block-btn');
 let pendingSelection = { start: 0, end: 0, text: '' };
 let lastChangeIsAi   = false;
 
+// ── Persistent LocalStorage History ───────────────────────────────────────
+const docIdMatch = contentInput.getAttribute('hx-put')?.match(/\/documents\/(.+)$/);
+const DOC_ID = docIdMatch ? docIdMatch[1] : 'unknown-doc';
+const HISTORY_KEY = `tiptap-history-${DOC_ID}`;
+
+let localHistory = [];
+let localHistoryIndex = -1;
+
+try {
+    const saved = localStorage.getItem(HISTORY_KEY);
+    if (saved) {
+        localHistory = JSON.parse(saved);
+        localHistoryIndex = localHistory.length - 1;
+    }
+} catch(e) {}
+
+// If history is completely empty, initialize it with current server doc state
+if (localHistory.length === 0) {
+    localHistory.push(contentInput.value);
+    localHistoryIndex = 0;
+} else if (localHistory[localHistoryIndex] !== contentInput.value) {
+    // If server doc state (initial load) differs from last local history (e.g. another device edited), pin it
+    localHistory.push(contentInput.value);
+    localHistoryIndex++;
+}
+
+let historyDebounce = null;
+
+function saveToHistory(text) {
+    if (localHistory[localHistoryIndex] === text) return;
+    
+    // Do not write AI `old/new` rendering states to the undo buffer.
+    if (document.querySelector('.suggestion-card')) return;
+    
+    if (localHistoryIndex < localHistory.length - 1) {
+        localHistory = localHistory.slice(0, localHistoryIndex + 1);
+    }
+    
+    localHistory.push(text);
+    if (localHistory.length > 50) localHistory.shift(); 
+    localHistoryIndex = localHistory.length - 1;
+    
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(localHistory)); } catch(e) {}
+    
+    if (window.tiptapEditor) updateToolbar(window.tiptapEditor);
+}
+
+function canUndoLocal() { return localHistoryIndex > 0; }
+function canRedoLocal() { return localHistoryIndex < localHistory.length - 1; }
+
 // ── Active block tracking ─────────────────────────────────────────────────
 let activeBlockPos  = null;
 let activeBlockNode = null;
@@ -69,8 +119,8 @@ const fmtActiveChecks = [
 ];
 
 function updateToolbar(editor) {
-    const canUndo = editor.can().undo();
-    const canRedo = editor.can().redo();
+    const canUndo = canUndoLocal();
+    const canRedo = canRedoLocal();
     undoBtn.disabled = !canUndo;
     redoBtn.disabled = !canRedo;
     undoBtn.title = canUndo
@@ -86,15 +136,21 @@ function updateToolbar(editor) {
 const editor = new Editor({
     element: mountEl,
     extensions: [
-        StarterKit,
+        StarterKit.configure({ history: false }),
         Markdown,
         Focus.configure({ className: 'has-focus', mode: 'deepest' }),
     ],
     content: contentInput.value,
     onUpdate({ editor }) {
-        contentInput.value = editor.storage.markdown.getMarkdown();
+        const md = editor.storage.markdown.getMarkdown();
+        contentInput.value = md;
         contentInput.dispatchEvent(new Event('tiptap-changed'));
         updateToolbar(editor);
+        
+        clearTimeout(historyDebounce);
+        historyDebounce = setTimeout(() => {
+            saveToHistory(md);
+        }, 600); // 600ms inactivity before snapping history
     },
     onTransaction({ editor }) {
         updateToolbar(editor);
@@ -106,12 +162,38 @@ window.tiptapEditor = editor;
 mountEl.classList.remove('tiptap-editor--loading');
 updateToolbar(editor);
 
-// ── Undo/redo buttons ─────────────────────────────────────────────────────
+// ── Undo/redo buttons & Shortcuts ─────────────────────────────────────────
 undoBtn.addEventListener('click', () => {
+    if (!canUndoLocal()) return;
     lastChangeIsAi = false;
-    editor.chain().focus().undo().run();
+    localHistoryIndex--;
+    const oldText = localHistory[localHistoryIndex];
+    editor.commands.setContent(oldText, false);
+    contentInput.value = oldText;
+    contentInput.dispatchEvent(new Event('tiptap-changed'));
+    updateToolbar(editor);
 });
-redoBtn.addEventListener('click', () => editor.chain().focus().redo().run());
+
+redoBtn.addEventListener('click', () => {
+    if (!canRedoLocal()) return;
+    localHistoryIndex++;
+    const newText = localHistory[localHistoryIndex];
+    editor.commands.setContent(newText, false);
+    contentInput.value = newText;
+    contentInput.dispatchEvent(new Event('tiptap-changed'));
+    updateToolbar(editor);
+});
+
+mountEl.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        e.shiftKey ? redoBtn.click() : undoBtn.click();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redoBtn.click();
+    }
+});
 
 // ── Formatting buttons ────────────────────────────────────────────────────
 fmtButtons.bold.addEventListener('click', () => editor.chain().focus().toggleBold().run());
