@@ -1,8 +1,18 @@
-# docker-compose.dev.yml
+# docker-compose.dev.yml — run DB in Docker, app locally
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   uv run uvicorn writer.main:app --reload
 services:
   postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-writer}
+      POSTGRES_USER: ${DB_USER:-writer}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432" # Exposed for local DB tools
-  app:
-    ports:
-      - "8000:8000" # Exposed for local browser testing
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -2,7 +2,7 @@
 
 import logging
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://writer:writer@localhost:5432/writer"
-    gemini_api_key: str = ""
+    gemini_api_key: str = Field(default="", alias="GOOGLE_API_KEY", validation_alias="GOOGLE_API_KEY")
     gemini_model: str = "gemini-2.0-flash"
     chroma_path: str = "./data/chroma"
     pdf_storage_path: str = "./data/pdfs"
-    undo_buffer_size: int = 1000
+    undo_buffer_size: int = 2000
     dev_seed_doc_email: str = ""
     # Must be set in .env: at least 32 random bytes (e.g. secrets.token_hex(32))
     secret_key: str = ""
@@ -28,8 +28,8 @@ class Settings(BaseSettings):
                 return n
         except (TypeError, ValueError):
             pass
-        logger.warning("Invalid UNDO_BUFFER_SIZE value %r; falling back to 1000", v)
-        return 1000
+        logger.warning("Invalid UNDO_BUFFER_SIZE value %r; falling back to 2000", v)
+        return 2000
 
     model_config = {
         "env_file": ".env",

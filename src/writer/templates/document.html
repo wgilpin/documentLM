@@ -88,8 +88,6 @@
         <ul id="source-list" hx-get="/api/documents/{{ doc.id }}/sources" hx-trigger="load" hx-swap="innerHTML">
         </ul>
     </div>
-    {% else %}
-    <div class="sources-panel"></div>
     {% endif %}
 
     <!-- COL 2: Editor pane (center) -->
@@ -220,7 +218,7 @@
 
     <!-- COL 3: Resize handle -->
     {% if doc %}
-    <div class="resize-handle" id="resize-handle"></div>
+
     {% endif %}
 
     <!-- COL 4: Chat panel (right) -->
