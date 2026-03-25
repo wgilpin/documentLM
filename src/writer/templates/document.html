@@ -127,16 +127,14 @@
                 <button id="fmt-hr" class="toolbar-btn" title="Horizontal rule"
                     aria-label="Horizontal rule">&#8212;</button>
             </span>
-            <span class="toolbar-overflow-group--2">
-                <button type="button" class="toolbar-btn" title="Settings" aria-label="Settings"
-                    onclick="document.getElementById('settings-dialog').showModal()">&#9881;</button>
-                <button id="privacy-toggle-btn" class="toolbar-btn{% if doc.is_private %} toolbar-btn--active{% endif %}"
-                    title="{% if doc.is_private %}Private — click to make public{% else %}Public — click to make private{% endif %}"
-                    aria-label="Toggle privacy" hx-patch="/api/documents/{{ doc.id }}/privacy" hx-ext="json-enc"
-                    hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}' hx-swap="none"
-                    hx-on::after-request="window.location.reload()">{% if doc.is_private %}&#128274;{% else %}&#128275;{%
-                    endif %}</button>
-            </span>
+            <button type="button" class="toolbar-btn" title="Settings" aria-label="Settings"
+                onclick="document.getElementById('settings-dialog').showModal()">&#9881;</button>
+            <button id="privacy-toggle-btn" class="toolbar-btn{% if doc.is_private %} toolbar-btn--active{% endif %}"
+                title="{% if doc.is_private %}Private — click to make public{% else %}Public — click to make private{% endif %}"
+                aria-label="Toggle privacy" hx-patch="/api/documents/{{ doc.id }}/privacy" hx-ext="json-enc"
+                hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}' hx-swap="none"
+                hx-on::after-request="window.location.reload()">{% if doc.is_private %}&#128274;{% else %}&#128275;{%
+                endif %}</button>
             <div class="toolbar-menu">
                 <button class="toolbar-btn" title="More options" aria-label="More options"
                         onclick="event.stopPropagation(); const m=document.getElementById('toolbar-more-menu'); if(m.hidden){const r=this.closest('.editor-toolbar').getBoundingClientRect(); m.style.left=''; m.style.top=(r.bottom+6)+'px'; m.style.right=(window.innerWidth-r.right)+'px'; m.hidden=false;} else{m.hidden=true;}">&#8942;</button>
@@ -180,17 +178,7 @@
                         onclick="document.getElementById('toolbar-more-menu').hidden=true; window.tiptapEditor.chain().focus().toggleHeading({level:3}).run()">
                     H3 Heading 3
                 </button>
-                <button type="button" class="toolbar-dropdown-item"
-                        onclick="document.getElementById('toolbar-more-menu').hidden=true; document.getElementById('settings-dialog').showModal()">
-                    &#9881; Settings
-                </button>
-                <button class="toolbar-dropdown-item"
-                        hx-patch="/api/documents/{{ doc.id }}/privacy" hx-ext="json-enc"
-                        hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}' hx-swap="none"
-                        hx-on::after-request="window.location.reload()"
-                        onclick="document.getElementById('toolbar-more-menu').hidden=true">
-                    {% if doc.is_private %}&#128274; Make public{% else %}&#128275; Make private{% endif %}
-                </button>
+
                 <hr class="toolbar-dropdown-sep">
             </div>
             <button class="toolbar-dropdown-item toolbar-dropdown-item--danger"
