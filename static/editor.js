@@ -314,3 +314,17 @@ new MutationObserver((mutations) => {
         }
     }
 }).observe(editorPane, { childList: true, subtree: true });
+
+// ── Responsive toolbar overflow ────────────────────────────────────────────
+const toolbarContainer = document.querySelector('.tiptap-editor');
+if (toolbarContainer) {
+    const updateOverflow = () => {
+        const w = toolbarContainer.clientWidth;
+        const hide3 = w < 640, hide2 = w < 470;
+        document.querySelectorAll('.toolbar-overflow-group--3').forEach(el => el.style.display = hide3 ? 'none' : '');
+        document.querySelectorAll('.toolbar-overflow-group--2').forEach(el => el.style.display = hide2 ? 'none' : '');
+        document.querySelectorAll('.toolbar-overflow-section--3').forEach(el => el.style.display = hide3 ? 'block' : '');
+        document.querySelectorAll('.toolbar-overflow-section--2').forEach(el => el.style.display = hide2 ? 'block' : '');
+    };
+    new ResizeObserver(updateOverflow).observe(toolbarContainer);
+}

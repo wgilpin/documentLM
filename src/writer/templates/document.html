@@ -110,27 +110,33 @@
             <button id="fmt-bold" class="toolbar-btn" title="Bold" aria-label="Bold"><strong>B</strong></button>
             <button id="fmt-italic" class="toolbar-btn" title="Italic" aria-label="Italic"><em
                     style="font-family: Georgia, 'Times New Roman', serif;">I</em></button>
-            <span class="toolbar-sep"></span>
-            <button id="fmt-h1" class="toolbar-btn" title="Heading 1" aria-label="Heading 1">H1</button>
-            <button id="fmt-h2" class="toolbar-btn" title="Heading 2" aria-label="Heading 2">H2</button>
-            <button id="fmt-h3" class="toolbar-btn" title="Heading 3" aria-label="Heading 3">H3</button>
-            <span class="toolbar-sep"></span>
-            <button id="fmt-ul" class="toolbar-btn" title="Bullet list" aria-label="Bullet list"><span
-                    style="font-size: 1.2em; line-height: 1;">&#8226;</span></button>
-            <button id="fmt-ol" class="toolbar-btn" title="Numbered list" aria-label="Numbered list">1.</button>
-            <button id="fmt-quote" class="toolbar-btn" title="Blockquote" aria-label="Blockquote"><span
-                    style="font-size: 1.2em; line-height: 1;">&#10077;</span></button>
-            <button id="fmt-code" class="toolbar-btn" title="Code block" aria-label="Code block">&lt;/&gt;</button>
-            <button id="fmt-hr" class="toolbar-btn" title="Horizontal rule"
-                aria-label="Horizontal rule">&#8212;</button>
-            <button type="button" class="toolbar-btn" title="Settings" aria-label="Settings"
-                onclick="document.getElementById('settings-dialog').showModal()">&#9881;</button>
-            <button id="privacy-toggle-btn" class="toolbar-btn{% if doc.is_private %} toolbar-btn--active{% endif %}"
-                title="{% if doc.is_private %}Private — click to make public{% else %}Public — click to make private{% endif %}"
-                aria-label="Toggle privacy" hx-patch="/api/documents/{{ doc.id }}/privacy" hx-ext="json-enc"
-                hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}' hx-swap="none"
-                hx-on::after-request="window.location.reload()">{% if doc.is_private %}&#128274;{% else %}&#128275;{%
-                endif %}</button>
+            <span class="toolbar-overflow-group--2">
+                <span class="toolbar-sep"></span>
+                <button id="fmt-h1" class="toolbar-btn" title="Heading 1" aria-label="Heading 1">H1</button>
+                <button id="fmt-h2" class="toolbar-btn" title="Heading 2" aria-label="Heading 2">H2</button>
+                <button id="fmt-h3" class="toolbar-btn" title="Heading 3" aria-label="Heading 3">H3</button>
+            </span>
+            <span class="toolbar-overflow-group--3">
+                <span class="toolbar-sep"></span>
+                <button id="fmt-ul" class="toolbar-btn" title="Bullet list" aria-label="Bullet list"><span
+                        style="font-size: 1.2em; line-height: 1;">&#8226;</span></button>
+                <button id="fmt-ol" class="toolbar-btn" title="Numbered list" aria-label="Numbered list">1.</button>
+                <button id="fmt-quote" class="toolbar-btn" title="Blockquote" aria-label="Blockquote"><span
+                        style="font-size: 1.2em; line-height: 1;">&#10077;</span></button>
+                <button id="fmt-code" class="toolbar-btn" title="Code block" aria-label="Code block">&lt;/&gt;</button>
+                <button id="fmt-hr" class="toolbar-btn" title="Horizontal rule"
+                    aria-label="Horizontal rule">&#8212;</button>
+            </span>
+            <span class="toolbar-overflow-group--2">
+                <button type="button" class="toolbar-btn" title="Settings" aria-label="Settings"
+                    onclick="document.getElementById('settings-dialog').showModal()">&#9881;</button>
+                <button id="privacy-toggle-btn" class="toolbar-btn{% if doc.is_private %} toolbar-btn--active{% endif %}"
+                    title="{% if doc.is_private %}Private — click to make public{% else %}Public — click to make private{% endif %}"
+                    aria-label="Toggle privacy" hx-patch="/api/documents/{{ doc.id }}/privacy" hx-ext="json-enc"
+                    hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}' hx-swap="none"
+                    hx-on::after-request="window.location.reload()">{% if doc.is_private %}&#128274;{% else %}&#128275;{%
+                    endif %}</button>
+            </span>
             <div class="toolbar-menu">
                 <button class="toolbar-btn" title="More options" aria-label="More options"
                         onclick="event.stopPropagation(); const m=document.getElementById('toolbar-more-menu'); if(m.hidden){const r=this.closest('.editor-toolbar').getBoundingClientRect(); m.style.left=''; m.style.top=(r.bottom+6)+'px'; m.style.right=(window.innerWidth-r.right)+'px'; m.hidden=false;} else{m.hidden=true;}">&#8942;</button>
@@ -138,6 +144,55 @@
         </div>
 
         <div id="toolbar-more-menu" class="toolbar-dropdown" hidden>
+            <div class="toolbar-overflow-section toolbar-overflow-section--3">
+                <button class="toolbar-dropdown-item"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true; window.tiptapEditor.chain().focus().toggleBulletList().run()">
+                    &#8226; Bullet list
+                </button>
+                <button class="toolbar-dropdown-item"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true; window.tiptapEditor.chain().focus().toggleOrderedList().run()">
+                    1. Numbered list
+                </button>
+                <button class="toolbar-dropdown-item"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true; window.tiptapEditor.chain().focus().toggleBlockquote().run()">
+                    &#10077; Blockquote
+                </button>
+                <button class="toolbar-dropdown-item"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true; window.tiptapEditor.chain().focus().toggleCodeBlock().run()">
+                    &lt;/&gt; Code block
+                </button>
+                <button class="toolbar-dropdown-item"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true; window.tiptapEditor.chain().focus().setHorizontalRule().run()">
+                    &#8212; Divider
+                </button>
+                <hr class="toolbar-dropdown-sep">
+            </div>
+            <div class="toolbar-overflow-section toolbar-overflow-section--2">
+                <button class="toolbar-dropdown-item"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true; window.tiptapEditor.chain().focus().toggleHeading({level:1}).run()">
+                    H1 Heading 1
+                </button>
+                <button class="toolbar-dropdown-item"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true; window.tiptapEditor.chain().focus().toggleHeading({level:2}).run()">
+                    H2 Heading 2
+                </button>
+                <button class="toolbar-dropdown-item"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true; window.tiptapEditor.chain().focus().toggleHeading({level:3}).run()">
+                    H3 Heading 3
+                </button>
+                <button type="button" class="toolbar-dropdown-item"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true; document.getElementById('settings-dialog').showModal()">
+                    &#9881; Settings
+                </button>
+                <button class="toolbar-dropdown-item"
+                        hx-patch="/api/documents/{{ doc.id }}/privacy" hx-ext="json-enc"
+                        hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}' hx-swap="none"
+                        hx-on::after-request="window.location.reload()"
+                        onclick="document.getElementById('toolbar-more-menu').hidden=true">
+                    {% if doc.is_private %}&#128274; Make public{% else %}&#128275; Make private{% endif %}
+                </button>
+                <hr class="toolbar-dropdown-sep">
+            </div>
             <button class="toolbar-dropdown-item toolbar-dropdown-item--danger"
                     onclick="document.getElementById('toolbar-more-menu').hidden=true;
                              document.getElementById('delete-confirm-dialog').showModal()">
