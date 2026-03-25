@@ -1491,6 +1491,59 @@ details[open] .source-add-summary {
     background: rgba(67, 76, 165, 0.2);
 }
 
+/* Hamburger dropdown menu */
+.toolbar-menu { position: relative; }
+
+.toolbar-dropdown {
+    position: fixed;
+    background: #fff;
+    border: 1px solid rgba(196, 197, 217, 0.4);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    padding: 0.25rem;
+    min-width: 10rem;
+    z-index: 1000;
+    margin: 0;
+}
+
+.toolbar-dropdown-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.875rem;
+    color: #434656;
+    background: transparent;
+    border: none;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.toolbar-dropdown-item:hover { background: #f0f1f3; }
+.toolbar-dropdown-item--danger { color: #ba1a1a; }
+.toolbar-dropdown-item--danger:hover { background: rgba(255, 218, 214, 0.4); }
+
+.toolbar-dropdown-item--sub {
+    padding-left: 1.5rem;
+    font-size: 0.82rem;
+    color: #666;
+}
+
+.toolbar-dropdown-sep {
+    border: none;
+    border-top: 1px solid rgba(196, 197, 217, 0.3);
+    margin: 0.25rem 0;
+}
+
+.toolbar-dropdown-export > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.toolbar-dropdown-export > summary::-webkit-details-marker { display: none; }
+
 .btn-danger {
     background: #dc2626;
     color: #fff;
@@ -1510,4 +1563,37 @@ details[open] .source-add-summary {
     gap: 0.5rem;
     justify-content: flex-end;
     margin-top: 1rem;
+}
+/* Print styles */
+.print-title { display: none; }
+
+@media print {
+    .site-header,
+    .sources-panel,
+    .chat-panel,
+    .editor-toolbar,
+    #inline-suggestions,
+    #doc-title,
+    #document-content { display: none !important; }
+
+    .print-title {
+        display: block !important;
+        font-family: Georgia, serif;
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+
+    .editor-layout { display: block; }
+
+    .editor-pane {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+
+    .tiptap-editor { box-shadow: none !important; border: none !important; overflow: visible !important; }
+    .tiptap-editor .ProseMirror { padding: 0 !important; }
 }
