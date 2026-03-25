@@ -93,6 +93,7 @@
     <!-- COL 2: Editor pane (center) -->
     <div class="editor-pane">
         {% if doc %}
+        <h1 class="print-title">{{ doc.title }}</h1>
         <input type="text" id="doc-title" value="{{ doc.title }}" hx-put="/api/documents/{{ doc.id }}" hx-ext="json-enc"
             hx-trigger="change"
             hx-vals='js:{"title": document.getElementById("doc-title").value, "content": document.getElementById("document-content").value}'
@@ -130,9 +131,30 @@
                 hx-vals='js:{"is_private": !{{ "true" if doc.is_private else "false" }}}' hx-swap="none"
                 hx-on::after-request="window.location.reload()">{% if doc.is_private %}&#128274;{% else %}&#128275;{%
                 endif %}</button>
-            <button id="delete-doc-btn" class="toolbar-btn toolbar-btn--danger" title="Delete document"
-                aria-label="Delete document"
-                onclick="document.getElementById('delete-confirm-dialog').showModal()">&#128465;</button>
+            <div class="toolbar-menu">
+                <button class="toolbar-btn" title="More options" aria-label="More options"
+                        onclick="event.stopPropagation(); const m=document.getElementById('toolbar-more-menu'); m.hidden=!m.hidden">&#8942;</button>
+                <div id="toolbar-more-menu" class="toolbar-dropdown" hidden>
+                    <button class="toolbar-dropdown-item toolbar-dropdown-item--danger"
+                            onclick="document.getElementById('toolbar-more-menu').hidden=true;
+                                     document.getElementById('delete-confirm-dialog').showModal()">
+                        &#128465; Delete
+                    </button>
+                    <hr class="toolbar-dropdown-sep">
+                    <details class="toolbar-dropdown-export">
+                        <summary class="toolbar-dropdown-item">&#11015; Export</summary>
+                        <a class="toolbar-dropdown-item toolbar-dropdown-item--sub"
+                           href="#" onclick="exportDoc('markdown'); return false">Markdown (.md)</a>
+                        <a class="toolbar-dropdown-item toolbar-dropdown-item--sub"
+                           href="#" onclick="exportDoc('text'); return false">Plain text (.txt)</a>
+                    </details>
+                    <hr class="toolbar-dropdown-sep">
+                    <button class="toolbar-dropdown-item"
+                            onclick="document.getElementById('toolbar-more-menu').hidden=true; window.print()">
+                        &#128424; Print
+                    </button>
+                </div>
+            </div>
         </div>
 
         <dialog id="delete-confirm-dialog" style="padding: 1.5rem;">
@@ -385,5 +407,25 @@
 </script>
 
 <script type="module" src="/static/editor.js"></script>
+<script>
+document.addEventListener('click', () => {
+    const m = document.getElementById('toolbar-more-menu');
+    if (m) m.hidden = true;
+});
+
+function exportDoc(format) {
+    document.getElementById('toolbar-more-menu').hidden = true;
+    const title = document.getElementById('doc-title').value || 'document';
+    const md = document.getElementById('document-content').value;
+    const isMarkdown = format === 'markdown';
+    const content = isMarkdown ? md : md.replace(/[#*_`>\[\]!-]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+    const filename = (title + (isMarkdown ? '.md' : '.txt')).replace(/\//g, '-');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: isMarkdown ? 'text/markdown' : 'text/plain' }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+</script>
 {% endif %}
 {% endblock %}
