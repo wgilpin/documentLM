@@ -208,7 +208,7 @@ fmtButtons.code.addEventListener('click', () => editor.chain().focus().toggleCod
 document.getElementById('fmt-hr').addEventListener('click', () => editor.chain().focus().setHorizontalRule().run());
 
 // ── AI block button → open modal with block as context ────────────────────
-import { findBlockInMarkdown } from '/static/editor-utils.js';
+import { findBlockInMarkdown } from './editor-utils.js';
 
 // Highlight DOM nodes for a set of ProseMirror positions, return cleanup fn.
 function highlightBlocks(positions) {

@@ -12,6 +12,10 @@ export DATABASE_URL="${DATABASE_URL//@postgres:/@localhost:}"
 
 export DEV_PASSWORD=devPassword1234
 
+# Build JS bundle (install deps on first run)
+[ -d node_modules ] || npm install --silent
+npm run build
+
 # Run migrations then start the app
 uv run alembic upgrade head
 uv run uvicorn writer.main:app --reload

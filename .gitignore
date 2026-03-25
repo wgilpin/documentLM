@@ -55,3 +55,9 @@ nul
 data/
 /stitch_designs
 writer.db
+
+# Js
+node_modules/
+dist/
+build/
+*.log

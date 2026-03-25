@@ -1,0 +1,18 @@
+{
+  "name": "writer-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild static/editor.js --bundle --outfile=static/editor.bundle.js --format=iife --minify",
+    "build:dev": "esbuild static/editor.js --bundle --outfile=static/editor.bundle.js --format=iife --sourcemap"
+  },
+  "dependencies": {
+    "@tiptap/core": "^2.11.5",
+    "@tiptap/extension-focus": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
+    "tiptap-markdown": "^0.8.10"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
