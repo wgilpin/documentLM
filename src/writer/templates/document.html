@@ -133,28 +133,29 @@
                 endif %}</button>
             <div class="toolbar-menu">
                 <button class="toolbar-btn" title="More options" aria-label="More options"
-                        onclick="event.stopPropagation(); const m=document.getElementById('toolbar-more-menu'); m.hidden=!m.hidden">&#8942;</button>
-                <div id="toolbar-more-menu" class="toolbar-dropdown" hidden>
-                    <button class="toolbar-dropdown-item toolbar-dropdown-item--danger"
-                            onclick="document.getElementById('toolbar-more-menu').hidden=true;
-                                     document.getElementById('delete-confirm-dialog').showModal()">
-                        &#128465; Delete
-                    </button>
-                    <hr class="toolbar-dropdown-sep">
-                    <details class="toolbar-dropdown-export">
-                        <summary class="toolbar-dropdown-item">&#11015; Export</summary>
-                        <a class="toolbar-dropdown-item toolbar-dropdown-item--sub"
-                           href="#" onclick="exportDoc('markdown'); return false">Markdown (.md)</a>
-                        <a class="toolbar-dropdown-item toolbar-dropdown-item--sub"
-                           href="#" onclick="exportDoc('text'); return false">Plain text (.txt)</a>
-                    </details>
-                    <hr class="toolbar-dropdown-sep">
-                    <button class="toolbar-dropdown-item"
-                            onclick="document.getElementById('toolbar-more-menu').hidden=true; window.print()">
-                        &#128424; Print
-                    </button>
-                </div>
+                        onclick="event.stopPropagation(); const m=document.getElementById('toolbar-more-menu'); if(m.hidden){const r=this.closest('.editor-toolbar').getBoundingClientRect(); m.style.left=''; m.style.top=(r.bottom+6)+'px'; m.style.right=(window.innerWidth-r.right)+'px'; m.hidden=false;} else{m.hidden=true;}">&#8942;</button>
             </div>
+        </div>
+
+        <div id="toolbar-more-menu" class="toolbar-dropdown" hidden>
+            <button class="toolbar-dropdown-item toolbar-dropdown-item--danger"
+                    onclick="document.getElementById('toolbar-more-menu').hidden=true;
+                             document.getElementById('delete-confirm-dialog').showModal()">
+                &#128465; Delete
+            </button>
+            <hr class="toolbar-dropdown-sep">
+            <details class="toolbar-dropdown-export">
+                <summary class="toolbar-dropdown-item">&#11015; Export</summary>
+                <a class="toolbar-dropdown-item toolbar-dropdown-item--sub"
+                   href="#" onclick="exportDoc('markdown'); return false">Markdown (.md)</a>
+                <a class="toolbar-dropdown-item toolbar-dropdown-item--sub"
+                   href="#" onclick="exportDoc('text'); return false">Plain text (.txt)</a>
+            </details>
+            <hr class="toolbar-dropdown-sep">
+            <button class="toolbar-dropdown-item"
+                    onclick="document.getElementById('toolbar-more-menu').hidden=true; window.print()">
+                &#128424; Print
+            </button>
         </div>
 
         <dialog id="delete-confirm-dialog" style="padding: 1.5rem;">

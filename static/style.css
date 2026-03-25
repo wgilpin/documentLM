@@ -1495,17 +1495,14 @@ details[open] .source-add-summary {
 .toolbar-menu { position: relative; }
 
 .toolbar-dropdown {
-    position: absolute;
-    top: calc(100% + 0.5rem);
-    right: 0;
-    inset: unset;
+    position: fixed;
     background: #fff;
     border: 1px solid rgba(196, 197, 217, 0.4);
     border-radius: 0.5rem;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     padding: 0.25rem;
     min-width: 10rem;
-    z-index: 100;
+    z-index: 1000;
     margin: 0;
 }
 
