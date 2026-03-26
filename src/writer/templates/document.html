@@ -349,13 +349,6 @@
     </div>
     <form id="modal-comment-form" hx-post="/api/documents/{{ doc.id }}/comments" hx-target="#inline-suggestions"
         hx-swap="beforeend"
-        hx-on:suggestion-created="
-            if (window.tiptapEditor && event.detail && event.detail.value) {
-                window.tiptapEditor.commands.setContent(event.detail.value, false);
-                const ta = document.getElementById('document-content');
-                if (ta) ta.value = event.detail.value;
-            }
-        "
         hx-on::before-request="lockEditor(); document.getElementById('modal-submit-btn')?.classList.add('modal-submit-btn--loading')"
         hx-on::after-request="unlockEditor(); document.getElementById('modal-submit-btn')?.classList.remove('modal-submit-btn--loading'); document.getElementById('command-modal').close(); this.reset()">
         <input type="hidden" name="selection_start" id="modal-sel-start" value="0">
@@ -428,7 +421,7 @@
 
 <script src="/static/document-globals.js"></script>
 
-<script src="/static/editor.bundle.js"></script>
+<script src="/static/editor.bundle.js?v={{ bundle_version }}"></script>
 <script>
 document.addEventListener('click', () => {
     const m = document.getElementById('toolbar-more-menu');

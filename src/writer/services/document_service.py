@@ -7,14 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.logging import get_logger
-from writer.models.db import Comment, Document, Suggestion
-from writer.models.enums import CommentStatus, SuggestionStatus
+from writer.models.db import Document
 from writer.models.schemas import (
     DocumentCreate,
     DocumentResponse,
     DocumentSummary,
     DocumentUpdate,
-    SuggestionResponse,
 )
 
 if TYPE_CHECKING:
@@ -121,143 +119,4 @@ async def toggle_privacy(
     return DocumentResponse.model_validate(doc)
 
 
-import re
-def find_fuzzy_block(text_content: str, old_text: str, new_text: str, start_hint: int) -> tuple[int, int]:
-    words_old = re.findall(r'\w+', old_text)
-    words_new = re.findall(r'\w+', new_text)
-    
-    num_start = min(4, len(words_old))
-    num_end = min(4, len(words_new))
-    if num_start == 0 or num_end == 0: return -1, -1
-        
-    start_str = r'[\W_]*'.join(re.escape(w) for w in words_old[:num_start])
-    end_str = r'[\W_]*'.join(re.escape(w) for w in words_new[-num_end:])
-    
-    # Catch initial 2 tildes, trailing punctuation, then standard core words
-    start_pattern = r'(?:\\?~){2}[\W_]*?' + start_str
-    
-    window_start = max(0, start_hint - 100)
-    window_end = min(len(text_content), start_hint + len(old_text) + len(new_text) + 200)
-    window = text_content[window_start:window_end]
-    
-    start_match = re.search(start_pattern, window)
-    if not start_match:
-        start_match = re.search(start_str, window)
-        if not start_match: return -1, -1
-        
-    start_idx = window_start + start_match.start()
-    
-    # End core words, trailing punctuation, then closing formatting markers
-    end_pattern = end_str + r'[\W_]*?(?:\\?[*_]){3}'
-    
-    end_window = text_content[start_idx:window_end]
-    end_match = re.search(end_pattern, end_window)
-    if not end_match:
-        end_match = re.search(end_str, end_window)
-        if not end_match: return -1, -1
-        
-    end_idx = start_idx + end_match.end()
-    return start_idx, end_idx
-
-
-async def accept_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> DocumentResponse:
-    result = await db.execute(select(Suggestion).where(Suggestion.id == suggestion_id))
-    suggestion = result.scalar_one_or_none()
-    if suggestion is None:
-        raise SuggestionNotFoundError(suggestion_id)
-
-    comment_result = await db.execute(select(Comment).where(Comment.id == suggestion.comment_id))
-    comment = comment_result.scalar_one_or_none()
-    if comment is None:
-        raise DocumentNotFoundError(suggestion.comment_id)
-
-    doc_result = await db.execute(select(Document).where(Document.id == comment.document_id))
-    doc = doc_result.scalar_one_or_none()
-    if doc is None:
-        raise DocumentNotFoundError(comment.document_id)
-
-    content = doc.content or ""
-    
-    start_idx, end_idx = find_fuzzy_block(content, suggestion.original_text, suggestion.suggested_text, comment.selection_start)
-    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-        doc.content = (
-            content[:start_idx]
-            + suggestion.suggested_text
-            + content[end_idx:]
-        )
-    else:
-        # Fallback if block couldn't be extracted
-        if is_selection_valid(content, comment.selection_start, comment.selection_end, comment.selected_text):
-            doc.content = (
-                content[: comment.selection_start]
-                + suggestion.suggested_text
-                + content[comment.selection_end :]
-            )
-        else:
-            suggestion.status = SuggestionStatus.stale
-            await db.flush()
-            raise ValueError(f"Selection is stale — document overrides failed. Fuzzy match bounds not found.")
-            
-    suggestion.status = SuggestionStatus.accepted
-    comment.status = CommentStatus.resolved
-    await db.flush()
-    await db.refresh(doc)
-    logger.info("Accepted suggestion id=%s for document id=%s", suggestion_id, doc.id)
-    return DocumentResponse.model_validate(doc)
-
-
-def is_selection_valid(content: str, start: int, end: int, selected_text: str) -> bool:
-    """Return True when [start, end) is in-bounds and content[start:end] == selected_text."""
-    if start >= end:
-        return False
-    if end > len(content):
-        return False
-    return content[start:end] == selected_text
-
-
-async def reject_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> tuple[SuggestionResponse, Document]:
-    result = await db.execute(select(Suggestion).where(Suggestion.id == suggestion_id))
-    suggestion = result.scalar_one_or_none()
-    if suggestion is None:
-        raise SuggestionNotFoundError(suggestion_id)
-
-    comment_result = await db.execute(select(Comment).where(Comment.id == suggestion.comment_id))
-    comment = comment_result.scalar_one_or_none()
-    if comment is None:
-        raise DocumentNotFoundError(suggestion.comment_id)
-        
-    doc_result = await db.execute(select(Document).where(Document.id == comment.document_id))
-    doc = doc_result.scalar_one_or_none()
-    if doc is None:
-        raise DocumentNotFoundError(comment.document_id)
-
-    suggestion.status = SuggestionStatus.rejected
-    comment.status = CommentStatus.resolved
-
-    content = doc.content or ""
-    
-    start_idx, end_idx = find_fuzzy_block(content, suggestion.original_text, suggestion.suggested_text, comment.selection_start)
-
-    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-        doc.content = (
-            content[:start_idx]
-            + suggestion.original_text
-            + content[end_idx:]
-        )
-    else:
-        if is_selection_valid(content, comment.selection_start, comment.selection_end, comment.selected_text):
-            doc.content = (
-                content[: comment.selection_start]
-                + suggestion.original_text
-                + content[comment.selection_end :]
-            )
-        else:
-            suggestion.status = SuggestionStatus.stale
-            await db.flush()
-            raise ValueError("Selection is stale — fuzzy block bounds not found and selection is compromised.")
-
-    await db.flush()
-    await db.refresh(suggestion)
-    logger.info("Rejected suggestion id=%s", suggestion_id)
-    return SuggestionResponse.model_validate(suggestion), doc
 

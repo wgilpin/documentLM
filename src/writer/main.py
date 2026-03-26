@@ -4,6 +4,7 @@ import logging
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
@@ -21,6 +22,8 @@ from writer.models.db import Document, Source, User
 from writer.models.schemas import UserResponse
 from writer.services import document_service, settings_service
 from writer.services.document_service import DocumentNotFoundError
+
+_BUNDLE_VERSION = int(Path("static/editor.bundle.js").stat().st_mtime)
 
 # Fixed UUID for the dev seed document — stable across restarts
 _SEED_DOC_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -169,6 +172,7 @@ async def new_document(request: Request, db: DbDep, current_user: CurrentUser) -
             "doc": None,
             "undo_buffer_size": settings.undo_buffer_size,
             "user_settings": user_settings,
+            "bundle_version": _BUNDLE_VERSION,
         },
     )
 
@@ -191,5 +195,6 @@ async def view_document(
             "doc": doc,
             "undo_buffer_size": settings.undo_buffer_size,
             "user_settings": user_settings,
+            "bundle_version": _BUNDLE_VERSION,
         },
     )

@@ -761,6 +761,18 @@ main:has(.editor-layout) {
     gap: 0.4rem;
 }
 
+/* Inline suggestion decorations (ProseMirror overlays, never in doc content) */
+.suggestion-old {
+    text-decoration: line-through;
+    color: #b91c1c;
+}
+
+.suggestion-new {
+    color: #15803d;
+    font-size: 1.25rem;
+    font-style: italic;
+}
+
 .suggestion-stale {
     color: #6b7280;
     font-size: 0.85rem;
@@ -1069,27 +1081,27 @@ dialog::backdrop {
     transform: translate(-50%, -50%);
 }
 
-/* Inline suggestions overlay */
-.editor-pane {
-    position: relative;
-}
-
+/* Inline suggestions */
 #inline-suggestions {
-    position: absolute;
-    top: 2.5rem;
-    right: 0;
-    width: 240px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    z-index: 50;
-    pointer-events: none;
+    display: none;
 }
 
-.suggestion-card--inline {
-    pointer-events: all;
+.suggestion-new-group {
+    display: inline;
+}
+
+.suggestion-btns {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: 0.75rem;
+    padding: 0.4rem;
+    border-radius: 9999px;
     background: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    vertical-align: middle;
+    user-select: none;
 }
 
 /* US4: Source entry collapse (details/summary) */
