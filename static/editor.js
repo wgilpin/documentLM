@@ -186,10 +186,34 @@ function buildSuggestionDecorations(doc) {
             })
         );
 
+        const textSpan = document.createElement('span');
+        textSpan.className = 'suggestion-new';
+        textSpan.textContent = ' ' + stripMarkdownBasic(s.suggested_text);
+
+        const btnsSpan = document.createElement('span');
+        btnsSpan.className = 'suggestion-btns';
+        btnsSpan.innerHTML = `
+            <button class="btn" title="Accept"
+                style="padding:0.3rem;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;cursor:pointer;"
+                onmouseover="this.style.backgroundColor='#dcfce7'" onmouseout="this.style.backgroundColor='#f0fdf4'"
+                onclick="window.acceptSuggestion(this)">
+                <span class="material-symbols-outlined" style="font-size:1.1rem;font-weight:600;">check</span>
+            </button>
+            <div style="width:1px;height:1.2rem;background:#e0e0e0;"></div>
+            <button class="btn" title="Reject"
+                style="padding:0.3rem;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;cursor:pointer;"
+                onmouseover="this.style.backgroundColor='#fee2e2'" onmouseout="this.style.backgroundColor='#fef2f2'"
+                onclick="window.rejectSuggestion(this)">
+                <span class="material-symbols-outlined" style="font-size:1.1rem;font-weight:600;">close</span>
+            </button>
+        `;
+
         const widget = document.createElement('span');
-        widget.className = 'suggestion-new';
-        widget.textContent = ' ' + stripMarkdownBasic(s.suggested_text);
-        widget.dataset.suggestionId = s.id;
+        widget.className = 'suggestion-card suggestion-new-group';
+        widget.dataset.suggestion = JSON.stringify({ id: s.id, original_text: s.original_text, suggested_text: s.suggested_text });
+        widget.contentEditable = 'false';
+        widget.appendChild(textSpan);
+        widget.appendChild(btnsSpan);
 
         decorations.push(
             Decoration.widget(range.to, widget, { side: 1, key: `sug-new-${s.id}` })
@@ -257,7 +281,10 @@ function initSuggestionObserver() {
                 if (absorbCard(node)) changed = true;
             }
         }
-        if (changed) refreshDecorations();
+        if (changed) {
+            refreshDecorations();
+            // positionSuggestionCards is called inside refreshDecorations via rAF
+        }
     }).observe(container, { childList: true });
 }
 
@@ -266,6 +293,7 @@ window.acceptSuggestion = async function(btn) {
     if (!card) return;
     const s = JSON.parse(card.dataset.suggestion);
     card.style.opacity = '0.5'; card.style.pointerEvents = 'none';
+    document.getElementById(`suggestion-${s.id}`)?.remove();
 
     const range = findTextInDoc(window.tiptapEditor.state.doc, s.original_text);
     if (range) {
@@ -291,6 +319,7 @@ window.rejectSuggestion = async function(btn) {
     if (!card) return;
     const s = JSON.parse(card.dataset.suggestion);
     card.style.opacity = '0.5'; card.style.pointerEvents = 'none';
+    document.getElementById(`suggestion-${s.id}`)?.remove();
 
     pendingSuggestions = pendingSuggestions.filter(p => p.id !== s.id);
     refreshDecorations();
