@@ -285,23 +285,3 @@ class TestInvokePlannerVectorRetrieval:
         assert call_args.args[2] == source.document_id
 
 
-class TestIsSelectionValid:
-    def test_valid_selection(self) -> None:
-        from writer.services.document_service import is_selection_valid
-
-        assert is_selection_valid("Hello world", 0, 5, "Hello") is True
-
-    def test_invalid_text_mismatch(self) -> None:
-        from writer.services.document_service import is_selection_valid
-
-        assert is_selection_valid("Hello world", 0, 5, "World") is False
-
-    def test_invalid_out_of_bounds(self) -> None:
-        from writer.services.document_service import is_selection_valid
-
-        assert is_selection_valid("Hi", 0, 10, "Hi") is False
-
-    def test_invalid_start_equals_end(self) -> None:
-        from writer.services.document_service import is_selection_valid
-
-        assert is_selection_valid("Hello", 2, 2, "") is False

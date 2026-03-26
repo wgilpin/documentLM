@@ -761,6 +761,19 @@ main:has(.editor-layout) {
     gap: 0.4rem;
 }
 
+/* Inline suggestion decorations (ProseMirror overlays, never in doc content) */
+.suggestion-old {
+    text-decoration: line-through;
+    color: #b91c1c;
+}
+
+.suggestion-new {
+    background: #dcfce7;
+    color: #15803d;
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
 .suggestion-stale {
     color: #6b7280;
     font-size: 0.85rem;

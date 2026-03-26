@@ -4,7 +4,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,20 +14,15 @@ from writer.core.database import get_db
 from writer.core.logging import get_logger
 from writer.core.templates import templates as _shared_templates
 from writer.models.db import Comment, Suggestion
+from writer.models.enums import CommentStatus, SuggestionStatus
 from writer.models.schemas import (
     CommentCreate,
     CommentResponse,
-    DocumentResponse,
     SuggestionResponse,
     UserResponse,
 )
 from writer.services import agent_service, document_service, source_service
-from writer.services.document_service import (
-    DocumentNotFoundError,
-    SuggestionNotFoundError,
-    accept_suggestion,
-    reject_suggestion,
-)
+from writer.services.document_service import DocumentNotFoundError
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -89,7 +84,7 @@ async def submit_comment(
         logger.exception("Agent invocation error: %s", exc)
         raise HTTPException(status_code=502, detail=f"AI agent error: {exc}") from exc
 
-    # Persist suggestion
+    # Persist suggestion — doc.content is never modified
     suggestion_orm = Suggestion(
         comment_id=comment.id,
         original_text=selected_text,
@@ -97,48 +92,17 @@ async def submit_comment(
     )
     db.add(suggestion_orm)
     await db.flush()
-
-    # Insert the markdown directly into the document via the service layer
-    from writer.models.schemas import DocumentUpdate
-    from writer.services.document_service import is_selection_valid
-    
-    content = doc.content or ""
-    if is_selection_valid(content, comment.selection_start, comment.selection_end, selected_text):
-        # Format multi-line blocks line-by-line so markdown tags do not break across paragraphs
-        old_lines = [f"~~{line.strip()}~~" if line.strip() else "" for line in selected_text.split("\n")]
-        new_lines = [f"***{line.strip()}***" if line.strip() else "" for line in suggested_text.split("\n")]
-        
-        inline_text = "\n".join(old_lines) + "\n" + "\n".join(new_lines)
-
-        new_content = (
-            content[:comment.selection_start]
-            + inline_text
-            + content[comment.selection_end:]
-        )
-        await document_service.update_document(
-            db, doc_id, DocumentUpdate(content=new_content), current_user.id
-        )
-        comment_orm.selection_end = comment.selection_start + len(inline_text)
-        comment_orm.selected_text = inline_text
-
-    await db.flush()
     await db.refresh(suggestion_orm)
     await db.commit()
 
     suggestion = SuggestionResponse.model_validate(suggestion_orm)
 
     if request.headers.get("HX-Request"):
-        import json
         tmpl = get_templates()
         html = tmpl.get_template("partials/suggestion.html").render(
             {"s": suggestion, "request": request}
         )
-        response = HTMLResponse(html)
-        if 'new_content' in locals():
-            response.headers["HX-Trigger"] = json.dumps({
-                "suggestionCreated": new_content
-            })
-        return response
+        return HTMLResponse(html)
     return suggestion
 
 
@@ -146,8 +110,6 @@ async def submit_comment(
 async def list_suggestions(
     request: Request, db: DbDep, current_user: CurrentUser, doc_id: uuid.UUID
 ) -> HTMLResponse | list[SuggestionResponse]:
-    from writer.models.enums import SuggestionStatus
-
     result = await db.execute(
         select(Suggestion)
         .join(Comment, Suggestion.comment_id == Comment.id)
@@ -170,35 +132,48 @@ async def list_suggestions(
 @router.post("/api/suggestions/{suggestion_id}/accept", response_model=None)
 async def accept(
     request: Request, db: DbDep, suggestion_id: uuid.UUID
-) -> PlainTextResponse | DocumentResponse:
-    try:
-        doc = await accept_suggestion(db, suggestion_id)
-        await db.commit()
-    except SuggestionNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="Suggestion not found") from exc
-    except ValueError as exc:
-        await db.commit()
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+) -> JSONResponse | SuggestionResponse:
+    result = await db.execute(select(Suggestion).where(Suggestion.id == suggestion_id))
+    suggestion = result.scalar_one_or_none()
+    if suggestion is None:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+
+    comment_result = await db.execute(select(Comment).where(Comment.id == suggestion.comment_id))
+    comment = comment_result.scalar_one_or_none()
+
+    suggestion.status = SuggestionStatus.accepted
+    if comment is not None:
+        comment.status = CommentStatus.resolved
+    await db.flush()
+    await db.commit()
+
+    logger.info("Accepted suggestion id=%s", suggestion_id)
 
     if request.headers.get("HX-Request"):
-        return PlainTextResponse(doc.content or "")
-    return doc
+        return JSONResponse({"status": "accepted"})
+    return SuggestionResponse.model_validate(suggestion)
 
 
 @router.post("/api/suggestions/{suggestion_id}/reject", response_model=None)
 async def reject(
     request: Request, db: DbDep, suggestion_id: uuid.UUID
-) -> PlainTextResponse | SuggestionResponse:
-    try:
-        suggestion, doc = await reject_suggestion(db, suggestion_id)
-        await db.commit()
-    except SuggestionNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="Suggestion not found") from exc
-    except ValueError as exc:
-        await db.commit()
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+) -> JSONResponse | SuggestionResponse:
+    result = await db.execute(select(Suggestion).where(Suggestion.id == suggestion_id))
+    suggestion = result.scalar_one_or_none()
+    if suggestion is None:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+
+    comment_result = await db.execute(select(Comment).where(Comment.id == suggestion.comment_id))
+    comment = comment_result.scalar_one_or_none()
+
+    suggestion.status = SuggestionStatus.rejected
+    if comment is not None:
+        comment.status = CommentStatus.resolved
+    await db.flush()
+    await db.commit()
+
+    logger.info("Rejected suggestion id=%s", suggestion_id)
 
     if request.headers.get("HX-Request"):
-        # We return PlainTextResponse to update the editor via hx-swap=none
-        return PlainTextResponse(doc.content or "")
-    return suggestion
+        return JSONResponse({"status": "rejected"})
+    return SuggestionResponse.model_validate(suggestion)

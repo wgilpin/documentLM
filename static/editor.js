@@ -1,7 +1,9 @@
-import { Editor }   from '@tiptap/core';
+import { Editor, Extension } from '@tiptap/core';
 import StarterKit   from '@tiptap/starter-kit';
 import Focus        from '@tiptap/extension-focus';
 import { Markdown } from 'tiptap-markdown';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
 const mountEl      = document.getElementById('tiptap-mount');
 const contentInput = document.getElementById('document-content');
@@ -40,20 +42,17 @@ let historyDebounce = null;
 
 function saveToHistory(text) {
     if (localHistory[localHistoryIndex] === text) return;
-    
-    // Do not write AI `old/new` rendering states to the undo buffer.
-    if (document.querySelector('.suggestion-card')) return;
-    
+
     if (localHistoryIndex < localHistory.length - 1) {
         localHistory = localHistory.slice(0, localHistoryIndex + 1);
     }
-    
+
     localHistory.push(text);
-    if (localHistory.length > 50) localHistory.shift(); 
+    if (localHistory.length > 50) localHistory.shift();
     localHistoryIndex = localHistory.length - 1;
-    
+
     try { localStorage.setItem(HISTORY_KEY, JSON.stringify(localHistory)); } catch(e) {}
-    
+
     if (window.tiptapEditor) updateToolbar(window.tiptapEditor);
 }
 
@@ -132,6 +131,178 @@ function updateToolbar(editor) {
     }
 }
 
+// ── Suggestion Decorations ─────────────────────────────────────────────────
+const suggestionsPluginKey = new PluginKey('suggestions');
+let pendingSuggestions = []; // [{id, original_text, suggested_text}]
+
+function stripMarkdownBasic(text) {
+    return text
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/\*\*\*(.+?)\*\*\*/gs, '$1')
+        .replace(/\*\*(.+?)\*\*/gs, '$1')
+        .replace(/\*(.+?)\*/gs, '$1')
+        .replace(/`(.+?)`/gs, '$1')
+        .replace(/~~(.+?)~~/gs, '$1')
+        .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+        .replace(/\\(.)/g, '$1')
+        .trim();
+}
+
+function findTextInDoc(doc, searchText) {
+    const plainText = stripMarkdownBasic(searchText);
+    if (!plainText) return null;
+
+    let text = '';
+    const posMap = [];
+
+    doc.nodesBetween(0, doc.content.size, (node, pos) => {
+        if (node.isText) {
+            for (let i = 0; i < node.text.length; i++) {
+                posMap.push(pos + i);
+                text += node.text[i];
+            }
+        }
+    });
+
+    const idx = text.indexOf(plainText);
+    if (idx === -1 || idx + plainText.length > posMap.length) return null;
+
+    return {
+        from: posMap[idx],
+        to: posMap[idx + plainText.length - 1] + 1,
+    };
+}
+
+function buildSuggestionDecorations(doc) {
+    const decorations = [];
+    for (const s of pendingSuggestions) {
+        const range = findTextInDoc(doc, s.original_text);
+        if (!range) continue;
+
+        decorations.push(
+            Decoration.inline(range.from, range.to, {
+                class: 'suggestion-old',
+                'data-suggestion-id': s.id,
+            })
+        );
+
+        const widget = document.createElement('span');
+        widget.className = 'suggestion-new';
+        widget.textContent = ' ' + stripMarkdownBasic(s.suggested_text);
+        widget.dataset.suggestionId = s.id;
+
+        decorations.push(
+            Decoration.widget(range.to, widget, { side: 1, key: `sug-new-${s.id}` })
+        );
+    }
+    return DecorationSet.create(doc, decorations);
+}
+
+const suggestionPlugin = new Plugin({
+    key: suggestionsPluginKey,
+    state: {
+        init(_, { doc }) {
+            return buildSuggestionDecorations(doc);
+        },
+        apply(tr, old) {
+            if (tr.getMeta(suggestionsPluginKey)) {
+                return buildSuggestionDecorations(tr.doc);
+            }
+            return old.map(tr.mapping, tr.doc);
+        },
+    },
+    props: {
+        decorations(state) {
+            return suggestionsPluginKey.getState(state);
+        },
+    },
+});
+
+const SuggestionDecorations = Extension.create({
+    name: 'suggestionDecorations',
+    addProseMirrorPlugins() {
+        return [suggestionPlugin];
+    },
+});
+
+function refreshDecorations() {
+    if (!window.tiptapEditor) return;
+    window.tiptapEditor.view.dispatch(
+        window.tiptapEditor.state.tr.setMeta(suggestionsPluginKey, true)
+    );
+}
+
+// Watch #inline-suggestions for cards added by HTMX (initial load or new creation).
+// This avoids relying on HTMX event name casing which is unreliable across browsers.
+function initSuggestionObserver() {
+    const container = document.getElementById('inline-suggestions');
+    if (!container) return;
+
+    function absorbCard(node) {
+        if (node.nodeType !== 1 || !node.dataset.suggestion) return;
+        try {
+            const s = JSON.parse(node.dataset.suggestion);
+            if (s && s.id && !pendingSuggestions.some(p => p.id === s.id)) {
+                pendingSuggestions.push(s);
+                return true;
+            }
+        } catch(e) {}
+        return false;
+    }
+
+    new MutationObserver((mutations) => {
+        let changed = false;
+        for (const m of mutations) {
+            for (const node of m.addedNodes) {
+                if (absorbCard(node)) changed = true;
+            }
+        }
+        if (changed) refreshDecorations();
+    }).observe(container, { childList: true });
+}
+
+window.acceptSuggestion = async function(btn) {
+    const card = btn.closest('.suggestion-card');
+    if (!card) return;
+    const s = JSON.parse(card.dataset.suggestion);
+    card.style.opacity = '0.5'; card.style.pointerEvents = 'none';
+
+    const range = findTextInDoc(window.tiptapEditor.state.doc, s.original_text);
+    if (range) {
+        window.tiptapEditor.chain()
+            .deleteRange(range)
+            .insertContentAt(range.from, stripMarkdownBasic(s.suggested_text))
+            .run();
+    }
+
+    pendingSuggestions = pendingSuggestions.filter(p => p.id !== s.id);
+    refreshDecorations();
+    card.remove();
+
+    try {
+        await fetch(`/api/suggestions/${s.id}/accept`, { method: 'POST' });
+    } catch(e) {
+        console.error('[suggestion] accept failed:', e);
+    }
+};
+
+window.rejectSuggestion = async function(btn) {
+    const card = btn.closest('.suggestion-card');
+    if (!card) return;
+    const s = JSON.parse(card.dataset.suggestion);
+    card.style.opacity = '0.5'; card.style.pointerEvents = 'none';
+
+    pendingSuggestions = pendingSuggestions.filter(p => p.id !== s.id);
+    refreshDecorations();
+    card.remove();
+
+    try {
+        await fetch(`/api/suggestions/${s.id}/reject`, { method: 'POST' });
+    } catch(e) {
+        console.error('[suggestion] reject failed:', e);
+    }
+};
+
 // ── Editor ────────────────────────────────────────────────────────────────
 const editor = new Editor({
     element: mountEl,
@@ -139,6 +310,7 @@ const editor = new Editor({
         StarterKit.configure({ history: false }),
         Markdown,
         Focus.configure({ className: 'has-focus', mode: 'deepest' }),
+        SuggestionDecorations,
     ],
     content: contentInput.value,
     onUpdate({ editor }) {
@@ -146,7 +318,7 @@ const editor = new Editor({
         contentInput.value = md;
         contentInput.dispatchEvent(new Event('tiptap-changed'));
         updateToolbar(editor);
-        
+
         clearTimeout(historyDebounce);
         historyDebounce = setTimeout(() => {
             saveToHistory(md);
@@ -161,6 +333,7 @@ const editor = new Editor({
 window.tiptapEditor = editor;
 mountEl.classList.remove('tiptap-editor--loading');
 updateToolbar(editor);
+initSuggestionObserver();
 
 // ── Undo/redo buttons & Shortcuts ─────────────────────────────────────────
 undoBtn.addEventListener('click', () => {
