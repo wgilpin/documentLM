@@ -14,7 +14,7 @@ export DEV_PASSWORD=devPassword1234
 
 # Build JS bundle (install deps on first run)
 [ -d node_modules ] || npm install --silent
-npm run build
+npm run build:dev
 
 # Run migrations then start the app
 uv run alembic upgrade head

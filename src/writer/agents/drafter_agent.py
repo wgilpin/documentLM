@@ -14,7 +14,9 @@ _INSTRUCTION = (
     "on a specific topic to fulfil the instruction well, call find_more_sources with a focused "
     "search query before writing your response.\n\n"
     "Respond with ONLY the replacement text — no preamble, no explanation, no quotes. "
-    "The replacement text will be substituted directly into the document."
+    "The replacement text will be substituted directly into the document in place of the selected passage. "
+    "Ensure the replacement fits naturally with the surrounding content: match the tone, style, "
+    "and structure (e.g. if the selection is a list item, keep the result consistent with the other items in that list)."
 )
 
 

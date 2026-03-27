@@ -68,9 +68,22 @@ async def invoke_drafter(
 
     doc_content = document.content or ""
     source_block = "\n".join(chunks)
+
+    # Extract a window of text around the selection so the LLM knows exactly
+    # where in the document the replacement will land.
+    ctx_window = 300
+    sel_start = comment.selection_start or 0
+    sel_end = comment.selection_end or len(doc_content)
+    before = doc_content[max(0, sel_start - ctx_window) : sel_start]
+    after = doc_content[sel_end : sel_end + ctx_window]
+
     message_text = (
         f"--- FULL DOCUMENT ---\n{doc_content}\n--- END DOCUMENT ---\n\n"
         f"--- RELEVANT SOURCE CHUNKS ---\n{source_block}\n--- END SOURCE CHUNKS ---\n\n"
+        f"--- INSERTION CONTEXT ---\n"
+        f"The selected text appears at this position in the document:\n"
+        f"...{before}[SELECTED]{after}...\n"
+        f"--- END INSERTION CONTEXT ---\n\n"
         f"Selected text:\n{comment.selected_text}\n\n"
         f"Instruction: {comment.body}"
     )

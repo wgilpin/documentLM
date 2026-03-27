@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "esbuild static/editor.js --bundle --outfile=static/editor.bundle.js --format=iife --minify",
-    "build:dev": "esbuild static/editor.js --bundle --outfile=static/editor.bundle.js --format=iife --sourcemap"
+    "build:dev": "esbuild static/editor.js --bundle --outfile=static/editor.bundle.js --format=iife --sourcemap",
+    "test": "node --test tests/js/*.test.js"
   },
   "dependencies": {
     "@tiptap/core": "^2.11.5",

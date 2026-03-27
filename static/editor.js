@@ -134,49 +134,16 @@ function updateToolbar(editor) {
 // ── Suggestion Decorations ─────────────────────────────────────────────────
 const suggestionsPluginKey = new PluginKey('suggestions');
 let pendingSuggestions = []; // [{id, original_text, suggested_text}]
+let pendingAiPmRange = null;        // {from, to} captured at AI-button click time
+let pendingAiMdRange = null;        // {start, end} markdown char offsets at AI-button click time
+const suggestionRanges = new Map(); // suggestion id → {pm: {from,to}, md: {start,end}}
 
-function stripMarkdownBasic(text) {
-    return text
-        .replace(/^#{1,6}\s+/gm, '')
-        .replace(/\*\*\*(.+?)\*\*\*/gs, '$1')
-        .replace(/\*\*(.+?)\*\*/gs, '$1')
-        .replace(/\*(.+?)\*/gs, '$1')
-        .replace(/`(.+?)`/gs, '$1')
-        .replace(/~~(.+?)~~/gs, '$1')
-        .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-        .replace(/\\(.)/g, '$1')
-        .trim();
-}
-
-function findTextInDoc(doc, searchText) {
-    const plainText = stripMarkdownBasic(searchText);
-    if (!plainText) return null;
-
-    let text = '';
-    const posMap = [];
-
-    doc.nodesBetween(0, doc.content.size, (node, pos) => {
-        if (node.isText) {
-            for (let i = 0; i < node.text.length; i++) {
-                posMap.push(pos + i);
-                text += node.text[i];
-            }
-        }
-    });
-
-    const idx = text.indexOf(plainText);
-    if (idx === -1 || idx + plainText.length > posMap.length) return null;
-
-    return {
-        from: posMap[idx],
-        to: posMap[idx + plainText.length - 1] + 1,
-    };
-}
 
 function buildSuggestionDecorations(doc) {
     const decorations = [];
     for (const s of pendingSuggestions) {
-        const range = findTextInDoc(doc, s.original_text);
+        const stored = suggestionRanges.get(s.id);
+        const range = (stored?.pm) ?? findTextInDoc(doc, s.original_text);
         if (!range) continue;
 
         decorations.push(
@@ -268,6 +235,11 @@ function initSuggestionObserver() {
             const s = JSON.parse(node.dataset.suggestion);
             if (s && s.id && !pendingSuggestions.some(p => p.id === s.id)) {
                 pendingSuggestions.push(s);
+                if (pendingAiPmRange) {
+                    suggestionRanges.set(s.id, { pm: pendingAiPmRange, md: pendingAiMdRange });
+                    pendingAiPmRange = null;
+                    pendingAiMdRange = null;
+                }
                 return true;
             }
         } catch(e) {}
@@ -295,15 +267,34 @@ window.acceptSuggestion = async function(btn) {
     card.style.opacity = '0.5'; card.style.pointerEvents = 'none';
     document.getElementById(`suggestion-${s.id}`)?.remove();
 
-    const range = findTextInDoc(window.tiptapEditor.state.doc, s.original_text);
-    if (range) {
-        window.tiptapEditor.chain()
-            .deleteRange(range)
-            .insertContentAt(range.from, stripMarkdownBasic(s.suggested_text))
-            .run();
+    const stored = suggestionRanges.get(s.id);
+    if (stored?.md) {
+        // Splice suggestion into full markdown then reparse — handles plain text,
+        // single bullets, and multi-bullet expansions correctly.
+        const md = window.tiptapEditor.storage.markdown.getMarkdown();
+        const newMd = applySuggestionToMarkdown(md, s.suggested_text, stored.md);
+        window.tiptapEditor.commands.setContent(newMd);
+        // Save immediately — don't rely on the 1s debounce which loses changes on quick reload.
+        // Use fetch with JSON encoding to match what the server expects (FastAPI Pydantic model).
+        contentInput.value = newMd;
+        fetch(contentInput.getAttribute('hx-put'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: newMd, title: document.getElementById('doc-title')?.value || '' }),
+        }).catch(e => console.error('[suggestion] immediate save failed:', e));
+    } else {
+        // Fallback for page-load suggestions (no stored range)
+        const range = findTextInDoc(window.tiptapEditor.state.doc, s.original_text);
+        if (range) {
+            window.tiptapEditor.chain()
+                .deleteRange(range)
+                .insertContentAt(range.from, stripMarkdownBasic(s.suggested_text))
+                .run();
+        }
     }
 
     pendingSuggestions = pendingSuggestions.filter(p => p.id !== s.id);
+    suggestionRanges.delete(s.id);
     refreshDecorations();
     card.remove();
 
@@ -322,6 +313,7 @@ window.rejectSuggestion = async function(btn) {
     document.getElementById(`suggestion-${s.id}`)?.remove();
 
     pendingSuggestions = pendingSuggestions.filter(p => p.id !== s.id);
+    suggestionRanges.delete(s.id);
     refreshDecorations();
     card.remove();
 
@@ -411,6 +403,7 @@ document.getElementById('fmt-hr').addEventListener('click', () => editor.chain()
 
 // ── AI block button → open modal with block as context ────────────────────
 import { findBlockInMarkdown } from './editor-utils.js';
+import { stripMarkdownBasic, findTextInDoc, applySuggestionToMarkdown } from './suggestion-utils.js';
 
 // Highlight DOM nodes for a set of ProseMirror positions, return cleanup fn.
 function highlightBlocks(positions) {
@@ -480,6 +473,17 @@ aiBtn.addEventListener('click', (e) => {
     }
 
     if (!selText) { console.warn('[AI btn] empty selText'); return; }
+
+    // Capture positions now so we don't need text-search later
+    if (empty) {
+        pendingAiPmRange = {
+            from: activeBlockPos + 1,
+            to:   activeBlockPos + 1 + activeBlockNode.content.size,
+        };
+    } else {
+        pendingAiPmRange = { from, to };
+    }
+    pendingAiMdRange = { start: selStart, end: selEnd };
 
     clearAiHighlight?.();
     clearAiHighlight = highlightBlocks(blockPositions);
