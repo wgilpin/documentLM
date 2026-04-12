@@ -1,17 +1,21 @@
-"""ADK agent orchestration service."""
+"""ADK agent orchestration service.
+
+invoke_research_agent is re-exported from documentlm_core.
+invoke_drafter and invoke_planner are writer-specific and use the core
+run_agent_text helper with writer-specific message formatting.
+"""
 
 import asyncio
-import json
-import re
 import uuid
 from typing import TYPE_CHECKING
 
-from google.adk.runners import Runner
-
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-from google.adk.sessions import InMemorySessionService
-from google.genai import types as genai_types
+
+from documentlm_core.services.agent_service import (  # noqa: F401
+    invoke_research_agent,
+    run_agent_text,
+)
 
 from writer.core.logging import get_logger
 from writer.models.schemas import CommentResponse, DocumentResponse, SourceResponse
@@ -29,11 +33,7 @@ async def invoke_drafter(
     user_id: uuid.UUID,
     db: "AsyncSession | None" = None,
 ) -> str:
-    """Invoke the Drafter agent and return its text response.
-
-    Raises ValueError if no text response is returned.
-    Raises RuntimeError on unexpected agent errors.
-    """
+    """Invoke the Drafter agent and return its text response."""
     from writer.agents.drafter_agent import make_drafter_agent
     from writer.services.chat_service import make_find_more_sources_tool
 
@@ -43,18 +43,6 @@ async def invoke_drafter(
         tools.append(find_more_sources)
 
     agent = make_drafter_agent(tools=tools)
-
-    adk_user_id = str(user_id)
-    session_service = InMemorySessionService()
-    session = await session_service.create_session(
-        app_name=_APP_NAME, user_id=adk_user_id, state={}
-    )
-
-    runner = Runner(
-        agent=agent,
-        app_name=_APP_NAME,
-        session_service=session_service,
-    )
 
     query_text = f"{comment.body} {comment.selected_text}"
     chunks = await asyncio.to_thread(
@@ -69,8 +57,6 @@ async def invoke_drafter(
     doc_content = document.content or ""
     source_block = "\n".join(chunks)
 
-    # Extract a window of text around the selection so the LLM knows exactly
-    # where in the document the replacement will land.
     ctx_window = 300
     sel_start = comment.selection_start or 0
     sel_end = comment.selection_end or len(doc_content)
@@ -87,10 +73,6 @@ async def invoke_drafter(
         f"Selected text:\n{comment.selected_text}\n\n"
         f"Instruction: {comment.body}"
     )
-    user_message = genai_types.Content(
-        role="user",
-        parts=[genai_types.Part(text=message_text)],
-    )
 
     logger.info(
         "Invoking drafter for comment=%s doc=%s | selected=%r instruction=%r",
@@ -100,117 +82,7 @@ async def invoke_drafter(
         comment.body[:120],
     )
 
-    suggested_text: str | None = None
-    try:
-        async for event in runner.run_async(
-            user_id=adk_user_id,
-            session_id=session.id,
-            new_message=user_message,
-        ):
-            agent_name = getattr(event, "author", None) or "unknown"
-            if event.content and event.content.parts:
-                part_text = event.content.parts[0].text or ""
-                logger.info(
-                    "Agent event author=%s is_final=%s text=%r",
-                    agent_name,
-                    event.is_final_response(),
-                    part_text[:200],
-                )
-            else:
-                logger.info(
-                    "Agent event author=%s is_final=%s (no text parts)",
-                    agent_name,
-                    event.is_final_response(),
-                )
-            if event.is_final_response():
-                if event.content and event.content.parts:
-                    suggested_text = event.content.parts[0].text
-                    logger.info(
-                        "Final response from agent=%s for comment=%s: %r",
-                        agent_name,
-                        comment.id,
-                        (suggested_text or "")[:200],
-                    )
-                break
-    except Exception as exc:
-        logger.exception("Agent invocation failed: %s", exc)
-        raise RuntimeError(f"Agent invocation failed: {exc}") from exc
-
-    if suggested_text is None:
-        raise ValueError("Drafter agent returned no text response")
-
-    return suggested_text
-
-
-async def invoke_research_agent(
-    overview: str,
-    user_id: uuid.UUID,
-    title: str = "",
-    exclude_urls: list[str] | None = None,
-) -> list[dict[str, str]]:
-    """Invoke the Research agent to find sources for the given overview.
-
-    Returns a list of dicts with keys: title, url, summary.
-    Returns an empty list if the agent response cannot be parsed as JSON.
-    Pass exclude_urls to ask the agent to avoid already-found sources.
-    """
-    from writer.agents.research_agent import research_agent
-
-    adk_user_id = str(user_id)
-    session_service = InMemorySessionService()
-    session = await session_service.create_session(app_name=_APP_NAME, user_id=adk_user_id)
-
-    runner = Runner(
-        agent=research_agent,
-        app_name=_APP_NAME,
-        session_service=session_service,
-    )
-
-    prompt = f"Title: {title}\nOverview: {overview}" if title else overview
-    if exclude_urls:
-        exclusion_list = "\n".join(f"- {u}" for u in exclude_urls)
-        prompt = (
-            f"{prompt}\n\nDo NOT return any of these URLs — find different sources:\n"
-            f"{exclusion_list}"
-        )
-
-    user_message = genai_types.Content(
-        role="user",
-        parts=[genai_types.Part(text=prompt)],
-    )
-
-    logger.info("Invoking ResearchAgent for overview (len=%d)", len(overview))
-
-    raw_text: str | None = None
-    try:
-        async for event in runner.run_async(
-            user_id=adk_user_id,
-            session_id=session.id,
-            new_message=user_message,
-        ):
-            if event.is_final_response():
-                if event.content and event.content.parts:
-                    raw_text = event.content.parts[0].text
-                break
-    except Exception as exc:
-        logger.exception("ResearchAgent invocation failed: %s", exc)
-        raise RuntimeError(f"ResearchAgent invocation failed: {exc}") from exc
-
-    if raw_text is None:
-        raise ValueError("ResearchAgent returned no text response")
-
-    logger.info("ResearchAgent raw response (len=%d)", len(raw_text))
-
-    try:
-        match = re.search(r"\[.*\]", raw_text, re.DOTALL)
-        if match is None:
-            raise ValueError("No JSON array found in response")
-        sources: list[dict[str, str]] = json.loads(match.group())
-        logger.info("ResearchAgent returned %d sources", len(sources))
-        return sources
-    except (ValueError, json.JSONDecodeError) as exc:
-        logger.warning("Failed to parse ResearchAgent JSON: %s — returning empty list", exc)
-        return []
+    return await run_agent_text(agent, message_text, user_id, app_name=_APP_NAME)
 
 
 async def invoke_planner(
@@ -219,10 +91,7 @@ async def invoke_planner(
     document_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> str:
-    """Invoke the Planner agent with an overview and research sources.
-
-    Returns the plan text (overview paragraph + table of contents).
-    """
+    """Invoke the Planner agent with an overview and research sources."""
     from writer.agents.planner_agent import planner_agent
 
     chunks = await asyncio.to_thread(
@@ -236,46 +105,16 @@ async def invoke_planner(
         "research_sources": research_sources,
     }
 
-    adk_user_id = str(user_id)
-    session_service = InMemorySessionService()
-    session = await session_service.create_session(
-        app_name=_APP_NAME, user_id=adk_user_id, state=session_state
-    )
-
-    runner = Runner(
-        agent=planner_agent,
-        app_name=_APP_NAME,
-        session_service=session_service,
-    )
-
-    user_message = genai_types.Content(
-        role="user",
-        parts=[genai_types.Part(text=overview)],
-    )
-
     logger.info(
         "Invoking PlannerAgent with %d sources (overview len=%d)",
         len(sources),
         len(overview),
     )
 
-    plan_text: str | None = None
-    try:
-        async for event in runner.run_async(
-            user_id=adk_user_id,
-            session_id=session.id,
-            new_message=user_message,
-        ):
-            if event.is_final_response():
-                if event.content and event.content.parts:
-                    plan_text = event.content.parts[0].text
-                break
-    except Exception as exc:
-        logger.exception("PlannerAgent invocation failed: %s", exc)
-        raise RuntimeError(f"PlannerAgent invocation failed: {exc}") from exc
-
-    if plan_text is None:
-        raise ValueError("PlannerAgent returned no text response")
-
-    logger.info("PlannerAgent response received (len=%d)", len(plan_text))
-    return plan_text
+    return await run_agent_text(
+        planner_agent,
+        overview,
+        user_id,
+        app_name=_APP_NAME,
+        session_state=session_state,
+    )

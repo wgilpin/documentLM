@@ -67,8 +67,8 @@ class TestRunIndexing:
         )
 
         with (
-            patch("writer.services.indexer.chunk_sentences", return_value=["c1", "c2"]),
-            patch("writer.services.indexer.vector_store") as mock_vs,
+            patch("documentlm_core.services.indexer.chunk_sentences", return_value=["c1", "c2"]),
+            patch("documentlm_core.services.indexer.vector_store") as mock_vs,
         ):
             mock_vs.index_source = MagicMock()
             await run_indexing(source_id, db, uuid.uuid4())
@@ -88,8 +88,10 @@ class TestRunIndexing:
         db.flush = AsyncMock()
 
         with (
-            patch("writer.services.indexer.chunk_sentences", return_value=["chunk"]) as mock_chunk,
-            patch("writer.services.indexer.vector_store") as mock_vs,
+            patch(
+                "documentlm_core.services.indexer.chunk_sentences", return_value=["chunk"]
+            ) as mock_chunk,
+            patch("documentlm_core.services.indexer.vector_store") as mock_vs,
         ):
             mock_vs.index_source = MagicMock()
             await run_indexing(source_id, db, uuid.uuid4())
@@ -109,10 +111,10 @@ class TestRunIndexing:
 
         with (
             patch(
-                "writer.services.indexer.chunk_sentences",
+                "documentlm_core.services.indexer.chunk_sentences",
                 side_effect=RuntimeError("embed failed"),
             ),
-            patch("writer.services.indexer.vector_store"),
+            patch("documentlm_core.services.indexer.vector_store"),
         ):
             await run_indexing(source_id, db, uuid.uuid4())
 
@@ -131,8 +133,8 @@ class TestRunIndexing:
         db.execute = AsyncMock(return_value=r)
 
         with (
-            patch("writer.services.indexer.chunk_sentences") as mock_chunk,
-            patch("writer.services.indexer.vector_store"),
+            patch("documentlm_core.services.indexer.chunk_sentences") as mock_chunk,
+            patch("documentlm_core.services.indexer.vector_store"),
         ):
             await run_indexing(source_id, db, uuid.uuid4())
 
@@ -150,8 +152,8 @@ class TestRunIndexing:
         db.execute = AsyncMock(return_value=r)
 
         with (
-            patch("writer.services.indexer.chunk_sentences") as mock_chunk,
-            patch("writer.services.indexer.vector_store"),
+            patch("documentlm_core.services.indexer.chunk_sentences") as mock_chunk,
+            patch("documentlm_core.services.indexer.vector_store"),
         ):
             await run_indexing(source_id, db, uuid.uuid4())
 
@@ -166,8 +168,8 @@ class TestRunIndexing:
         db.execute = AsyncMock(return_value=r)
 
         with (
-            patch("writer.services.indexer.chunk_sentences") as mock_chunk,
-            patch("writer.services.indexer.vector_store"),
+            patch("documentlm_core.services.indexer.chunk_sentences") as mock_chunk,
+            patch("documentlm_core.services.indexer.vector_store"),
         ):
             await run_indexing(uuid.uuid4(), db, uuid.uuid4())
 

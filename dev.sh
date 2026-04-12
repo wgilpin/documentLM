@@ -2,7 +2,13 @@
 set -e
 
 # Start postgres in Docker
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f ../docker-compose.dev.yml --project-name documentlm up -d
+
+# Wait for postgres to be ready
+echo "Waiting for postgres..."
+until docker compose -f ../docker-compose.dev.yml --project-name documentlm exec -T postgres pg_isready -q; do
+  sleep 1
+done
 
 # Load .env, override DATABASE_URL host to localhost
 set -a
