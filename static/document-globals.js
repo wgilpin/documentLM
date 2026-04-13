@@ -79,6 +79,16 @@ function switchRightTab(name) {
     if (btn) btn.classList.add('right-tab-btn--active');
 }
 
+function clearSourceViewerIfMatch(sourceId) {
+    var el = document.getElementById('source-view-content');
+    if (el && el.dataset.sourceId === sourceId) {
+        var container = document.getElementById('source-view-container');
+        if (container) {
+            container.innerHTML = '<p class="side-panel-placeholder">Select a source to view its content here.</p>';
+        }
+    }
+}
+
 function lockEditor()   { window.tiptapEditor?.setEditable(false); }
 function unlockEditor() { window.tiptapEditor?.setEditable(true); }
 

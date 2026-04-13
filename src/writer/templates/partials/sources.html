@@ -42,7 +42,8 @@
             hx-delete="/api/documents/{{ source.document_id }}/sources/{{ source.id }}"
             hx-target="#source-{{ source.id }}"
             hx-swap="outerHTML"
-            hx-confirm="Remove this source?">
+            hx-confirm="Remove this source?"
+            hx-on::after-request="clearSourceViewerIfMatch('{{ source.id }}')">
       <span class="material-symbols-outlined">delete</span>
     </button>
   </div>
