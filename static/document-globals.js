@@ -79,6 +79,14 @@ function switchRightTab(name) {
     if (btn) btn.classList.add('right-tab-btn--active');
 }
 
+function showSourceNotice() {
+    var el = document.getElementById('source-processing-notice');
+    if (el) {
+        el.hidden = false;
+        setTimeout(function () { el.hidden = true; }, 8000);
+    }
+}
+
 function clearSourceViewerIfMatch(sourceId) {
     var el = document.getElementById('source-view-content');
     if (el && el.dataset.sourceId === sourceId) {

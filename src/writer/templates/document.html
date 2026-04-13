@@ -23,6 +23,7 @@
             <div id="tab-note" class="tab-panel active">
                 <div id="source-error-note" class="source-error-container"></div>
                 <form hx-post="/api/documents/{{ doc.id }}/sources" hx-target="#source-list" hx-swap="beforeend"
+                    hx-on::before-request="showSourceNotice()"
                     hx-on::after-request="this.reset()">
                     <input type="hidden" name="source_type" value="note">
                     <div class="form-group">
@@ -43,6 +44,7 @@
             <div id="tab-url" class="tab-panel">
                 <div id="source-error-url" class="source-error-container"></div>
                 <form hx-post="/api/documents/{{ doc.id }}/sources" hx-target="#source-list" hx-swap="beforeend"
+                    hx-on::before-request="showSourceNotice()"
                     hx-on::after-request="this.reset()">
                     <input type="hidden" name="source_type" value="url">
                     <div class="form-group">
@@ -67,7 +69,9 @@
             <div id="tab-pdf" class="tab-panel">
                 <div id="source-error-pdf" class="source-error-container"></div>
                 <form hx-post="/api/documents/{{ doc.id }}/sources" hx-target="#source-list" hx-swap="beforeend"
-                    hx-encoding="multipart/form-data" hx-on::after-request="this.reset()">
+                    hx-encoding="multipart/form-data"
+                    hx-on::before-request="showSourceNotice()"
+                    hx-on::after-request="this.reset()">
                     <input type="hidden" name="source_type" value="pdf">
                     <div class="form-group">
                         <label>Title</label>
@@ -90,6 +94,10 @@
             <span class="material-symbols-outlined" style="font-size:1rem">import_contacts</span>
             Import Deep Research
         </button>
+
+        <div id="source-processing-notice" class="source-processing-notice" hidden>
+            Processing. Sources will be updated when complete.
+        </div>
 
         <ul id="source-list" hx-get="/api/documents/{{ doc.id }}/sources" hx-trigger="load" hx-swap="innerHTML">
         </ul>

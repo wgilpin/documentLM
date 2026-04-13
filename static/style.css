@@ -1203,6 +1203,16 @@ details[open] .source-add-summary {
     color: #434ca5;
 }
 
+.source-processing-notice {
+    font-size: 0.75rem;
+    color: #434ca5;
+    background: #eef0fb;
+    border: 1px solid #c4c5d9;
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    text-align: center;
+}
+
 /* Source action icon buttons */
 .btn-icon {
     display: inline-flex;
