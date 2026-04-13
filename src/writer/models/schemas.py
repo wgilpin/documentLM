@@ -6,6 +6,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from documentlm_core.models.schemas import UserResponse  # noqa: F401
 from writer.models.enums import (
     ChatRole,
     CommentStatus,
@@ -14,14 +15,6 @@ from writer.models.enums import (
     SourceType,
     SuggestionStatus,
 )
-
-
-class UserResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    email: str
-    created_at: datetime
 
 
 class RegisterRequest(BaseModel):

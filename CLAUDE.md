@@ -54,13 +54,27 @@ docker-compose up --build                 # full stack
 Python 3.13+: Follow standard conventions
 
 ## Recent Changes
+- 014-google-deep-research-import: Added Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
 - 010-chat-sessions: Added Python 3.13+ + google-adk (local), FastAPI, HTMX 2.0, Pydantic v2, SQLAlchemy 2.x / asyncpg
 - 009-multi-user-invite: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
-- 008-view-add-sources: Added Python 3.13+ + google-adk (local), FastAPI, HTMX 2.0, Pydantic v2, SQLAlchemy 2.x / asyncpg
 
 
 <!-- MANUAL ADDITIONS START -->
 ## Quality Gates
 
 Always run `uv run pytest` before reporting a task as complete or writing a commit message. If tests fail, fix them or report the failures — do not proceed.
+
+Use python.
+use uv.
+use tdd for backend services / code.
+Never call remote APIs in tests, use mocks. If a test relies on a remote API such as an LLM there's no point writing the test.
+Keep the code as simple as possible - this is a demo / prototype not a production system.
+Never add new features without explicitly checking first.
+Use strong typing / mypy / pydantic / typeddicts and never simple dicts for all function arguments / returns.
+Avoid the Any type.
+Prefer functional style over OOP.
+Ensure all code passes the ruff linter before saving.
+Use postgresql in a docker container for storage and other container for  the server(s).
+Include comprehensive logging - there should be no silent execptions without logs.
+Use fastapi and HTMX - minimise js in the frontend.
 <!-- MANUAL ADDITIONS END -->

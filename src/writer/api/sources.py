@@ -16,6 +16,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.auth import get_current_user
@@ -24,6 +25,7 @@ from writer.core.templates import templates as _shared_templates
 from writer.models.enums import SourceType
 from writer.models.schemas import SourceCreate, SourceResponse, UserResponse
 from writer.services import source_service
+from writer.services.deep_research_service import parse_markdown_document
 from writer.services.source_service import PdfParseError, SourceNotFoundError
 
 router = APIRouter()
@@ -153,6 +155,106 @@ async def view_source_pdf(
     return FileResponse(
         source.file_path, media_type="application/pdf", filename=f"{source.title}.pdf"
     )
+
+
+class ImportDeepResearchResponse(BaseModel):
+    created: list[SourceResponse]
+    skipped_count: int
+
+
+@router.post("/{doc_id}/sources/import-deep-research", response_model=None)
+async def import_deep_research(
+    request: Request,
+    db: DbDep,
+    current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
+    doc_id: uuid.UUID,
+    file: Annotated[UploadFile, File()],
+) -> HTMLResponse | ImportDeepResearchResponse:
+    from writer.core.logging import get_logger
+    from writer.services.indexer import run_indexing
+
+    log = get_logger(__name__)
+    log.info("import_deep_research: doc=%s user=%s file=%s", doc_id, current_user.id, file.filename)
+
+    raw = await file.read()
+    try:
+        content = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        log.warning("import_deep_research: could not decode file as UTF-8")
+        content = ""
+
+    parsed = parse_markdown_document(content, file.filename or "research.md")
+
+    if not parsed["body"] and not parsed["references"]:
+        log.warning("import_deep_research: empty content for doc=%s", doc_id)
+        error_html = (
+            "<p>The file appears to be empty or unreadable. "
+            "Please select a valid Markdown file.</p>"
+        )
+        return HTMLResponse(
+            error_html,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            headers={"HX-Retarget": "#import-deep-research-error", "HX-Reswap": "innerHTML"},
+        )
+
+    created: list[SourceResponse] = []
+    skipped_count = 0
+
+    # Document body source
+    note_data = SourceCreate(
+        document_id=doc_id,
+        source_type=SourceType.note,
+        title=parsed["title"],
+        content=parsed["body"],
+        url=None,
+    )
+    note_source = await source_service.add_source(db, note_data, current_user.id)
+    created.append(note_source)
+
+    # Reference URL sources
+    for ref in parsed["references"]:
+        url_data = SourceCreate(
+            document_id=doc_id,
+            source_type=SourceType.url,
+            title=ref["title"],
+            content="",
+            url=ref["url"],
+        )
+        pre_existing_check = any(s.url == ref["url"] for s in created if s.url is not None)
+        if pre_existing_check:
+            skipped_count += 1
+            continue
+        url_source = await source_service.add_source(db, url_data, current_user.id)
+        # add_source returns existing source on duplicate — detect skip by checking created list
+        if any(s.id == url_source.id for s in created):
+            skipped_count += 1
+        else:
+            created.append(url_source)
+
+    await db.commit()
+
+    for src in created:
+        background_tasks.add_task(run_indexing, source_id=src.id, db=db, user_id=current_user.id)
+
+    log.info(
+        "import_deep_research: created=%d skipped=%d doc=%s",
+        len(created),
+        skipped_count,
+        doc_id,
+    )
+
+    if request.headers.get("HX-Request"):
+        tmpl = get_templates()
+        html = "".join(
+            tmpl.get_template("partials/sources.html").render(
+                {"source": s, "doc_id": doc_id, "request": request}
+            )
+            for s in created
+        )
+        return HTMLResponse(html)
+
+    return ImportDeepResearchResponse(created=created, skipped_count=skipped_count)
 
 
 @router.delete("/{doc_id}/sources/{source_id}", response_model=None)

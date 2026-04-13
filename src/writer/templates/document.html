@@ -85,6 +85,12 @@
             </div>
         </details>
 
+        <button class="btn btn-sm" style="width:100%; margin-top: 0.5rem;"
+                onclick="document.getElementById('import-deep-research-dialog').showModal()">
+            <span class="material-symbols-outlined" style="font-size:1rem">import_contacts</span>
+            Import Deep Research
+        </button>
+
         <ul id="source-list" hx-get="/api/documents/{{ doc.id }}/sources" hx-trigger="load" hx-swap="innerHTML">
         </ul>
     </div>
@@ -330,6 +336,39 @@
     <div class="dialog-actions" style="margin-top: 1rem;">
         <form method="dialog"><button class="btn">Close</button></form>
     </div>
+</dialog>
+{% endif %}
+
+<!-- Import Google Deep Research modal -->
+{% if doc %}
+<dialog id="import-deep-research-dialog" style="padding: 1.5rem; min-width: 28rem; max-width: 48rem;">
+    <h3 style="margin-top: 0;">Import Google Deep Research</h3>
+    <ol style="margin-bottom: 1rem;">
+        <li>In Google Deep Research, click <strong>Share &gt; Export to Docs</strong></li>
+        <li>Open the Google Doc that was created</li>
+        <li>Go to <strong>File &gt; Download &gt; Markdown (.md)</strong></li>
+        <li>Select the downloaded <code>.md</code> file below</li>
+    </ol>
+    <div id="import-deep-research-error" class="source-error-container"></div>
+    <form hx-post="/api/documents/{{ doc.id }}/sources/import-deep-research"
+          hx-target="#source-list"
+          hx-swap="beforeend"
+          hx-encoding="multipart/form-data"
+          hx-on::after-request="if(event.detail.successful) { this.reset(); document.getElementById('import-deep-research-dialog').close(); }">
+        <div class="form-group">
+            <label>Markdown file</label>
+            <input type="file" name="file" accept=".md" required>
+        </div>
+        <div class="dialog-actions" style="margin-top: 1rem;">
+            <button type="submit" class="btn btn-primary btn-sm">
+                Import
+                <span class="material-symbols-outlined" style="font-size: 1.1em;">upload</span>
+            </button>
+            <form method="dialog" style="display:inline;">
+                <button class="btn btn-sm" type="submit">Cancel</button>
+            </form>
+        </div>
+    </form>
 </dialog>
 {% endif %}
 

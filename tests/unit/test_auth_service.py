@@ -91,7 +91,7 @@ class TestRegisterUser:
 
         db.refresh = AsyncMock(side_effect=_refresh)
 
-        with patch("writer.services.auth_service.User") as MockUser:
+        with patch("documentlm_core.services.auth_service.User") as MockUser:
             MockUser.return_value = user
             result = await register_user(db, "a" * 32, "test@example.com", "password123")
 
@@ -144,7 +144,7 @@ class TestRegisterUser:
         db.flush = AsyncMock(side_effect=IntegrityError("", {}, Exception()))
 
         with (
-            patch("writer.services.auth_service.User"),
+            patch("documentlm_core.services.auth_service.User"),
             pytest.raises(DuplicateEmailError),
         ):
             await register_user(db, "a" * 32, "already@example.com", "password123")

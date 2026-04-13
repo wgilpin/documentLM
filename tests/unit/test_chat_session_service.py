@@ -60,6 +60,7 @@ async def test_get_or_create_active_session_creates_when_none_exists() -> None:
     doc_id = uuid.uuid4()
 
     db = AsyncMock()
+    db.add = MagicMock()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     db.execute = AsyncMock(return_value=mock_result)

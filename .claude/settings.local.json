@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npm test:*)",
+      "Bash(node --test *)",
+      "Read(//Users/will/projects/**)",
+      "Bash(uv add:*)",
+      "Bash(uv sync:*)"
+    ],
+    "additionalDirectories": [
+      "/Users/will/projects/documentlm-core"
+    ]
+  }
+}

@@ -1,38 +1,10 @@
-"""Shared enum definitions used by both ORM models and Pydantic schemas."""
+"""Shared enum definitions — re-exported from documentlm_core."""
 
-import enum
-
-
-class SourceType(enum.Enum):
-    url = "url"
-    pdf = "pdf"
-    note = "note"
-
-
-class CommentStatus(enum.Enum):
-    open = "open"
-    resolved = "resolved"
-
-
-class SuggestionStatus(enum.Enum):
-    pending = "pending"
-    accepted = "accepted"
-    rejected = "rejected"
-    stale = "stale"
-
-
-class ChatRole(enum.Enum):
-    user = "user"
-    assistant = "assistant"
-
-
-class IndexingStatus(enum.Enum):
-    pending = "pending"
-    processing = "processing"
-    completed = "completed"
-    failed = "failed"
-
-
-class SessionStatus(enum.Enum):
-    active = "active"
-    archived = "archived"
+from documentlm_core.models.enums import (  # noqa: F401
+    ChatRole,
+    CommentStatus,
+    IndexingStatus,
+    SessionStatus,
+    SourceType,
+    SuggestionStatus,
+)
