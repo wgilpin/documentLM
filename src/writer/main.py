@@ -143,13 +143,20 @@ CurrentUser = Annotated[UserResponse, Depends(get_current_user)]
 from writer.api import auth as auth_router  # noqa: E402
 from writer.api import chat as chat_router  # noqa: E402
 from writer.api import documents as doc_router  # noqa: E402
+from writer.api import generation as generation_router  # noqa: E402
+from writer.api import search as search_router  # noqa: E402
 from writer.api import settings as settings_router  # noqa: E402
+from writer.api import snippets as snippets_router  # noqa: E402
 from writer.api import sources as src_router  # noqa: E402
 from writer.api import suggestions as sug_router  # noqa: E402
 
 app.include_router(auth_router.router)
 app.include_router(doc_router.router, prefix="/api/documents", tags=["documents"])
 app.include_router(src_router.router, prefix="/api/documents", tags=["sources"])
+app.include_router(src_router.source_view_router, prefix="/api/sources", tags=["sources"])
+app.include_router(snippets_router.router, prefix="/api", tags=["snippets"])
+app.include_router(search_router.router, prefix="/api", tags=["search"])
+app.include_router(generation_router.router, prefix="/api", tags=["generation"])
 app.include_router(sug_router.router, tags=["suggestions"])
 app.include_router(chat_router.router, tags=["chat"])
 app.include_router(settings_router.router)

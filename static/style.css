@@ -9,7 +9,7 @@ body {
     font-size: 15px;
     line-height: 1.5;
     color: #1a1a1a;
-    background: #f9f9f9;
+    background: #d9dbe0;
 }
 
 header,
@@ -129,7 +129,8 @@ main:has(.editor-layout) {
     top: 64px;
     width: 256px;
     height: calc(100vh - 64px);
-    background: #edeeef;
+    background: #f0f1f3;
+    border-right: 1px solid #e2e4e9;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -147,7 +148,7 @@ main:has(.editor-layout) {
     flex-shrink: 0;
 }
 
-/* Chat panel — right sidebar */
+/* Right panel — right sidebar (AI Assistant + Snippets) */
 .chat-panel {
     position: fixed;
     right: 0;
@@ -156,33 +157,50 @@ main:has(.editor-layout) {
     height: calc(100vh - 64px);
     display: flex;
     flex-direction: column;
-    background: rgba(248, 249, 250, 0.85);
-    backdrop-filter: blur(12px);
+    background: #f8f9fa;
+    border-left: 1px solid #e2e4e9;
     overflow: hidden;
     z-index: 10;
 }
 
-.chat-panel-header {
-    padding: 1.25rem 1.5rem 0.75rem;
-    border-bottom: 1px solid rgba(196, 197, 217, 0.2);
-    flex-shrink: 0;
-}
-
-.chat-panel-header-title {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 700;
-    color: #191c1d;
+/* Right pane tabs (AI Assistant / Snippets) */
+.right-panel-tabs {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    border-bottom: 1px solid #e2e4e9;
+    flex-shrink: 0;
+    background: #edeeef;
 }
 
-.chat-panel-header-title .material-symbols-outlined {
+.right-tab-btn {
+    flex: 1;
+    padding: 0.6rem 0.5rem;
+    border: none;
+    background: transparent;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #747688;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.right-tab-btn:hover {
     color: #434ca5;
-    font-size: 1rem;
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.right-tab-btn--active {
+    color: #434ca5;
+    border-bottom-color: #434ca5;
+    background: #f8f9fa;
+}
+
+.right-panel-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .chat-input-wrap {
@@ -210,6 +228,47 @@ main:has(.editor-layout) {
     flex: 1;
     margin-left: 256px;
     margin-right: 320px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Middle pane tabs (Editor / Source Viewer) */
+.middle-panel-tabs {
+    display: flex;
+    border-bottom: 1px solid #e2e4e9;
+    flex-shrink: 0;
+    background: #edeeef;
+}
+
+.middle-tab-btn {
+    flex: 0 0 auto;
+    padding: 0.6rem 1rem;
+    border: none;
+    background: transparent;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #747688;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.middle-tab-btn:hover {
+    color: #434ca5;
+}
+
+.middle-tab-btn--active {
+    color: #434ca5;
+    border-bottom-color: #434ca5;
+    background: #fff;
+}
+
+.middle-panel-body {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -1435,7 +1494,7 @@ details[open] .source-add-summary {
 /* Editor toolbar (undo/redo) */
 .editor-toolbar {
     position: absolute;
-    top: 5rem;
+    top: 10rem;
     left: 50%;
     transform: translateX(-50%);
     z-index: 30;
@@ -1587,6 +1646,143 @@ details[open] .source-add-summary {
     justify-content: flex-end;
     margin-top: 1rem;
 }
+/* Side panel — Document View + Snippet Bank */
+/* Source viewer (inside middle pane) */
+
+.source-view-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem;
+}
+
+.side-panel-placeholder {
+    color: #9ca3af;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.source-view-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.source-view-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #747688;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e4e9;
+    margin-bottom: 0.25rem;
+}
+
+.source-view-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.source-para {
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: #374151;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    cursor: text;
+}
+
+.source-para:hover {
+    background: #eef0f8;
+}
+
+.source-para h1, .source-para h2, .source-para h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #191c1d;
+    margin: 0 0 0.25rem;
+}
+
+/* Snippet bank */
+#snippet-bank-container {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow-y: auto;
+}
+
+#right-panel-snippets {
+    overflow-y: auto;
+}
+
+.snippet-search-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.snippet-search-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    box-sizing: border-box;
+}
+
+.snippet-card {
+    background: #fff;
+    border: 1px solid #e2e4e9;
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+}
+
+.snippet-card-text {
+    color: #191c1d;
+    line-height: 1.5;
+    font-style: italic;
+}
+
+.snippet-card-source {
+    color: #747688;
+    font-size: 0.72rem;
+}
+
+.snippet-card-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.1rem;
+}
+
+.search-result-card {
+    background: #fff;
+    border: 1px solid #e2e4e9;
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.search-result-text {
+    color: #374151;
+    line-height: 1.5;
+}
+
+.search-result-source {
+    color: #747688;
+    font-size: 0.72rem;
+}
+
 /* Print styles */
 .print-title { display: none; }
 
@@ -1594,6 +1790,7 @@ details[open] .source-add-summary {
     .site-header,
     .sources-panel,
     .chat-panel,
+    .middle-panel-tabs,
     .editor-toolbar,
     #inline-suggestions,
     #doc-title,

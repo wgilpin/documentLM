@@ -29,6 +29,8 @@ from writer.services.deep_research_service import parse_markdown_document
 from writer.services.source_service import PdfParseError, SourceNotFoundError
 
 router = APIRouter()
+# Separate router for /api/sources/{source_id}/... paths (not under /api/documents)
+source_view_router = APIRouter()
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 CurrentUser = Annotated[UserResponse, Depends(get_current_user)]
@@ -255,6 +257,42 @@ async def import_deep_research(
         return HTMLResponse(html)
 
     return ImportDeepResearchResponse(created=created, skipped_count=skipped_count)
+
+
+def _build_paragraphs_with_offsets(content: str) -> list[dict[str, object]]:
+    """Split markdown content into paragraphs with character offsets for scroll anchors."""
+    import markdown as md_lib
+
+    paragraphs: list[dict[str, object]] = []
+    offset = 0
+    # Split on blank lines to get logical blocks
+    blocks = content.split("\n\n")
+    for block in blocks:
+        block = block.strip()
+        if block:
+            rendered = md_lib.markdown(block, extensions=["extra"])
+            paragraphs.append({"offset": offset, "html": rendered})
+        offset += len(block) + 2  # account for the \n\n separator
+    return paragraphs
+
+
+@source_view_router.get("/{source_id}/view", response_model=None)
+async def get_source_document_view(
+    request: Request, db: DbDep, current_user: CurrentUser, source_id: uuid.UUID
+) -> HTMLResponse:
+    """Return rendered markdown HTML for Document View panel (HTMX target)."""
+    try:
+        source = await source_service.get_source(db, source_id, current_user.id)
+    except SourceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Source not found") from exc
+
+    paragraphs = _build_paragraphs_with_offsets(source.content)
+    tmpl = get_templates()
+    return HTMLResponse(
+        tmpl.get_template("partials/source_view.html").render(
+            {"source": source, "paragraphs": paragraphs, "request": request}
+        )
+    )
 
 
 @router.delete("/{doc_id}/sources/{source_id}", response_model=None)

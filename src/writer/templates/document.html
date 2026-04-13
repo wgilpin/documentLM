@@ -96,9 +96,17 @@
     </div>
     {% endif %}
 
-    <!-- COL 2: Editor pane (center) -->
+    <!-- COL 2: Middle pane (editor + source viewer, tabbed) -->
     <div class="editor-pane">
         {% if doc %}
+        <div class="middle-panel-tabs">
+            <button class="middle-tab-btn middle-tab-btn--active" id="mid-tab-editor"
+                onclick="switchMiddleTab('editor')">Document Editor</button>
+            <button class="middle-tab-btn" id="mid-tab-source-viewer"
+                onclick="switchMiddleTab('source-viewer')">Source Viewer</button>
+        </div>
+
+        <div id="middle-panel-editor" class="middle-panel-body">
         <h1 class="print-title">{{ doc.title }}</h1>
         <input type="text" id="doc-title" value="{{ doc.title }}" hx-put="/api/documents/{{ doc.id }}" hx-ext="json-enc"
             hx-trigger="change"
@@ -271,6 +279,13 @@
         <div id="inline-suggestions" hx-get="/api/documents/{{ doc.id }}/suggestions" hx-trigger="load"
             hx-swap="innerHTML">
         </div>
+        </div><!-- /middle-panel-editor -->
+
+        <div id="middle-panel-source-viewer" class="middle-panel-body" style="display:none">
+            <div id="source-view-container" class="source-view-container">
+                <p class="side-panel-placeholder">Select a source to view its content here.</p>
+            </div>
+        </div>
 
         {% else %}
         <form action="/api/documents/form" method="post">
@@ -288,41 +303,48 @@
         {% endif %}
     </div>
 
-    <!-- COL 3: Resize handle -->
-    {% if doc %}
 
-    {% endif %}
-
-    <!-- COL 4: Chat panel (right) -->
+    <!-- COL 3: Right panel (AI Assistant + Snippets, tabbed) -->
     {% if doc %}
     <div class="chat-panel">
-        <div class="chat-panel-header">
-            <div class="chat-panel-header-title">
-                <span class="material-symbols-outlined">auto_awesome</span>
-                AI Research Assistant
+        <div class="right-panel-tabs">
+            <button class="right-tab-btn right-tab-btn--active" id="right-tab-chat"
+                onclick="switchRightTab('chat')">AI Assistant</button>
+            <button class="right-tab-btn" id="right-tab-snippets"
+                onclick="switchRightTab('snippets')">Snippets</button>
+        </div>
+
+        <div id="right-panel-chat" class="right-panel-body">
+            <div class="meta-chat-sessions">
+                <div id="chat-session-dropdown" hx-get="/api/documents/{{ doc.id }}/chat/sessions" hx-trigger="load"
+                    hx-swap="outerHTML">
+                </div>
+                <button id="chat-new-btn" class="btn btn-secondary btn-sm"
+                    hx-post="/api/documents/{{ doc.id }}/chat/sessions" hx-target="#chat-history" hx-swap="outerHTML">
+                    New Chat
+                </button>
+            </div>
+            <div id="chat-history" hx-get="/api/documents/{{ doc.id }}/chat" hx-trigger="load" hx-swap="innerHTML">
+            </div>
+            <div id="chat-action-buttons"></div>
+            <div class="chat-input-wrap">
+                <form class="chat-input-form" hx-post="/api/documents/{{ doc.id }}/chat" hx-target="#chat-history"
+                    hx-swap="beforeend"
+                    hx-on::before-request="lockEditor(); document.getElementById('chat-send-btn').classList.add('btn--loading')"
+                    hx-on::after-request="unlockEditor(); document.getElementById('chat-send-btn').classList.remove('btn--loading'); this.reset()">
+                    <textarea name="content" class="chat-input-textarea" rows="2" placeholder="Ask about sources/document…"
+                        required></textarea>
+                    <button type="submit" id="chat-send-btn" class="btn btn-primary btn-sm">Send</button>
+                </form>
             </div>
         </div>
-        <div class="meta-chat-sessions">
-            <div id="chat-session-dropdown" hx-get="/api/documents/{{ doc.id }}/chat/sessions" hx-trigger="load"
-                hx-swap="outerHTML">
+
+        <div id="right-panel-snippets" class="right-panel-body" style="display:none">
+            <div id="snippet-bank-container"
+                hx-get="/api/documents/{{ doc.id }}/snippets"
+                hx-trigger="load"
+                hx-swap="innerHTML">
             </div>
-            <button id="chat-new-btn" class="btn btn-secondary btn-sm"
-                hx-post="/api/documents/{{ doc.id }}/chat/sessions" hx-target="#chat-history" hx-swap="outerHTML">
-                New Chat
-            </button>
-        </div>
-        <div id="chat-history" hx-get="/api/documents/{{ doc.id }}/chat" hx-trigger="load" hx-swap="innerHTML">
-        </div>
-        <div id="chat-action-buttons"></div>
-        <div class="chat-input-wrap">
-            <form class="chat-input-form" hx-post="/api/documents/{{ doc.id }}/chat" hx-target="#chat-history"
-                hx-swap="beforeend"
-                hx-on::before-request="lockEditor(); document.getElementById('chat-send-btn').classList.add('btn--loading')"
-                hx-on::after-request="unlockEditor(); document.getElementById('chat-send-btn').classList.remove('btn--loading'); this.reset()">
-                <textarea name="content" class="chat-input-textarea" rows="2" placeholder="Ask about sources/document…"
-                    required></textarea>
-                <button type="submit" id="chat-send-btn" class="btn btn-primary btn-sm">Send</button>
-            </form>
         </div>
     </div>
     {% endif %}

@@ -4,9 +4,9 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
+from documentlm_core.models.schemas import UserResponse  # noqa: F401
 from pydantic import BaseModel, ConfigDict, Field
 
-from documentlm_core.models.schemas import UserResponse  # noqa: F401
 from writer.models.enums import (
     ChatRole,
     CommentStatus,
@@ -167,3 +167,52 @@ class ChatMessageResponse(BaseModel):
     role: ChatRole
     content: str
     created_at: datetime
+
+
+class SnippetCreate(BaseModel):
+    source_id: uuid.UUID | None = None
+    text: str
+    char_offset: int = 0
+    note: str | None = None
+    tag: str | None = None
+
+
+class SnippetUpdate(BaseModel):
+    note: str | None = None
+    tag: str | None = None
+
+
+class SnippetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    source_id: uuid.UUID | None
+    text: str
+    char_offset: int
+    note: str | None
+    tag: str | None
+    created_at: datetime
+    # source_title is joined and populated by the service layer (not from ORM directly)
+    source_title: str | None = None
+
+
+class SearchResultItem(BaseModel):
+    text: str
+    source_id: uuid.UUID
+    source_title: str  # resolved by service from DB
+
+
+class SearchResponse(BaseModel):
+    results: list[SearchResultItem]
+    query: str
+
+
+class BoundedGenerateRequest(BaseModel):
+    snippet_ids: list[uuid.UUID]  # optional — may be empty
+    intent: Annotated[str, Field(min_length=1, max_length=500)]
+    cursor_context: str = ""  # heading/paragraph at insertion point
+
+
+class BoundedGenerationResponse(BaseModel):
+    suggested_text: str

@@ -13,12 +13,20 @@
     </div>
   </div>
   <div class="source-actions">
+    <!-- View in Source Viewer tab -->
+    <button class="btn-icon source-view-btn" title="Open in Source Viewer"
+            hx-get="/api/sources/{{ source.id }}/view"
+            hx-target="#source-view-container"
+            hx-swap="innerHTML"
+            hx-on::after-request="switchMiddleTab('source-viewer')">
+      <span class="material-symbols-outlined">dock_to_right</span>
+    </button>
     {% if source.source_type.value == 'url' and source.url %}
-      <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer" class="btn-icon source-view-btn" title="View">
+      <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer" class="btn-icon source-view-btn" title="Open URL">
         <span class="material-symbols-outlined">open_in_new</span>
       </a>
     {% elif source.source_type.value == 'note' %}
-      <button class="btn-icon source-view-btn" title="View"
+      <button class="btn-icon source-view-btn" title="View note"
               hx-get="/api/documents/{{ doc_id }}/sources/{{ source.id }}/view"
               hx-target="#source-note-modal-body"
               hx-swap="innerHTML"
@@ -26,11 +34,7 @@
         <span class="material-symbols-outlined">open_in_new</span>
       </button>
     {% elif source.source_type.value == 'pdf' and source.file_path %}
-      <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/pdf" target="_blank" rel="noopener noreferrer" class="btn-icon source-view-btn" title="View">
-        <span class="material-symbols-outlined">open_in_new</span>
-      </a>
-    {% else %}
-      <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/view" target="_blank" rel="noopener noreferrer" class="btn-icon source-view-btn" title="View">
+      <a href="/api/documents/{{ doc_id }}/sources/{{ source.id }}/pdf" target="_blank" rel="noopener noreferrer" class="btn-icon source-view-btn" title="Open PDF">
         <span class="material-symbols-outlined">open_in_new</span>
       </a>
     {% endif %}

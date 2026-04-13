@@ -1,0 +1,13 @@
+# Inherit your main settings (keybindings, etc.)
+config-file = config
+
+# Pane 1: Claude Code (Main/Left)
+command = claude code
+
+# Pane 2: Neovim (Split Right)
+[split-right]
+command = nvim .
+
+# Pane 3: Shell (Split Down from Claude)
+[split-below]
+command = zsh

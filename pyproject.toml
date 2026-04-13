@@ -15,7 +15,6 @@ dependencies = [
     "alembic>=1.14",
     "jinja2>=3.1",
     "python-multipart>=0.0.12",
-    "pypdf>=4.0",
     "httpx>=0.27",
     "beautifulsoup4>=4.12",
     "prosemirror>=0.6.1",
@@ -25,6 +24,8 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "itsdangerous>=2.2.0",
     "documentlm-core",
+    "pymupdf4llm>=1.27.2.2",
+    "markdown>=3.10.2",
 ]
 
 
@@ -48,6 +49,8 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_any_generics = true
+# Suppress untyped-import warnings for third-party packages without stubs
+disable_error_code = ["import-untyped"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

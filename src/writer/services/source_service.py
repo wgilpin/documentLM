@@ -2,7 +2,6 @@
 
 import asyncio
 import uuid
-from io import BytesIO
 from pathlib import Path
 
 from sqlalchemy import select
@@ -28,16 +27,15 @@ class PdfParseError(Exception):
     pass
 
 
-def _extract_pdf_text(file_bytes: bytes) -> str:
-    from pypdf import PdfReader
+def _extract_pdf_markdown(file_bytes: bytes) -> str:
+    import fitz  # pymupdf
+    import pymupdf4llm
 
-    reader = PdfReader(BytesIO(file_bytes))
-    parts: list[str] = []
-    for page in reader.pages:
-        text = page.extract_text()
-        if text:
-            parts.append(text)
-    return "\n".join(parts)
+    doc = fitz.open(stream=file_bytes, filetype="pdf")
+    md: str = pymupdf4llm.to_markdown(doc)
+    if not md.strip():
+        raise PdfParseError("PDF contains no extractable text (may be image-only)")
+    return md
 
 
 async def add_source(db: AsyncSession, data: SourceCreate, user_id: uuid.UUID) -> SourceResponse:
@@ -54,12 +52,21 @@ async def add_source(db: AsyncSession, data: SourceCreate, user_id: uuid.UUID) -
         if dupe is not None:
             logger.info("Skipping duplicate url=%s for doc=%s", data.url, data.document_id)
             return SourceResponse.model_validate(dupe)
+
+    content = data.content
+    if data.source_type == SourceType.url and data.url and not content:
+        from writer.services.content_fetcher import fetch_url_content
+
+        logger.info("Fetching URL content for url=%s", data.url)
+        content = await fetch_url_content(data.url)
+        logger.info("Fetched %d chars from url=%s", len(content), data.url)
+
     source = Source(
         user_id=user_id,
         document_id=data.document_id,
         source_type=data.source_type,
         title=data.title,
-        content=data.content,
+        content=content,
         url=data.url,
     )
     db.add(source)
@@ -76,9 +83,11 @@ async def add_source_pdf(
     file_bytes: bytes,
     user_id: uuid.UUID,
 ) -> SourceResponse:
-    logger.info("Extracting PDF text doc=%s user=%s", document_id, user_id)
+    logger.info("Extracting PDF markdown doc=%s user=%s", document_id, user_id)
     try:
-        content = _extract_pdf_text(file_bytes)
+        content = _extract_pdf_markdown(file_bytes)
+    except PdfParseError:
+        raise
     except Exception as exc:
         logger.exception("PDF extraction failed: %s", exc)
         raise PdfParseError("Failed to parse PDF") from exc

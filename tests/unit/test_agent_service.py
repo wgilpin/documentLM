@@ -167,7 +167,10 @@ class TestInvokeDrafterVectorRetrieval:
 
         with (
             patch("documentlm_core.services.agent_service.Runner") as MockRunner,
-            patch("documentlm_core.services.agent_service.InMemorySessionService", return_value=mock_ss),
+            patch(
+                "documentlm_core.services.agent_service.InMemorySessionService",
+                return_value=mock_ss,
+            ),
             patch(
                 "writer.services.agent_service.vector_store.query_sources",
                 return_value=["retrieved chunk"],
@@ -199,7 +202,10 @@ class TestInvokeDrafterVectorRetrieval:
 
         with (
             patch("documentlm_core.services.agent_service.Runner") as MockRunner,
-            patch("documentlm_core.services.agent_service.InMemorySessionService", return_value=mock_ss),
+            patch(
+                "documentlm_core.services.agent_service.InMemorySessionService",
+                return_value=mock_ss,
+            ),
             patch(
                 "writer.services.agent_service.vector_store.query_sources",
                 return_value=["chunk"],
@@ -234,7 +240,10 @@ class TestInvokePlannerVectorRetrieval:
 
         with (
             patch("documentlm_core.services.agent_service.Runner") as MockRunner,
-            patch("documentlm_core.services.agent_service.InMemorySessionService", return_value=mock_ss),
+            patch(
+                "documentlm_core.services.agent_service.InMemorySessionService",
+                return_value=mock_ss,
+            ),
             patch(
                 "writer.services.agent_service.vector_store.query_sources",
                 return_value=["retrieved chunk"],
@@ -266,7 +275,10 @@ class TestInvokePlannerVectorRetrieval:
         user_id = uuid.uuid4()
         with (
             patch("documentlm_core.services.agent_service.Runner") as MockRunner,
-            patch("documentlm_core.services.agent_service.InMemorySessionService", return_value=mock_ss),
+            patch(
+                "documentlm_core.services.agent_service.InMemorySessionService",
+                return_value=mock_ss,
+            ),
             patch(
                 "writer.services.agent_service.vector_store.query_sources",
                 return_value=["chunk"],

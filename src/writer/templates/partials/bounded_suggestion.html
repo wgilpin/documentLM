@@ -1,0 +1,8 @@
+<div id="bounded-suggestion" class="bounded-suggestion"
+     hx-on::htmx:afterSwap="insertBoundedSuggestion(this.dataset.suggestedText)"
+     data-suggested-text="{{ suggested_text | e }}">
+  <div class="bounded-suggestion-preview">
+    <strong>Generated suggestion:</strong>
+    <pre class="bounded-suggestion-text">{{ suggested_text }}</pre>
+  </div>
+</div>
