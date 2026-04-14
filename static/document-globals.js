@@ -97,6 +97,12 @@ function clearSourceViewerIfMatch(sourceId) {
     }
 }
 
+document.addEventListener('click', function (e) {
+    if (e.target.tagName === 'IMG' && e.target.closest('.source-view-body')) {
+        e.target.classList.toggle('source-img--expanded');
+    }
+});
+
 function lockEditor()   { window.tiptapEditor?.setEditable(false); }
 function unlockEditor() { window.tiptapEditor?.setEditable(true); }
 

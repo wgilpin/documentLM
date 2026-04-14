@@ -1736,6 +1736,20 @@ details[open] .source-add-summary {
     background: #eef0f8;
 }
 
+.source-para img {
+    max-width: 120px;
+    max-height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: max-width 0.2s, max-height 0.2s;
+}
+.source-para img.source-img--expanded {
+    max-width: 100%;
+    max-height: none;
+    object-fit: contain;
+}
+
 .source-para h1, .source-para h2, .source-para h3 {
     font-size: 0.9rem;
     font-weight: 700;
