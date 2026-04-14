@@ -149,6 +149,11 @@ class TestAddSource:
                 new_callable=AsyncMock,
                 return_value="Fetched article text",
             ),
+            patch(
+                "documentlm_core.services.content_cleaner.clean_content",
+                new_callable=AsyncMock,
+                return_value="Fetched article text",
+            ),
         ):
             MockSource.return_value = instance
             result = await add_source(db, data, uuid.uuid4())
@@ -220,6 +225,11 @@ class TestAddSourcePdf:
         with (
             patch("writer.services.source_service._extract_pdf_markdown", return_value="extracted"),
             patch("writer.services.source_service.Source") as MockSource,
+            patch(
+                "documentlm_core.services.content_cleaner.clean_content",
+                new_callable=AsyncMock,
+                return_value="extracted",
+            ),
         ):
             instance = _make_source(
                 document_id=doc_id,

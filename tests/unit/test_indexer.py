@@ -4,6 +4,9 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+from documentlm_core.services.indexer import strip_urls
+
 from writer.models.enums import IndexingStatus, SourceType
 
 
@@ -76,10 +79,10 @@ class TestRunIndexing:
         assert IndexingStatus.processing in statuses
         assert IndexingStatus.completed in statuses
 
-    async def test_chunk_sentences_called_on_source_content(self) -> None:
+    async def test_chunk_sentences_called_with_urls_stripped(self) -> None:
         from writer.services.indexer import run_indexing
 
-        source = _make_source_orm(content="My content here.")
+        source = _make_source_orm(content="Read [this](https://example.com) article.")
         source_id = source.id
         doc = _make_doc_orm()
 
@@ -96,7 +99,7 @@ class TestRunIndexing:
             mock_vs.index_source = MagicMock()
             await run_indexing(source_id, db, uuid.uuid4())
 
-        mock_chunk.assert_called_once_with("My content here.", chunk_size=1000, chunk_overlap=100)
+        mock_chunk.assert_called_once_with("Read this article.", chunk_size=1000, chunk_overlap=100)
 
     async def test_on_exception_status_set_to_failed_with_error_message(self) -> None:
         from writer.services.indexer import run_indexing
@@ -174,3 +177,22 @@ class TestRunIndexing:
             await run_indexing(uuid.uuid4(), db, uuid.uuid4())
 
         mock_chunk.assert_not_called()
+
+
+class TestStripUrls:
+    @pytest.mark.parametrize(
+        ("input_text", "expected"),
+        [
+            ("Visit [Google](https://google.com) now", "Visit Google now"),
+            ("See [docs](https://example.com/a/b?q=1#frag) here", "See docs here"),
+            ("bare https://example.com/page in text", "bare  in text"),
+            ("no links here", "no links here"),
+            (
+                "[one](https://a.com) and [two](https://b.com)",
+                "one and two",
+            ),
+            ("mixed [link](https://a.com) and https://b.com end", "mixed link and  end"),
+        ],
+    )
+    def test_strip_urls(self, input_text: str, expected: str) -> None:
+        assert strip_urls(input_text) == expected

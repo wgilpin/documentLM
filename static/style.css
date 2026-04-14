@@ -1213,6 +1213,34 @@ details[open] .source-add-summary {
     text-align: center;
 }
 
+/* Source warning badge */
+.source-badge-warning {
+    color: #b45309;
+    font-style: italic;
+}
+
+/* Deep-research import button loading state */
+.import-dr-spinner {
+    display: none;
+}
+.htmx-request .import-dr-label {
+    display: none;
+}
+.htmx-request .import-dr-spinner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.htmx-request .import-dr-spinner::before {
+    content: "";
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: chat-spin 0.8s linear infinite;
+}
+
 /* Source action icon buttons */
 .btn-icon {
     display: inline-flex;

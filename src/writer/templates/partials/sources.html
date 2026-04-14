@@ -9,10 +9,11 @@
     {% endif %}
     <div class="source-info">
       <div class="source-title">{{ source.title }}</div>
-      <div class="source-date">{{ source.source_type.value }} · {{ source.created_at.strftime('%b %d') }}</div>
+      <div class="source-date">{{ source.source_type.value }} · {{ source.created_at.strftime('%b %d') }}{% if source.error_message %} · <span class="source-badge-warning">{{ source.error_message }}</span>{% endif %}</div>
     </div>
   </div>
   <div class="source-actions">
+    {% if not source.error_message %}
     <!-- View in Source Viewer tab -->
     <button class="btn-icon source-view-btn" title="Open in Source Viewer"
             hx-get="/api/sources/{{ source.id }}/view"
@@ -21,6 +22,7 @@
             hx-on::after-request="switchMiddleTab('source-viewer')">
       <span class="material-symbols-outlined">dock_to_right</span>
     </button>
+    {% endif %}
     {% if source.source_type.value == 'url' and source.url %}
       <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer" class="btn-icon source-view-btn" title="Open URL">
         <span class="material-symbols-outlined">open_in_new</span>

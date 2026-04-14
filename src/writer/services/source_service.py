@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from writer.core.config import settings
 from writer.core.logging import get_logger
 from writer.models.db import Source
-from writer.models.enums import SourceType
+from writer.models.enums import IndexingStatus, SourceType
 from writer.models.schemas import SourceCreate, SourceResponse
 from writer.services import vector_store
 
@@ -54,12 +54,21 @@ async def add_source(db: AsyncSession, data: SourceCreate, user_id: uuid.UUID) -
             return SourceResponse.model_validate(dupe)
 
     content = data.content
+    missing_content = False
     if data.source_type == SourceType.url and data.url and not content:
+        from documentlm_core.services.content_cleaner import clean_content
+
         from writer.services.content_fetcher import fetch_url_content
 
         logger.info("Fetching URL content for url=%s", data.url)
-        content = await fetch_url_content(data.url)
-        logger.info("Fetched %d chars from url=%s", len(content), data.url)
+        raw = await fetch_url_content(data.url)
+        logger.info("Fetched %d chars from url=%s", len(raw), data.url)
+        cleaned = await clean_content(raw)
+        if cleaned is None:
+            content = raw
+            missing_content = True
+        else:
+            content = cleaned
 
     source = Source(
         user_id=user_id,
@@ -69,6 +78,9 @@ async def add_source(db: AsyncSession, data: SourceCreate, user_id: uuid.UUID) -
         content=content,
         url=data.url,
     )
+    if missing_content:
+        source.indexing_status = IndexingStatus.failed
+        source.error_message = "No article content found"
     db.add(source)
     await db.flush()
     await db.refresh(source)
@@ -91,6 +103,14 @@ async def add_source_pdf(
     except Exception as exc:
         logger.exception("PDF extraction failed: %s", exc)
         raise PdfParseError("Failed to parse PDF") from exc
+
+    from documentlm_core.services.content_cleaner import clean_content
+
+    raw = content
+    cleaned = await clean_content(raw)
+    missing_content = cleaned is None
+    content = raw if missing_content else cleaned
+
     source = Source(
         user_id=user_id,
         document_id=document_id,
@@ -99,6 +119,9 @@ async def add_source_pdf(
         content=content,
         url=None,
     )
+    if missing_content:
+        source.indexing_status = IndexingStatus.failed
+        source.error_message = "No article content found"
     db.add(source)
     await db.flush()
     await db.refresh(source)

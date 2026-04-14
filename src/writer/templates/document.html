@@ -24,7 +24,7 @@
                 <div id="source-error-note" class="source-error-container"></div>
                 <form hx-post="/api/documents/{{ doc.id }}/sources" hx-target="#source-list" hx-swap="beforeend"
                     hx-on::before-request="showSourceNotice()"
-                    hx-on::after-request="this.reset()">
+                    hx-on::after-request="if(event.detail.successful) { this.reset(); } else { document.getElementById('source-error-note').innerHTML = '<div class=source-error>Failed to add source. Please try again.</div>'; }">
                     <input type="hidden" name="source_type" value="note">
                     <div class="form-group">
                         <label>Title</label>
@@ -45,7 +45,7 @@
                 <div id="source-error-url" class="source-error-container"></div>
                 <form hx-post="/api/documents/{{ doc.id }}/sources" hx-target="#source-list" hx-swap="beforeend"
                     hx-on::before-request="showSourceNotice()"
-                    hx-on::after-request="this.reset()">
+                    hx-on::after-request="if(event.detail.successful) { this.reset(); } else { document.getElementById('source-error-url').innerHTML = '<div class=source-error>Failed to add source. Please try again.</div>'; }">
                     <input type="hidden" name="source_type" value="url">
                     <div class="form-group">
                         <label>Title</label>
@@ -71,7 +71,7 @@
                 <form hx-post="/api/documents/{{ doc.id }}/sources" hx-target="#source-list" hx-swap="beforeend"
                     hx-encoding="multipart/form-data"
                     hx-on::before-request="showSourceNotice()"
-                    hx-on::after-request="this.reset()">
+                    hx-on::after-request="if(event.detail.successful) { this.reset(); } else { document.getElementById('source-error-pdf').innerHTML = '<div class=source-error>Failed to add source. Please try again.</div>'; }">
                     <input type="hidden" name="source_type" value="pdf">
                     <div class="form-group">
                         <label>Title</label>
@@ -384,15 +384,18 @@
           hx-target="#source-list"
           hx-swap="beforeend"
           hx-encoding="multipart/form-data"
+          hx-disabled-elt="find button[type='submit']"
           hx-on::after-request="if(event.detail.successful) { this.reset(); document.getElementById('import-deep-research-dialog').close(); }">
         <div class="form-group">
             <label>Markdown file</label>
             <input type="file" name="file" accept=".md" required>
         </div>
         <div class="dialog-actions" style="margin-top: 1rem;">
-            <button type="submit" class="btn btn-primary btn-sm">
-                Import
-                <span class="material-symbols-outlined" style="font-size: 1.1em;">upload</span>
+            <button type="submit" class="btn btn-primary btn-sm import-dr-btn">
+                <span class="import-dr-label">Import
+                    <span class="material-symbols-outlined" style="font-size: 1.1em;">upload</span>
+                </span>
+                <span class="import-dr-spinner">Importing&hellip;</span>
             </button>
             <form method="dialog" style="display:inline;">
                 <button class="btn btn-sm" type="submit">Cancel</button>
