@@ -1735,6 +1735,13 @@ details[open] .source-add-summary {
 .source-para:hover {
     background: #eef0f8;
 }
+.source-para--highlight {
+    background: #fef3c7;
+    transition: background 0.3s;
+}
+.source-para--highlight:hover {
+    background: #fef3c7;
+}
 
 .source-para img {
     max-width: 120px;

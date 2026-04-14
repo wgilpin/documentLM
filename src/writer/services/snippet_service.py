@@ -51,7 +51,14 @@ async def create_snippet(
     await db.flush()
     await db.refresh(snippet)
     logger.info("create_snippet: created snippet id=%s", snippet.id)
-    return SnippetResponse.model_validate(snippet)
+
+    response = SnippetResponse.model_validate(snippet)
+    if snippet.source_id is not None:
+        src_result = await db.execute(select(Source).where(Source.id == snippet.source_id))
+        source = src_result.scalar_one_or_none()
+        if source is not None:
+            response.source_title = source.title
+    return response
 
 
 async def list_snippets(
@@ -67,7 +74,22 @@ async def list_snippets(
     )
     snippets = result.scalars().all()
     logger.info("list_snippets: found %d snippets", len(snippets))
-    return [SnippetResponse.model_validate(s) for s in snippets]
+
+    # Resolve source titles in one query
+    source_ids = {s.source_id for s in snippets if s.source_id is not None}
+    title_map: dict[uuid.UUID, str] = {}
+    if source_ids:
+        src_result = await db.execute(select(Source).where(Source.id.in_(source_ids)))
+        for src in src_result.scalars().all():
+            title_map[src.id] = src.title
+
+    responses: list[SnippetResponse] = []
+    for s in snippets:
+        resp = SnippetResponse.model_validate(s)
+        if s.source_id is not None:
+            resp.source_title = title_map.get(s.source_id)
+        responses.append(resp)
+    return responses
 
 
 async def delete_snippet(

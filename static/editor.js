@@ -727,6 +727,9 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
     }
 
     document.addEventListener('mouseup', function (e) {
+        // Don't interfere with tooltip click
+        if (_saveTooltip && _saveTooltip.contains(e.target)) return;
+
         const sourceBody = document.getElementById('source-view-body');
         if (!sourceBody) { _removeTooltip(); return; }
         if (!sourceBody.contains(e.target)) { _removeTooltip(); return; }
@@ -776,6 +779,8 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
                 if (!html) return;
                 const snippetList = document.getElementById('snippet-list');
                 if (snippetList) {
+                    const empty = snippetList.querySelector('.snippet-bank-empty');
+                    if (empty) empty.remove();
                     const el = document.createElement('div');
                     el.innerHTML = html;
                     snippetList.prepend(el.firstChild);
@@ -796,21 +801,44 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
 
 // ── scrollToCharOffset: scroll Document View to a given character offset ──
 window.scrollToCharOffset = function scrollToCharOffset(sourceId, offset) {
-    const container = document.getElementById('source-view-body');
-    if (!container) return;
-    const paras = container.querySelectorAll('[data-char-offset]');
-    let best = null;
-    let bestOff = -1;
-    paras.forEach(function (el) {
-        const elOff = parseInt(el.dataset.charOffset, 10);
-        if (elOff <= offset && elOff > bestOff) {
-            bestOff = elOff;
-            best = el;
+    function _scrollToOffset() {
+        const container = document.getElementById('source-view-body');
+        if (!container) return;
+        const paras = container.querySelectorAll('[data-char-offset]');
+        let best = null;
+        let bestOff = -1;
+        paras.forEach(function (el) {
+            const elOff = parseInt(el.dataset.charOffset, 10);
+            if (elOff <= offset && elOff > bestOff) {
+                bestOff = elOff;
+                best = el;
+            }
+        });
+        if (best) {
+            best.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            best.classList.add('source-para--highlight');
+            setTimeout(function () { best.classList.remove('source-para--highlight'); }, 2000);
         }
-    });
-    if (best) {
-        best.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        // Switch to Source Viewer tab in middle panel
-        if (typeof switchMiddleTab === 'function') switchMiddleTab('source-viewer');
     }
+
+    // Switch to Source Viewer tab
+    if (typeof switchMiddleTab === 'function') switchMiddleTab('source-viewer');
+
+    // If the source is already loaded, scroll directly
+    const viewContent = document.getElementById('source-view-content');
+    if (viewContent && viewContent.dataset.sourceId === sourceId) {
+        _scrollToOffset();
+        return;
+    }
+
+    // Otherwise, load the source first then scroll
+    const target = document.getElementById('source-view-container');
+    if (!target) return;
+    fetch('/api/sources/' + sourceId + '/view', { headers: { 'HX-Request': 'true' } })
+        .then(function (resp) { return resp.ok ? resp.text() : null; })
+        .then(function (html) {
+            if (!html) return;
+            target.innerHTML = html;
+            _scrollToOffset();
+        });
 };
