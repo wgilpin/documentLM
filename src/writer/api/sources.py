@@ -1,5 +1,6 @@
 """Source ingestion API endpoints."""
 
+import asyncio
 import uuid
 from typing import Annotated
 
@@ -22,13 +23,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from writer.core.auth import get_current_user
 from writer.core.database import get_db
 from writer.core.templates import templates as _shared_templates
-from writer.models.enums import SourceType
+from writer.models.enums import IndexingStatus, SourceType
 from writer.models.schemas import SourceCreate, SourceResponse, UserResponse
 from writer.services import source_service
 from writer.services.deep_research_service import parse_markdown_document
 from writer.services.source_service import PdfParseError, SourceNotFoundError
 
 router = APIRouter()
+# Separate router for /api/sources/{source_id}/... paths (not under /api/documents)
+source_view_router = APIRouter()
 
 DbDep = Annotated[AsyncSession, Depends(get_db)]
 CurrentUser = Annotated[UserResponse, Depends(get_current_user)]
@@ -103,7 +106,8 @@ async def add_source(
         source = await source_service.add_source(db, data, current_user.id)
 
     await db.commit()
-    background_tasks.add_task(run_indexing, source_id=source.id, db=db, user_id=current_user.id)
+    if source.indexing_status != IndexingStatus.failed:
+        background_tasks.add_task(run_indexing, source_id=source.id, db=db, user_id=current_user.id)
 
     if request.headers.get("HX-Request"):
         tmpl = get_templates()
@@ -212,19 +216,42 @@ async def import_deep_research(
     note_source = await source_service.add_source(db, note_data, current_user.id)
     created.append(note_source)
 
-    # Reference URL sources
+    # Reference URL sources — fetch + clean all in parallel, then store
+    from documentlm_core.services.content_cleaner import clean_content
+
+    from writer.services.content_fetcher import fetch_url_content
+
+    # De-duplicate references by URL
+    seen_urls: set[str] = set()
+    unique_refs: list[dict[str, str]] = []
     for ref in parsed["references"]:
+        if ref["url"] not in seen_urls:
+            seen_urls.add(ref["url"])
+            unique_refs.append(ref)
+        else:
+            skipped_count += 1
+
+    async def _fetch_and_clean(url: str) -> str | None:
+        try:
+            raw = await fetch_url_content(url)
+            return await clean_content(raw)
+        except Exception:
+            log.warning("import_deep_research: failed to fetch url=%s, skipping", url)
+            return None
+
+    fetched = await asyncio.gather(*[_fetch_and_clean(ref["url"]) for ref in unique_refs])
+
+    for ref, content in zip(unique_refs, fetched, strict=True):
+        if content is None:
+            skipped_count += 1
+            continue
         url_data = SourceCreate(
             document_id=doc_id,
             source_type=SourceType.url,
             title=ref["title"],
-            content="",
+            content=content,
             url=ref["url"],
         )
-        pre_existing_check = any(s.url == ref["url"] for s in created if s.url is not None)
-        if pre_existing_check:
-            skipped_count += 1
-            continue
         url_source = await source_service.add_source(db, url_data, current_user.id)
         # add_source returns existing source on duplicate — detect skip by checking created list
         if any(s.id == url_source.id for s in created):
@@ -235,7 +262,10 @@ async def import_deep_research(
     await db.commit()
 
     for src in created:
-        background_tasks.add_task(run_indexing, source_id=src.id, db=db, user_id=current_user.id)
+        if src.indexing_status != IndexingStatus.failed:
+            background_tasks.add_task(
+                run_indexing, source_id=src.id, db=db, user_id=current_user.id
+            )
 
     log.info(
         "import_deep_research: created=%d skipped=%d doc=%s",
@@ -255,6 +285,42 @@ async def import_deep_research(
         return HTMLResponse(html)
 
     return ImportDeepResearchResponse(created=created, skipped_count=skipped_count)
+
+
+def _build_paragraphs_with_offsets(content: str) -> list[dict[str, object]]:
+    """Split markdown content into paragraphs with character offsets for scroll anchors."""
+    import markdown as md_lib
+
+    paragraphs: list[dict[str, object]] = []
+    offset = 0
+    # Split on blank lines to get logical blocks
+    blocks = content.split("\n\n")
+    for block in blocks:
+        block = block.strip()
+        if block:
+            rendered = md_lib.markdown(block, extensions=["extra"])
+            paragraphs.append({"offset": offset, "html": rendered})
+        offset += len(block) + 2  # account for the \n\n separator
+    return paragraphs
+
+
+@source_view_router.get("/{source_id}/view", response_model=None)
+async def get_source_document_view(
+    request: Request, db: DbDep, current_user: CurrentUser, source_id: uuid.UUID
+) -> HTMLResponse:
+    """Return rendered markdown HTML for Document View panel (HTMX target)."""
+    try:
+        source = await source_service.get_source(db, source_id, current_user.id)
+    except SourceNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Source not found") from exc
+
+    paragraphs = _build_paragraphs_with_offsets(source.content)
+    tmpl = get_templates()
+    return HTMLResponse(
+        tmpl.get_template("partials/source_view.html").render(
+            {"source": source, "paragraphs": paragraphs, "request": request}
+        )
+    )
 
 
 @router.delete("/{doc_id}/sources/{source_id}", response_model=None)

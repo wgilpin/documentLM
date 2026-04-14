@@ -534,3 +534,311 @@ if (toolbarContainer) {
     };
     new ResizeObserver(updateOverflow).observe(toolbarContainer);
 }
+
+// ── insertBoundedSuggestion: insert generated text at current cursor position ──
+window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
+    if (!window.tiptapEditor || !text) return;
+    window.tiptapEditor.chain().focus().insertContent(text).run();
+    // Remove the suggestion panel after inserting
+    const panel = document.getElementById('bounded-suggestion');
+    if (panel) panel.remove();
+    const bundlingPanel = document.getElementById('bundling-panel');
+    if (bundlingPanel) bundlingPanel.remove();
+};
+
+// ── Bundling panel: shown on heading/empty block selection ────────────────
+(function () {
+    let _bundlingPanel = null;
+
+    function _removeBundlingPanel() {
+        if (_bundlingPanel) {
+            _bundlingPanel.remove();
+            _bundlingPanel = null;
+        }
+        const suggestionEl = document.getElementById('bounded-suggestion');
+        if (suggestionEl) suggestionEl.remove();
+    }
+
+    function _createBundlingPanel(docId) {
+        if (_bundlingPanel) return;
+
+        const panel = document.createElement('div');
+        panel.id = 'bundling-panel';
+        panel.className = 'bundling-panel';
+        panel.innerHTML = `
+            <div class="bundling-panel-header">
+                <strong>Generate with Evidence</strong>
+                <button class="bundling-panel-close" title="Cancel, type myself">&#10005;</button>
+            </div>
+            <div class="bundling-snippets" id="bundling-snippets-list">
+                <p class="bundling-loading">Loading snippets…</p>
+            </div>
+            <div class="bundling-intent-wrap">
+                <textarea class="bundling-intent-input" placeholder="Describe what to write (required)…" maxlength="500" rows="3"></textarea>
+                <div class="bundling-intent-count">0/500</div>
+            </div>
+            <div id="bundling-result"></div>
+            <div class="bundling-actions">
+                <button class="btn btn-primary bundling-generate-btn" disabled>Generate ✨</button>
+                <button class="btn bundling-cancel-btn">Cancel / type myself</button>
+            </div>
+        `;
+
+        document.body.appendChild(panel);
+        _bundlingPanel = panel;
+
+        // Position near the editor
+        const mount = document.getElementById('tiptap-mount');
+        if (mount) {
+            const rect = mount.getBoundingClientRect();
+            panel.style.cssText = `position:fixed;z-index:8888;top:${Math.min(rect.top + 80, window.innerHeight - 400)}px;left:${Math.min(rect.right + 8, window.innerWidth - 360)}px;width:340px;`;
+        }
+
+        // Load snippets
+        fetch(`/api/documents/${docId}/snippets`, {
+            headers: { 'HX-Request': 'true' }
+        }).then(r => r.text()).then(html => {
+            const listEl = panel.querySelector('#bundling-snippets-list');
+            if (!listEl) return;
+            // Build a checkbox list from snippet bank HTML
+            listEl.innerHTML = '<p class="bundling-snippets-label">Select snippets (optional):</p><div id="bundling-snippet-checkboxes"></div>';
+            const checkboxes = panel.querySelector('#bundling-snippet-checkboxes');
+            // Parse snippet IDs from the HTML
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            const cards = tmp.querySelectorAll('.snippet-card');
+            if (cards.length === 0) {
+                checkboxes.innerHTML = '<p class="bundling-no-snippets">No snippets in bank.</p>';
+            } else {
+                cards.forEach(card => {
+                    const id = card.id.replace('snippet-', '');
+                    const text = card.querySelector('.snippet-text')?.textContent?.trim() || '';
+                    const label = document.createElement('label');
+                    label.className = 'bundling-snippet-label';
+                    label.innerHTML = `<input type="checkbox" value="${id}"> <span>${text.substring(0, 80)}${text.length > 80 ? '…' : ''}</span>`;
+                    checkboxes.appendChild(label);
+                });
+            }
+        });
+
+        // Intent counter
+        const intentInput = panel.querySelector('.bundling-intent-input');
+        const intentCount = panel.querySelector('.bundling-intent-count');
+        const generateBtn = panel.querySelector('.bundling-generate-btn');
+
+        intentInput.addEventListener('input', () => {
+            const len = intentInput.value.length;
+            intentCount.textContent = `${len}/500`;
+            generateBtn.disabled = len === 0;
+        });
+
+        // Generate
+        generateBtn.addEventListener('click', async () => {
+            const intent = intentInput.value.trim();
+            if (!intent) return;
+
+            const checkedBoxes = panel.querySelectorAll('#bundling-snippet-checkboxes input[type="checkbox"]:checked');
+            const snippetIds = Array.from(checkedBoxes).map(cb => cb.value);
+
+            const cursorContext = (() => {
+                if (!window.tiptapEditor) return '';
+                const { state } = window.tiptapEditor;
+                const { $from } = state.selection;
+                return $from.node($from.depth)?.textContent || '';
+            })();
+
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Generating…';
+
+            try {
+                const resp = await fetch(`/api/documents/${docId}/bounded-generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'HX-Request': 'true' },
+                    body: JSON.stringify({ snippet_ids: snippetIds, intent, cursor_context: cursorContext }),
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    alert('Generation failed: ' + (err.detail || resp.status));
+                    return;
+                }
+                const html = await resp.text();
+                const resultEl = panel.querySelector('#bundling-result');
+                if (resultEl) {
+                    resultEl.innerHTML = html;
+                    // Trigger the hx-on afterSwap manually
+                    const suggestion = resultEl.querySelector('#bounded-suggestion');
+                    if (suggestion) {
+                        const text = suggestion.dataset.suggestedText;
+                        if (text) window.insertBoundedSuggestion(text);
+                    }
+                }
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate ✨';
+            }
+        });
+
+        // Cancel
+        panel.querySelector('.bundling-cancel-btn').addEventListener('click', _removeBundlingPanel);
+        panel.querySelector('.bundling-panel-close').addEventListener('click', _removeBundlingPanel);
+
+        return panel;
+    }
+
+    // Watch TipTap selection events to show bundling panel on heading/empty block
+    function _setupBundlingTrigger() {
+        if (!window.tiptapEditor) return;
+
+        window.tiptapEditor.on('selectionUpdate', ({ editor }) => {
+            const { state } = editor;
+            const { $from } = state.selection;
+            const node = $from.node($from.depth);
+
+            const isHeading = node.type.name === 'heading';
+            const isEmpty = node.textContent.trim() === '';
+
+            if ((isHeading || isEmpty) && DOC_ID && DOC_ID !== 'unknown-doc') {
+                if (!_bundlingPanel) {
+                    _createBundlingPanel(DOC_ID);
+                }
+            } else if (_bundlingPanel) {
+                // Don't auto-close so user can still use it
+            }
+        });
+    }
+
+    // Wait for editor to be initialised
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => setTimeout(_setupBundlingTrigger, 500));
+    } else {
+        setTimeout(_setupBundlingTrigger, 500);
+    }
+}());
+
+// ── Document View: text selection → Save to Scratchpad ────────────────────
+(function () {
+    let _saveTooltip = null;
+
+    function _removeTooltip() {
+        if (_saveTooltip) {
+            _saveTooltip.remove();
+            _saveTooltip = null;
+        }
+    }
+
+    document.addEventListener('mouseup', function (e) {
+        // Don't interfere with tooltip click
+        if (_saveTooltip && _saveTooltip.contains(e.target)) return;
+
+        const sourceBody = document.getElementById('source-view-body');
+        if (!sourceBody) { _removeTooltip(); return; }
+        if (!sourceBody.contains(e.target)) { _removeTooltip(); return; }
+
+        const sel = window.getSelection();
+        const selText = sel ? sel.toString().trim() : '';
+        if (!selText) { _removeTooltip(); return; }
+
+        // Calculate approximate char offset from data-char-offset of nearest parent block
+        let charOffset = 0;
+        let node = sel.anchorNode;
+        while (node && node !== sourceBody) {
+            if (node.dataset && node.dataset.charOffset !== undefined) {
+                charOffset = parseInt(node.dataset.charOffset, 10) || 0;
+                break;
+            }
+            node = node.parentElement;
+        }
+
+        _removeTooltip();
+        const tooltip = document.createElement('div');
+        tooltip.className = 'snippet-save-tooltip';
+        tooltip.textContent = 'Save to Scratchpad';
+        tooltip.style.cssText = 'position:fixed;z-index:9999;background:#1a1a2e;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.85rem;';
+        tooltip.style.left = e.clientX + 'px';
+        tooltip.style.top = (e.clientY - 36) + 'px';
+        document.body.appendChild(tooltip);
+        _saveTooltip = tooltip;
+
+        tooltip.addEventListener('click', function () {
+            const docId = DOC_ID;
+            // Find source_id from the source-view-content element
+            const sourceViewContent = document.getElementById('source-view-content');
+            const sourceId = sourceViewContent ? sourceViewContent.dataset.sourceId : null;
+
+            const payload = { text: selText, char_offset: charOffset };
+            if (sourceId) payload.source_id = sourceId;
+
+            fetch('/api/documents/' + docId + '/snippets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'HX-Request': 'true' },
+                body: JSON.stringify(payload),
+            }).then(function (resp) {
+                if (!resp.ok) return;
+                return resp.text();
+            }).then(function (html) {
+                if (!html) return;
+                const snippetList = document.getElementById('snippet-list');
+                if (snippetList) {
+                    const empty = snippetList.querySelector('.snippet-bank-empty');
+                    if (empty) empty.remove();
+                    const el = document.createElement('div');
+                    el.innerHTML = html;
+                    snippetList.prepend(el.firstChild);
+                }
+                // Switch to Snippets tab in right panel
+                if (typeof switchRightTab === 'function') switchRightTab('snippets');
+            });
+            _removeTooltip();
+        });
+    });
+
+    document.addEventListener('mousedown', function (e) {
+        if (_saveTooltip && !_saveTooltip.contains(e.target)) {
+            _removeTooltip();
+        }
+    });
+}());
+
+// ── scrollToCharOffset: scroll Document View to a given character offset ──
+window.scrollToCharOffset = function scrollToCharOffset(sourceId, offset) {
+    function _scrollToOffset() {
+        const container = document.getElementById('source-view-body');
+        if (!container) return;
+        const paras = container.querySelectorAll('[data-char-offset]');
+        let best = null;
+        let bestOff = -1;
+        paras.forEach(function (el) {
+            const elOff = parseInt(el.dataset.charOffset, 10);
+            if (elOff <= offset && elOff > bestOff) {
+                bestOff = elOff;
+                best = el;
+            }
+        });
+        if (best) {
+            best.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            best.classList.add('source-para--highlight');
+            setTimeout(function () { best.classList.remove('source-para--highlight'); }, 2000);
+        }
+    }
+
+    // Switch to Source Viewer tab
+    if (typeof switchMiddleTab === 'function') switchMiddleTab('source-viewer');
+
+    // If the source is already loaded, scroll directly
+    const viewContent = document.getElementById('source-view-content');
+    if (viewContent && viewContent.dataset.sourceId === sourceId) {
+        _scrollToOffset();
+        return;
+    }
+
+    // Otherwise, load the source first then scroll
+    const target = document.getElementById('source-view-container');
+    if (!target) return;
+    fetch('/api/sources/' + sourceId + '/view', { headers: { 'HX-Request': 'true' } })
+        .then(function (resp) { return resp.ok ? resp.text() : null; })
+        .then(function (html) {
+            if (!html) return;
+            target.innerHTML = html;
+            _scrollToOffset();
+        });
+};

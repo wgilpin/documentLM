@@ -14,6 +14,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-13
 - PostgreSQL (Docker container) — one new table: `user_settings` (007-universal-settings)
 - PostgreSQL (Docker container) — no schema changes required (008-view-add-sources)
 - PostgreSQL (Docker container) — one new table: `chat_sessions`; one column added to `chat_messages` (010-chat-sessions)
+- Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, ChromaDB, `pymupdf4llm` (new) (015-bounded-generation)
+- PostgreSQL (Docker) + ChromaDB (local persistent directory) (015-bounded-generation)
 
 - Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x (async), asyncpg, Alembic, Jinja2 (001-document-workbench-mvp)
 
@@ -54,9 +56,9 @@ docker-compose up --build                 # full stack
 Python 3.13+: Follow standard conventions
 
 ## Recent Changes
+- 015-bounded-generation: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, ChromaDB, `pymupdf4llm` (new)
 - 014-google-deep-research-import: Added Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
 - 010-chat-sessions: Added Python 3.13+ + google-adk (local), FastAPI, HTMX 2.0, Pydantic v2, SQLAlchemy 2.x / asyncpg
-- 009-multi-user-invite: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
 
 
 <!-- MANUAL ADDITIONS START -->

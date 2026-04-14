@@ -1,0 +1,34 @@
+<div class="snippet-card" id="snippet-{{ snippet.id }}">
+  <div class="snippet-text">{{ snippet.text }}</div>
+  <div class="snippet-source">
+    {% if snippet.source_title %}
+      <span class="snippet-source-name">{{ snippet.source_title }}</span>
+      {% if snippet.source_id %}
+      <button class="btn-icon snippet-goto-btn" title="Go to source"
+              onclick="scrollToCharOffset('{{ snippet.source_id }}', {{ snippet.char_offset }})">
+        <span class="material-symbols-outlined">my_location</span>
+      </button>
+      {% endif %}
+    {% elif snippet.source_id %}
+      <span class="snippet-source-name snippet-source-unavailable">Source unavailable</span>
+    {% else %}
+      <span class="snippet-source-name snippet-source-unavailable">No source</span>
+    {% endif %}
+  </div>
+  {% if snippet.note %}
+  <div class="snippet-note">{{ snippet.note }}</div>
+  {% endif %}
+  {% if snippet.tag %}
+  <div class="snippet-tag">{{ snippet.tag }}</div>
+  {% endif %}
+  <div class="snippet-actions">
+    <button class="btn-ghost-danger btn-icon"
+            hx-delete="/api/snippets/{{ snippet.id }}"
+            hx-target="#snippet-{{ snippet.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Remove this snippet?"
+            title="Delete snippet">
+      <span class="material-symbols-outlined">delete</span>
+    </button>
+  </div>
+</div>

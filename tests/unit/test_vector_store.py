@@ -16,7 +16,10 @@ class TestIndexSource:
 
         mock_collection = MagicMock()
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             index_source(source_id, document_id, chunks, user_id)
 
         call_kwargs = mock_collection.add.call_args.kwargs
@@ -34,7 +37,10 @@ class TestIndexSource:
 
         mock_collection = MagicMock()
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             index_source(source_id, document_id, chunks, user_id)
 
         call_kwargs = mock_collection.add.call_args.kwargs
@@ -53,7 +59,10 @@ class TestIndexSource:
 
         mock_collection = MagicMock()
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             index_source(source_id, document_id, chunks, user_id)
 
         call_kwargs = mock_collection.add.call_args.kwargs
@@ -68,7 +77,10 @@ class TestIndexSource:
         user_id = uuid.uuid4()
         mock_collection = MagicMock()
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             index_source(source_id, document_id, [], user_id)
 
         mock_collection.add.assert_called_once()
@@ -84,7 +96,10 @@ class TestQuerySources:
         mock_collection.count.return_value = 10
         mock_collection.query.return_value = {"documents": [["chunk A", "chunk B"]]}
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             result = query_sources("find something", user_id, document_id, top_k=5)
 
         mock_collection.query.assert_called_once_with(
@@ -103,7 +118,10 @@ class TestQuerySources:
         mock_collection.count.return_value = 10
         mock_collection.query.return_value = {"documents": [["doc1", "doc2", "doc3"]]}
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             result = query_sources("query text", user_id, document_id)
 
         assert result == ["doc1", "doc2", "doc3"]
@@ -116,7 +134,10 @@ class TestQuerySources:
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             result = query_sources("query text", user_id, document_id)
 
         assert result == []
@@ -143,7 +164,10 @@ class TestQuerySourcesTiered:
             "distances": [[0.3, 0.4]],
         }
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             doc_chunks, other_chunks = query_sources_tiered("query", user_id, doc_id)
 
         assert doc_chunks == ["this doc chunk"]
@@ -168,7 +192,10 @@ class TestQuerySourcesTiered:
             "distances": [[0.5, 1.5]],
         }
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             doc_chunks, other_chunks = query_sources_tiered(
                 "query", user_id, doc_id, max_distance=1.0
             )
@@ -184,7 +211,10 @@ class TestQuerySourcesTiered:
         mock_collection = MagicMock()
         mock_collection.count.return_value = 0
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             doc_chunks, other_chunks = query_sources_tiered("query", user_id, doc_id)
 
         assert doc_chunks == []
@@ -204,7 +234,10 @@ class TestQuerySourcesTiered:
             "distances": [[0.2]],
         }
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             doc_chunks, other_chunks = query_sources_tiered(
                 "query", user_id, doc_id, is_private_doc=True
             )
@@ -223,7 +256,10 @@ class TestDeleteSourceChunks:
         user_id = uuid.uuid4()
         mock_collection = MagicMock()
 
-        with patch("documentlm_core.services.vector_store.get_collection", return_value=mock_collection):
+        with patch(
+            "documentlm_core.services.vector_store.get_collection",
+            return_value=mock_collection,
+        ):
             delete_source_chunks(source_id, user_id)
 
         mock_collection.delete.assert_called_once_with(where={"source_id": str(source_id)})

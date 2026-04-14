@@ -82,7 +82,68 @@ async def invoke_drafter(
         comment.body[:120],
     )
 
-    return await run_agent_text(agent, message_text, user_id, app_name=_APP_NAME)
+    result: str = await run_agent_text(agent, message_text, user_id, app_name=_APP_NAME)
+    return result
+
+
+async def invoke_bounded_drafter(
+    snippets: list[tuple[str, str]],
+    intent: str,
+    cursor_context: str,
+    document_content: str,
+    user_id: "uuid.UUID | None" = None,
+) -> str:
+    """Invoke the bounded drafter agent with explicit evidence snippets and user intent.
+
+    Args:
+        snippets: List of (text, source_title) pairs — may be empty.
+        intent: User intent string — must be non-empty.
+        cursor_context: Heading or surrounding text at the insertion point.
+        document_content: Full current document content (fetched server-side).
+
+    Returns:
+        The generated text string.
+
+    Raises:
+        ValueError: If intent is empty.
+    """
+    from writer.agents.drafter_agent import make_drafter_agent
+
+    if not intent.strip():
+        raise ValueError("intent must be non-empty to invoke bounded generation")
+
+    logger.debug(
+        "invoke_bounded_drafter: %d snippets, intent=%r, cursor_context len=%d, doc len=%d",
+        len(snippets),
+        intent[:80],
+        len(cursor_context),
+        len(document_content),
+    )
+
+    agent = make_drafter_agent(tools=[])
+
+    evidence_lines = "\n".join(
+        f'"{text}" (Source: {source_title})' for text, source_title in snippets
+    )
+    if not evidence_lines:
+        evidence_lines = "(no snippets selected)"
+
+    message_text = (
+        f"--- FULL DOCUMENT ---\n{document_content}\n--- END DOCUMENT ---\n\n"
+        f"--- EVIDENCE SNIPPETS ---\n{evidence_lines}\n--- END EVIDENCE SNIPPETS ---\n\n"
+        f"--- INSERTION POINT ---\n{cursor_context}\n--- END INSERTION POINT ---\n\n"
+        f"Intent: {intent}\n\n"
+        "Write the text described by the intent. Use the evidence snippets as your factual basis. "
+        "Use the full document to avoid repeating content that is already present and to maintain "
+        "the document's focus and tone."
+    )
+
+    effective_user_id = user_id if user_id is not None else uuid.UUID(int=0)
+    bounded_result: str = await run_agent_text(
+        agent, message_text, effective_user_id, app_name=_APP_NAME
+    )
+    logger.info("invoke_bounded_drafter: generated %d chars", len(bounded_result))
+    return bounded_result
 
 
 async def invoke_planner(
@@ -111,10 +172,11 @@ async def invoke_planner(
         len(overview),
     )
 
-    return await run_agent_text(
+    plan_result: str = await run_agent_text(
         planner_agent,
         overview,
         user_id,
         app_name=_APP_NAME,
         session_state=session_state,
     )
+    return plan_result

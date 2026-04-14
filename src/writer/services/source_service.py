@@ -2,7 +2,6 @@
 
 import asyncio
 import uuid
-from io import BytesIO
 from pathlib import Path
 
 from sqlalchemy import select
@@ -11,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from writer.core.config import settings
 from writer.core.logging import get_logger
 from writer.models.db import Source
-from writer.models.enums import SourceType
+from writer.models.enums import IndexingStatus, SourceType
 from writer.models.schemas import SourceCreate, SourceResponse
 from writer.services import vector_store
 
@@ -28,16 +27,15 @@ class PdfParseError(Exception):
     pass
 
 
-def _extract_pdf_text(file_bytes: bytes) -> str:
-    from pypdf import PdfReader
+def _extract_pdf_markdown(file_bytes: bytes) -> str:
+    import fitz  # pymupdf
+    import pymupdf4llm
 
-    reader = PdfReader(BytesIO(file_bytes))
-    parts: list[str] = []
-    for page in reader.pages:
-        text = page.extract_text()
-        if text:
-            parts.append(text)
-    return "\n".join(parts)
+    doc = fitz.open(stream=file_bytes, filetype="pdf")
+    md: str = pymupdf4llm.to_markdown(doc)
+    if not md.strip():
+        raise PdfParseError("PDF contains no extractable text (may be image-only)")
+    return md
 
 
 async def add_source(db: AsyncSession, data: SourceCreate, user_id: uuid.UUID) -> SourceResponse:
@@ -54,14 +52,35 @@ async def add_source(db: AsyncSession, data: SourceCreate, user_id: uuid.UUID) -
         if dupe is not None:
             logger.info("Skipping duplicate url=%s for doc=%s", data.url, data.document_id)
             return SourceResponse.model_validate(dupe)
+
+    content = data.content
+    missing_content = False
+    if data.source_type == SourceType.url and data.url and not content:
+        from documentlm_core.services.content_cleaner import clean_content
+
+        from writer.services.content_fetcher import fetch_url_content
+
+        logger.info("Fetching URL content for url=%s", data.url)
+        raw = await fetch_url_content(data.url)
+        logger.info("Fetched %d chars from url=%s", len(raw), data.url)
+        cleaned = await clean_content(raw)
+        if cleaned is None:
+            content = raw
+            missing_content = True
+        else:
+            content = cleaned
+
     source = Source(
         user_id=user_id,
         document_id=data.document_id,
         source_type=data.source_type,
         title=data.title,
-        content=data.content,
+        content=content,
         url=data.url,
     )
+    if missing_content:
+        source.indexing_status = IndexingStatus.failed
+        source.error_message = "No article content found"
     db.add(source)
     await db.flush()
     await db.refresh(source)
@@ -76,12 +95,22 @@ async def add_source_pdf(
     file_bytes: bytes,
     user_id: uuid.UUID,
 ) -> SourceResponse:
-    logger.info("Extracting PDF text doc=%s user=%s", document_id, user_id)
+    logger.info("Extracting PDF markdown doc=%s user=%s", document_id, user_id)
     try:
-        content = _extract_pdf_text(file_bytes)
+        content = _extract_pdf_markdown(file_bytes)
+    except PdfParseError:
+        raise
     except Exception as exc:
         logger.exception("PDF extraction failed: %s", exc)
         raise PdfParseError("Failed to parse PDF") from exc
+
+    from documentlm_core.services.content_cleaner import clean_content
+
+    raw = content
+    cleaned = await clean_content(raw)
+    missing_content = cleaned is None
+    content = raw if missing_content else cleaned
+
     source = Source(
         user_id=user_id,
         document_id=document_id,
@@ -90,6 +119,9 @@ async def add_source_pdf(
         content=content,
         url=None,
     )
+    if missing_content:
+        source.indexing_status = IndexingStatus.failed
+        source.error_message = "No article content found"
     db.add(source)
     await db.flush()
     await db.refresh(source)

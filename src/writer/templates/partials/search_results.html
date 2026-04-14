@@ -1,0 +1,28 @@
+{% if search.results %}
+<div class="search-results" id="search-results">
+  <div class="search-results-header">{{ search.results | length }} result{% if search.results | length != 1 %}s{% endif %} for "{{ search.query }}"</div>
+  {% for item in search.results %}
+  <div class="search-result-card">
+    <div class="search-result-text">{{ item.text }}</div>
+    <div class="search-result-source">
+      {{ item.source_title }}
+      <button class="btn-icon snippet-goto-btn" title="Go to source"
+              onclick="scrollToCharOffset('{{ item.source_id }}', 0)">
+        <span class="material-symbols-outlined">my_location</span>
+      </button>
+    </div>
+    <button class="btn btn-sm search-result-add-btn"
+            hx-post="/api/documents/{{ doc_id }}/snippets"
+            hx-ext="json-enc"
+            hx-vals='{"text": {{ item.text | tojson }}, "source_id": {{ item.source_id | string | tojson }}}'
+            hx-target="#snippet-list"
+            hx-swap="afterbegin"
+            title="Add to Snippet Bank">
+      Add to Bank
+    </button>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="search-results-empty">No results for "{{ search.query }}"</div>
+{% endif %}

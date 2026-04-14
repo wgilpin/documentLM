@@ -2,9 +2,9 @@
 
 import uuid
 
+from documentlm_core.services.indexer import run_indexing as _core_run_indexing
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from documentlm_core.services.indexer import run_indexing as _core_run_indexing
 from writer.models.db import Document, Source
 
 

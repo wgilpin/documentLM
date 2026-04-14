@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://writer:writer@localhost:5432/writer"
-    gemini_api_key: str = Field(default="", alias="GOOGLE_API_KEY", validation_alias="GOOGLE_API_KEY")
+    gemini_api_key: str = Field(
+        default="", alias="GOOGLE_API_KEY", validation_alias="GOOGLE_API_KEY"
+    )
     gemini_model: str = "gemini-3-flash-preview"
     chroma_path: str = "./data/chroma"
     pdf_storage_path: str = "./data/pdfs"

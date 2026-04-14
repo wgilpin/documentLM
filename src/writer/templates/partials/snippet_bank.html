@@ -1,0 +1,25 @@
+<div id="snippet-bank" class="snippet-bank">
+  <div class="snippet-bank-search">
+    <input type="text"
+           class="snippet-search-input"
+           placeholder="Search sources…"
+           hx-get="/api/documents/{{ doc_id }}/search"
+           hx-trigger="input changed delay:400ms, search"
+           hx-target="#search-results-container"
+           hx-swap="innerHTML"
+           name="q"
+           autocomplete="off">
+  </div>
+
+  <div id="search-results-container" class="search-results-container"></div>
+
+  <div class="snippet-list" id="snippet-list">
+    {% if snippets %}
+      {% for snippet in snippets %}
+        {% include "partials/snippet_card.html" %}
+      {% endfor %}
+    {% else %}
+      <p class="snippet-bank-empty">No snippets yet. Highlight text in Source Viewer and save it here.</p>
+    {% endif %}
+  </div>
+</div>

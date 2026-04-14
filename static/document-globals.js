@@ -61,6 +61,48 @@ function switchTab(name) {
     event.target.classList.add('active');
 }
 
+function switchMiddleTab(name) {
+    document.querySelectorAll('.middle-panel-body').forEach(function(p) { p.style.display = 'none'; });
+    document.querySelectorAll('.middle-tab-btn').forEach(function(b) { b.classList.remove('middle-tab-btn--active'); });
+    var panel = document.getElementById('middle-panel-' + name);
+    if (panel) panel.style.display = '';
+    var btn = document.getElementById('mid-tab-' + name);
+    if (btn) btn.classList.add('middle-tab-btn--active');
+}
+
+function switchRightTab(name) {
+    document.querySelectorAll('.right-panel-body').forEach(function(p) { p.style.display = 'none'; });
+    document.querySelectorAll('.right-tab-btn').forEach(function(b) { b.classList.remove('right-tab-btn--active'); });
+    var panel = document.getElementById('right-panel-' + name);
+    if (panel) panel.style.display = '';
+    var btn = document.getElementById('right-tab-' + name);
+    if (btn) btn.classList.add('right-tab-btn--active');
+}
+
+function showSourceNotice() {
+    var el = document.getElementById('source-processing-notice');
+    if (el) {
+        el.hidden = false;
+        setTimeout(function () { el.hidden = true; }, 8000);
+    }
+}
+
+function clearSourceViewerIfMatch(sourceId) {
+    var el = document.getElementById('source-view-content');
+    if (el && el.dataset.sourceId === sourceId) {
+        var container = document.getElementById('source-view-container');
+        if (container) {
+            container.innerHTML = '<p class="side-panel-placeholder">Select a source to view its content here.</p>';
+        }
+    }
+}
+
+document.addEventListener('click', function (e) {
+    if (e.target.tagName === 'IMG' && e.target.closest('.source-view-body')) {
+        e.target.classList.toggle('source-img--expanded');
+    }
+});
+
 function lockEditor()   { window.tiptapEditor?.setEditable(false); }
 function unlockEditor() { window.tiptapEditor?.setEditable(true); }
 

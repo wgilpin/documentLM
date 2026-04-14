@@ -9,10 +9,6 @@ locally, using DocumentBase from core to enforce the required document interface
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
-
 from documentlm_core.models.db import (  # noqa: F401
     ChatMessage,
     ChatSession,
@@ -21,6 +17,10 @@ from documentlm_core.models.db import (  # noqa: F401
     Source,
     User,
 )
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
 from writer.core.database import Base
 from writer.models.enums import (
     ChatRole,
@@ -40,6 +40,7 @@ __all__ = [
     "IndexingStatus",
     "InviteCode",
     "SessionStatus",
+    "Snippet",
     "Source",
     "Comment",
     "Suggestion",
@@ -98,6 +99,28 @@ class Suggestion(Base):
     status: Mapped[SuggestionStatus] = mapped_column(
         Enum(SuggestionStatus), nullable=False, default=SuggestionStatus.pending
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Snippet(Base):
+    __tablename__ = "snippets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    source_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sources.id", ondelete="SET NULL"), nullable=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    char_offset: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tag: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

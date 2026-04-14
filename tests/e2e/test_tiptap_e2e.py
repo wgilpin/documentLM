@@ -34,8 +34,11 @@ def test_tiptap_accept_reject_flow(page: Page, live_server: str) -> None:
             <div class="suggestion-content">
                 <p>Mock AI Update</p>
                 <div class="suggestion-actions">
-                    <button class="accept-btn" hx-post="/api/suggestions/mock/accept" hx-target="#document-content">Accept</button>
-                    <button class="reject-btn" hx-post="/api/suggestions/mock/reject">Reject</button>
+                    <button class="accept-btn"
+                        hx-post="/api/suggestions/mock/accept"
+                        hx-target="#document-content">Accept</button>
+                    <button class="reject-btn"
+                        hx-post="/api/suggestions/mock/reject">Reject</button>
                 </div>
             </div>
         </div>
@@ -43,7 +46,9 @@ def test_tiptap_accept_reject_flow(page: Page, live_server: str) -> None:
         route.fulfill(
             status=200,
             content_type="text/html",
-            headers={"HX-Trigger": '{"suggestion-created": {"value": "~~Old Test~~ ***New Test***"}}'},
+            headers={
+                "HX-Trigger": '{"suggestion-created": {"value": "~~Old Test~~ ***New Test***"}}',
+            },
             body=mock_html,
         )
 

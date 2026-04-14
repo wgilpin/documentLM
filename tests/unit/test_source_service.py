@@ -30,6 +30,38 @@ def _make_source(**kwargs: object) -> MagicMock:
     return obj
 
 
+class TestExtractPdfMarkdown:
+    def test_valid_pdf_bytes_returns_markdown(self) -> None:
+        """Valid PDF bytes → returns non-empty markdown string containing text."""
+        from writer.services.source_service import _extract_pdf_markdown
+
+        fake_doc = MagicMock()
+        fake_doc.__enter__ = MagicMock(return_value=fake_doc)
+        fake_doc.__exit__ = MagicMock(return_value=False)
+
+        with (
+            patch("fitz.open", return_value=fake_doc),
+            patch("pymupdf4llm.to_markdown", return_value="# Heading\n\nSome text content"),
+        ):
+            result = _extract_pdf_markdown(b"%PDF-fake")
+
+        assert isinstance(result, str)
+        assert len(result.strip()) > 0
+
+    def test_image_only_pdf_raises_pdf_parse_error(self) -> None:
+        """Image-only / empty PDF bytes → raises PdfParseError."""
+        from writer.services.source_service import PdfParseError, _extract_pdf_markdown
+
+        fake_doc = MagicMock()
+
+        with (
+            patch("fitz.open", return_value=fake_doc),
+            patch("pymupdf4llm.to_markdown", return_value="   "),
+            pytest.raises(PdfParseError),
+        ):
+            _extract_pdf_markdown(b"%PDF-image-only")
+
+
 class TestAddSource:
     async def test_add_note_returns_source_response(self) -> None:
         from writer.services.source_service import add_source
@@ -85,6 +117,49 @@ class TestAddSource:
 
         assert isinstance(result, SourceResponse)
 
+    async def test_add_url_fetches_content_when_empty(self) -> None:
+        from writer.services.source_service import add_source
+
+        doc_id = uuid.uuid4()
+        instance = _make_source(
+            document_id=doc_id, source_type=SourceType.url, url="https://example.com"
+        )
+        no_dupe = MagicMock()
+        no_dupe.scalar_one_or_none.return_value = None
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=no_dupe)
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+
+        data = SourceCreate(
+            document_id=doc_id,
+            source_type=SourceType.url,
+            title="A Link",
+            content="",
+            url="https://example.com",
+        )
+
+        with (
+            patch("writer.services.source_service.Source") as MockSource,
+            patch("writer.services.source_service.select"),
+            patch(
+                "writer.services.content_fetcher.fetch_url_content",
+                new_callable=AsyncMock,
+                return_value="Fetched article text",
+            ),
+            patch(
+                "documentlm_core.services.content_cleaner.clean_content",
+                new_callable=AsyncMock,
+                return_value="Fetched article text",
+            ),
+        ):
+            MockSource.return_value = instance
+            result = await add_source(db, data, uuid.uuid4())
+
+        assert isinstance(result, SourceResponse)
+
     async def test_add_url_skips_duplicate(self) -> None:
         from writer.services.source_service import add_source
 
@@ -128,7 +203,7 @@ class TestAddSourcePdf:
         user_id = uuid.uuid4()
         with (
             patch(
-                "writer.services.source_service._extract_pdf_text",
+                "writer.services.source_service._extract_pdf_markdown",
                 side_effect=Exception("bad pdf"),
             ),
             pytest.raises(PdfParseError),
@@ -148,8 +223,13 @@ class TestAddSourcePdf:
 
         user_id = uuid.uuid4()
         with (
-            patch("writer.services.source_service._extract_pdf_text", return_value="extracted"),
+            patch("writer.services.source_service._extract_pdf_markdown", return_value="extracted"),
             patch("writer.services.source_service.Source") as MockSource,
+            patch(
+                "documentlm_core.services.content_cleaner.clean_content",
+                new_callable=AsyncMock,
+                return_value="extracted",
+            ),
         ):
             instance = _make_source(
                 document_id=doc_id,

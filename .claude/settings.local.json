@@ -6,10 +6,12 @@
       "Bash(node --test *)",
       "Read(//Users/will/projects/**)",
       "Bash(uv add:*)",
-      "Bash(uv sync:*)"
+      "Bash(uv sync:*)",
+      "Bash(awk '{print $2}')"
     ],
     "additionalDirectories": [
-      "/Users/will/projects/documentlm-core"
+      "/Users/will/projects/documentlm-core",
+      "/Users/will/projects/document-projects/documentLM-core"
     ]
   }
 }

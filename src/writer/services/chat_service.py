@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.logging import get_logger
 from writer.models.db import ChatMessage
-from writer.models.enums import ChatRole, SourceType
+from writer.models.enums import ChatRole, IndexingStatus, SourceType
 from writer.models.schemas import ChatMessageResponse, SourceCreate
 from writer.services import vector_store
 
@@ -106,6 +106,11 @@ def make_find_more_sources_tool(
                 except Exception as exc:
                     logger.warning("find_more_sources: failed to fetch %s: %s", url, exc)
                     content = s.get("summary", "")
+                else:
+                    from documentlm_core.services.content_cleaner import clean_content
+
+                    cleaned = await clean_content(content)
+                    content = content if cleaned is None else cleaned
             else:
                 content = s.get("summary", "")
 
@@ -121,7 +126,8 @@ def make_find_more_sources_tool(
                 user_id,
             )
             await db.flush()
-            await run_indexing(source_id=saved.id, db=db, user_id=user_id)
+            if saved.indexing_status != IndexingStatus.failed:
+                await run_indexing(source_id=saved.id, db=db, user_id=user_id)
             saved_titles.append(s.get("title") or url or "Unknown")
 
         _called[0] = True

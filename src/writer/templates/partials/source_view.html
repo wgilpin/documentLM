@@ -1,0 +1,8 @@
+<div id="source-view-content" class="source-view-panel" data-source-id="{{ source.id }}">
+  <div class="source-view-title">{{ source.title }}</div>
+  <div class="source-view-body" id="source-view-body">
+    {% for para in paragraphs %}
+    <div class="source-para" data-char-offset="{{ para.offset }}">{{ para.html | safe }}</div>
+    {% endfor %}
+  </div>
+</div>
