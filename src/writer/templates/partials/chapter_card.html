@@ -54,7 +54,7 @@
   {% endif %}
   <div class="chapter-card-content" onclick="activateChapter('{{ chapter.id }}', '{{ doc_id }}')">
     {% if chapter.content %}
-      <div class="chapter-content-preview">{{ chapter.content[:300] }}{% if chapter.content|length > 300 %}…{% endif %}</div>
+      <div class="chapter-content-preview">{{ chapter.content[:300] | markdown }}{% if chapter.content|length > 300 %}…{% endif %}</div>
     {% else %}
       <p class="chapter-content-placeholder">Click to start writing</p>
     {% endif %}
