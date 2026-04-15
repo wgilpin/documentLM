@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -60,8 +60,6 @@ class TestCreateSnippet:
         db.add = MagicMock()
         db.flush = AsyncMock()
         db.refresh = AsyncMock()
-
-        from unittest.mock import patch
 
         with patch("writer.services.snippet_service.Snippet", return_value=snippet_obj):
             data = SnippetCreate(text="Highlighted passage", char_offset=42)
@@ -207,3 +205,91 @@ class TestGetSnippetWithSourceTitle:
         result = await get_snippet_with_source_title(db, snippet_id, user_id)
         assert isinstance(result, SnippetResponse)
         assert result.source_title is None
+
+
+# ── T022: snippet-chapter assignment ──────────────────────────────────────
+
+
+class TestAssignSnippetToChapter:
+    async def test_assign_creates_junction_row(self) -> None:
+        from writer.services.snippet_service import assign_snippet_to_chapter
+
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        # merge returns the object back
+        chapter_snippet_obj = MagicMock()
+        db.merge = AsyncMock(return_value=chapter_snippet_obj)
+
+        chapter_id = uuid.uuid4()
+        snippet_id = uuid.uuid4()
+
+        await assign_snippet_to_chapter(db, chapter_id, snippet_id)
+        db.merge.assert_called_once()
+
+    async def test_assign_is_idempotent(self) -> None:
+        from writer.services.snippet_service import assign_snippet_to_chapter
+
+        db = AsyncMock()
+        db.merge = AsyncMock(return_value=MagicMock())
+        db.flush = AsyncMock()
+
+        chapter_id = uuid.uuid4()
+        snippet_id = uuid.uuid4()
+
+        # Call twice — should not error
+        await assign_snippet_to_chapter(db, chapter_id, snippet_id)
+        await assign_snippet_to_chapter(db, chapter_id, snippet_id)
+
+
+class TestUnassignSnippetFromChapter:
+    async def test_unassign_removes_junction_row(self) -> None:
+        from writer.services.snippet_service import unassign_snippet_from_chapter
+
+        db = AsyncMock()
+        junction_obj = MagicMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = junction_obj
+        db.execute = AsyncMock(return_value=mock_result)
+        db.delete = AsyncMock()
+        db.flush = AsyncMock()
+
+        await unassign_snippet_from_chapter(db, uuid.uuid4(), uuid.uuid4())
+        db.delete.assert_called_once_with(junction_obj)
+
+    async def test_unassign_nonexistent_is_noop(self) -> None:
+        from writer.services.snippet_service import unassign_snippet_from_chapter
+
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        db.execute = AsyncMock(return_value=mock_result)
+
+        # Should not raise
+        await unassign_snippet_from_chapter(db, uuid.uuid4(), uuid.uuid4())
+
+
+# ── T023: chapter-filtered snippet listing ────────────────────────────────
+
+
+class TestListSnippetsByChapter:
+    async def test_list_snippets_by_chapter_returns_filtered(self) -> None:
+        from writer.models.schemas import SnippetResponse
+        from writer.services.snippet_service import list_snippets_by_chapter
+
+        chapter_id = uuid.uuid4()
+        user_id = uuid.uuid4()
+        snippets = [_make_snippet(), _make_snippet()]
+
+        db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = snippets
+        # Second call for source title lookup returns empty
+        src_result = MagicMock()
+        src_result.scalars.return_value.all.return_value = []
+        db.execute = AsyncMock(side_effect=[mock_result, src_result])
+
+        result = await list_snippets_by_chapter(db, chapter_id, user_id)
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert all(isinstance(s, SnippetResponse) for s in result)

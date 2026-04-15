@@ -1,0 +1,81 @@
+<div class="chapter-editor" id="chapter-{{ chapter.id }}" data-chapter-id="{{ chapter.id }}" data-position="{{ chapter.position }}">
+  <div class="chapter-editor-header">
+    <input type="text" class="chapter-title-input" value="{{ chapter.title }}"
+           hx-put="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}"
+           hx-ext="json-enc"
+           hx-trigger="change"
+           hx-vals='js:{"title": event.target.value}'
+           hx-swap="none">
+    <div class="chapter-card-actions">
+      {% if chapter.position > 0 %}
+      <button class="btn-icon chapter-reorder-btn" title="Move up"
+              hx-patch="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}/position"
+              hx-ext="json-enc"
+              hx-vals='{"position": {{ chapter.position - 1 }}}'
+              hx-target="#chapter-list"
+              hx-swap="innerHTML">
+        <span class="material-symbols-outlined">arrow_upward</span>
+      </button>
+      {% endif %}
+      <button class="btn-icon chapter-reorder-btn" title="Move down"
+              hx-patch="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}/position"
+              hx-ext="json-enc"
+              hx-vals='{"position": {{ chapter.position + 1 }}}'
+              hx-target="#chapter-list"
+              hx-swap="innerHTML">
+        <span class="material-symbols-outlined">arrow_downward</span>
+      </button>
+      <button class="btn-icon btn-ghost-danger" title="Delete chapter"
+              hx-delete="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}"
+              hx-target="#chapter-list"
+              hx-swap="innerHTML"
+              hx-confirm="Delete chapter '{{ chapter.title }}'? This cannot be undone.">
+        <span class="material-symbols-outlined">delete</span>
+      </button>
+    </div>
+  </div>
+  {% if chapter.brief and chapter.brief_visible %}
+  <div class="chapter-brief chapter-brief--editable">
+    <textarea class="chapter-brief-textarea" rows="2" placeholder="Chapter brief / planning notes…"
+              hx-put="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}"
+              hx-ext="json-enc"
+              hx-trigger="change"
+              hx-vals='js:{"brief": event.target.value}'
+              hx-swap="none">{{ chapter.brief or '' }}</textarea>
+    <button class="btn-icon chapter-brief-toggle" title="Hide brief"
+            hx-patch="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}/brief-visibility"
+            hx-ext="json-enc"
+            hx-vals='{"brief_visible": false}'
+            hx-target="#chapter-{{ chapter.id }}"
+            hx-swap="outerHTML">
+      <span class="material-symbols-outlined">visibility_off</span>
+    </button>
+  </div>
+  {% elif chapter.brief and not chapter.brief_visible %}
+  <button class="btn-icon chapter-brief-toggle chapter-brief-toggle--hidden" title="Show brief"
+          hx-patch="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}/brief-visibility"
+          hx-ext="json-enc"
+          hx-vals='{"brief_visible": true}'
+          hx-target="#chapter-{{ chapter.id }}"
+          hx-swap="outerHTML">
+    <span class="material-symbols-outlined">visibility</span>
+    <span class="chapter-brief-toggle-label">Show brief</span>
+  </button>
+  {% else %}
+  <button class="btn-icon chapter-brief-toggle chapter-brief-toggle--hidden" title="Add brief"
+          onclick="this.outerHTML='<div class=\'chapter-brief chapter-brief--editable\'><textarea class=\'chapter-brief-textarea\' rows=\'2\' placeholder=\'Chapter brief / planning notes…\' hx-put=\'/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}\' hx-ext=\'json-enc\' hx-trigger=\'change\' hx-vals=\'js:{&quot;brief&quot;: event.target.value}\' hx-swap=\'none\'></textarea></div>'; htmx.process(document.querySelector('.chapter-brief--editable'));">
+    <span class="material-symbols-outlined">note_add</span>
+    <span class="chapter-brief-toggle-label">Add brief</span>
+  </button>
+  {% endif %}
+  <textarea id="chapter-content-{{ chapter.id }}" class="chapter-content-textarea"
+            hx-put="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}"
+            hx-ext="json-enc"
+            hx-trigger="tiptap-changed delay:1s"
+            hx-vals='js:{"content": document.getElementById("chapter-content-{{ chapter.id }}").value}'
+            hx-swap="none"
+            style="display:none">{{ chapter.content | e }}</textarea>
+  <div id="tiptap-mount" class="tiptap-editor tiptap-editor--loading" data-chapter-id="{{ chapter.id }}">
+    <button id="ai-block-btn" type="button" style="display:none">AI &#10024;</button>
+  </div>
+</div>

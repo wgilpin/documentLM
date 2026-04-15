@@ -22,6 +22,11 @@ export DEV_PASSWORD=devPassword1234
 [ -d node_modules ] || npm install --silent
 npm run build:dev
 
+# Start esbuild watch in background
+npm run watch &
+ESBUILD_PID=$!
+trap "kill $ESBUILD_PID 2>/dev/null" EXIT
+
 # Run migrations then start the app
 uv run alembic upgrade head
 uv run uvicorn writer.main:app --reload

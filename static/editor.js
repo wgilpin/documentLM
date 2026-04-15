@@ -5,40 +5,48 @@ import { Markdown } from 'tiptap-markdown';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
-const mountEl      = document.getElementById('tiptap-mount');
-const contentInput = document.getElementById('document-content');
-const aiBtn        = document.getElementById('ai-block-btn');
+// ── Chapter-aware globals ────────────────────────────────────────────────
+const chapterList = document.getElementById('chapter-list');
+const DOC_ID = chapterList ? chapterList.dataset.docId : 'unknown-doc';
+
+let activeChapterId = null;
+let mountEl = null;
+let contentInput = null;
+let aiBtn = null;
 
 let pendingSelection = { start: 0, end: 0, text: '' };
 let lastChangeIsAi   = false;
 
-// ── Persistent LocalStorage History ───────────────────────────────────────
-const docIdMatch = contentInput.getAttribute('hx-put')?.match(/\/documents\/(.+)$/);
-const DOC_ID = docIdMatch ? docIdMatch[1] : 'unknown-doc';
-const HISTORY_KEY = `tiptap-history-${DOC_ID}`;
-
+// ── Persistent LocalStorage History (per-chapter) ────────────────────────
 let localHistory = [];
 let localHistoryIndex = -1;
+let historyDebounce = null;
 
-try {
-    const saved = localStorage.getItem(HISTORY_KEY);
-    if (saved) {
-        localHistory = JSON.parse(saved);
-        localHistoryIndex = localHistory.length - 1;
-    }
-} catch(e) {}
-
-// If history is completely empty, initialize it with current server doc state
-if (localHistory.length === 0) {
-    localHistory.push(contentInput.value);
-    localHistoryIndex = 0;
-} else if (localHistory[localHistoryIndex] !== contentInput.value) {
-    // If server doc state (initial load) differs from last local history (e.g. another device edited), pin it
-    localHistory.push(contentInput.value);
-    localHistoryIndex++;
+function getHistoryKey() {
+    return `tiptap-history-${DOC_ID}-${activeChapterId || 'default'}`;
 }
 
-let historyDebounce = null;
+function loadHistory() {
+    localHistory = [];
+    localHistoryIndex = -1;
+    try {
+        const saved = localStorage.getItem(getHistoryKey());
+        if (saved) {
+            localHistory = JSON.parse(saved);
+            localHistoryIndex = localHistory.length - 1;
+        }
+    } catch(e) {}
+
+    if (contentInput) {
+        if (localHistory.length === 0) {
+            localHistory.push(contentInput.value);
+            localHistoryIndex = 0;
+        } else if (localHistory[localHistoryIndex] !== contentInput.value) {
+            localHistory.push(contentInput.value);
+            localHistoryIndex++;
+        }
+    }
+}
 
 function saveToHistory(text) {
     if (localHistory[localHistoryIndex] === text) return;
@@ -51,7 +59,7 @@ function saveToHistory(text) {
     if (localHistory.length > 50) localHistory.shift();
     localHistoryIndex = localHistory.length - 1;
 
-    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(localHistory)); } catch(e) {}
+    try { localStorage.setItem(getHistoryKey(), JSON.stringify(localHistory)); } catch(e) {}
 
     if (window.tiptapEditor) updateToolbar(window.tiptapEditor);
 }
@@ -64,6 +72,7 @@ let activeBlockPos  = null;
 let activeBlockNode = null;
 
 function updateAiButton(editor) {
+    if (!mountEl || !aiBtn) return;
     const { state, view } = editor;
     const { $from } = state.selection;
     let depth = $from.depth;
@@ -105,17 +114,19 @@ const fmtButtons = {
     code: document.getElementById('fmt-code'),
 };
 
-const fmtActiveChecks = [
-    [fmtButtons.bold,   () => editor.isActive('bold')],
-    [fmtButtons.italic, () => editor.isActive('italic')],
-    [fmtButtons.h1,     () => editor.isActive('heading', { level: 1 })],
-    [fmtButtons.h2,     () => editor.isActive('heading', { level: 2 })],
-    [fmtButtons.h3,     () => editor.isActive('heading', { level: 3 })],
-    [fmtButtons.ul,     () => editor.isActive('bulletList')],
-    [fmtButtons.ol,     () => editor.isActive('orderedList')],
-    [fmtButtons.quote,  () => editor.isActive('blockquote')],
-    [fmtButtons.code,   () => editor.isActive('codeBlock')],
-];
+function getFmtActiveChecks(ed) {
+    return [
+        [fmtButtons.bold,   () => ed.isActive('bold')],
+        [fmtButtons.italic, () => ed.isActive('italic')],
+        [fmtButtons.h1,     () => ed.isActive('heading', { level: 1 })],
+        [fmtButtons.h2,     () => ed.isActive('heading', { level: 2 })],
+        [fmtButtons.h3,     () => ed.isActive('heading', { level: 3 })],
+        [fmtButtons.ul,     () => ed.isActive('bulletList')],
+        [fmtButtons.ol,     () => ed.isActive('orderedList')],
+        [fmtButtons.quote,  () => ed.isActive('blockquote')],
+        [fmtButtons.code,   () => ed.isActive('codeBlock')],
+    ];
+}
 
 function updateToolbar(editor) {
     const canUndo = canUndoLocal();
@@ -126,7 +137,7 @@ function updateToolbar(editor) {
         ? (lastChangeIsAi ? 'Undo AI change' : 'Undo')
         : 'Nothing to undo';
     redoBtn.title = canRedo ? 'Redo' : 'Nothing to redo';
-    for (const [btn, check] of fmtActiveChecks) {
+    for (const [btn, check] of getFmtActiveChecks(editor)) {
         btn.classList.toggle('toolbar-btn--active', check());
     }
 }
@@ -224,7 +235,6 @@ function refreshDecorations() {
 }
 
 // Watch #inline-suggestions for cards added by HTMX (initial load or new creation).
-// This avoids relying on HTMX event name casing which is unreliable across browsers.
 function initSuggestionObserver() {
     const container = document.getElementById('inline-suggestions');
     if (!container) return;
@@ -255,7 +265,6 @@ function initSuggestionObserver() {
         }
         if (changed) {
             refreshDecorations();
-            // positionSuggestionCards is called inside refreshDecorations via rAF
         }
     }).observe(container, { childList: true });
 }
@@ -268,22 +277,21 @@ window.acceptSuggestion = async function(btn) {
     document.getElementById(`suggestion-${s.id}`)?.remove();
 
     const stored = suggestionRanges.get(s.id);
-    if (stored?.md) {
-        // Splice suggestion into full markdown then reparse — handles plain text,
-        // single bullets, and multi-bullet expansions correctly.
+    if (stored?.md && contentInput) {
         const md = window.tiptapEditor.storage.markdown.getMarkdown();
         const newMd = applySuggestionToMarkdown(md, s.suggested_text, stored.md);
         window.tiptapEditor.commands.setContent(newMd);
-        // Save immediately — don't rely on the 1s debounce which loses changes on quick reload.
-        // Use fetch with JSON encoding to match what the server expects (FastAPI Pydantic model).
         contentInput.value = newMd;
-        fetch(contentInput.getAttribute('hx-put'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: newMd, title: document.getElementById('doc-title')?.value || '' }),
-        }).catch(e => console.error('[suggestion] immediate save failed:', e));
+        // Save to the chapter endpoint
+        const putUrl = contentInput.getAttribute('hx-put');
+        if (putUrl) {
+            fetch(putUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: newMd }),
+            }).catch(e => console.error('[suggestion] immediate save failed:', e));
+        }
     } else {
-        // Fallback for page-load suggestions (no stored range)
         const range = findTextInDoc(window.tiptapEditor.state.doc, s.original_text);
         if (range) {
             window.tiptapEditor.chain()
@@ -324,61 +332,171 @@ window.rejectSuggestion = async function(btn) {
     }
 };
 
-// ── Editor ────────────────────────────────────────────────────────────────
-const editor = new Editor({
-    element: mountEl,
-    extensions: [
-        StarterKit.configure({ history: false }),
-        Markdown,
-        Focus.configure({ className: 'has-focus', mode: 'deepest' }),
-        SuggestionDecorations,
-    ],
-    content: contentInput.value,
-    onUpdate({ editor }) {
-        const md = editor.storage.markdown.getMarkdown();
-        contentInput.value = md;
-        contentInput.dispatchEvent(new Event('tiptap-changed'));
-        updateToolbar(editor);
+// ── Editor creation ──────────────────────────────────────────────────────
+function createEditor(el, content) {
+    return new Editor({
+        element: el,
+        extensions: [
+            StarterKit.configure({ history: false }),
+            Markdown,
+            Focus.configure({ className: 'has-focus', mode: 'deepest' }),
+            SuggestionDecorations,
+        ],
+        content: content,
+        onUpdate({ editor }) {
+            const md = editor.storage.markdown.getMarkdown();
+            if (contentInput) {
+                contentInput.value = md;
+                contentInput.dispatchEvent(new Event('tiptap-changed'));
+            }
+            updateToolbar(editor);
 
-        clearTimeout(historyDebounce);
-        historyDebounce = setTimeout(() => {
-            saveToHistory(md);
-        }, 600); // 600ms inactivity before snapping history
-    },
-    onTransaction({ editor }) {
-        updateToolbar(editor);
-        updateAiButton(editor);
-    },
-});
+            clearTimeout(historyDebounce);
+            historyDebounce = setTimeout(() => {
+                saveToHistory(md);
+            }, 600);
+        },
+        onTransaction({ editor }) {
+            updateToolbar(editor);
+            updateAiButton(editor);
+        },
+    });
+}
 
-window.tiptapEditor = editor;
-mountEl.classList.remove('tiptap-editor--loading');
-updateToolbar(editor);
-initSuggestionObserver();
+// ── Chapter activation ───────────────────────────────────────────────────
+function saveCurrentChapter() {
+    if (!window.tiptapEditor || !contentInput) return;
+    const md = window.tiptapEditor.storage.markdown.getMarkdown();
+    contentInput.value = md;
+    // Trigger save via HTMX
+    const putUrl = contentInput.getAttribute('hx-put');
+    if (putUrl) {
+        fetch(putUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: md }),
+        }).catch(e => console.error('[chapter] save failed:', e));
+    }
+}
+
+window.activateChapter = function activateChapter(chapterId, docId) {
+    if (chapterId === activeChapterId) return;
+
+    // Save current chapter
+    saveCurrentChapter();
+
+    // Destroy current editor
+    if (window.tiptapEditor) {
+        window.tiptapEditor.destroy();
+        window.tiptapEditor = null;
+    }
+
+    // Capture previous ID before reassigning
+    const prevChapterId = activeChapterId;
+    activeChapterId = chapterId;
+
+    // Convert previous active chapter to card via server-rendered HTML
+    if (prevChapterId) {
+        const prevEl = document.getElementById('chapter-' + prevChapterId);
+        if (prevEl) {
+            // PUT saves content, response is the rendered card partial
+            fetch(`/api/documents/${docId}/chapters/${prevChapterId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'HX-Request': 'true' },
+                body: JSON.stringify({}),
+            }).then(r => r.text()).then(cardHtml => {
+                // Use the server-rendered card directly
+                prevEl.outerHTML = cardHtml;
+                const newCard = document.getElementById('chapter-' + prevChapterId);
+                if (newCard) htmx.process(newCard);
+            }).catch(e => console.error('[chapter] save/card failed:', e));
+        }
+    }
+
+    // Fetch the chapter editor partial
+    fetch(`/api/documents/${docId}/chapters/${chapterId}`, {
+        headers: { 'HX-Request': 'true' },
+    }).then(r => r.text()).then(html => {
+        const el = document.getElementById('chapter-' + chapterId);
+        if (el) {
+            el.outerHTML = html;
+            htmx.process(document.getElementById('chapter-' + chapterId));
+        }
+
+        // Mount TipTap on the new chapter (scope to this chapter's element)
+        const newChapterEl = document.getElementById('chapter-' + chapterId);
+        mountEl = newChapterEl ? newChapterEl.querySelector('#tiptap-mount') : null;
+        contentInput = newChapterEl ? newChapterEl.querySelector('.chapter-content-textarea') : null;
+        aiBtn = newChapterEl ? newChapterEl.querySelector('#ai-block-btn') : null;
+
+        if (mountEl && contentInput) {
+            loadHistory();
+            const editor = createEditor(mountEl, contentInput.value);
+            window.tiptapEditor = editor;
+            mountEl.classList.remove('tiptap-editor--loading');
+            updateToolbar(editor);
+        }
+    });
+};
+
+window.scrollToChapter = function scrollToChapter(chapterId) {
+    const el = document.getElementById('chapter-' + chapterId);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Activate on click from TOC
+        const docId = chapterList ? chapterList.dataset.docId : '';
+        if (docId) activateChapter(chapterId, docId);
+    }
+};
+
+// ── Initial mount: activate the first chapter editor ─────────────────────
+(function initFirstChapter() {
+    const editorEl = document.querySelector('.chapter-editor');
+    if (!editorEl) return;
+
+    activeChapterId = editorEl.dataset.chapterId;
+    mountEl = editorEl.querySelector('#tiptap-mount');
+    contentInput = editorEl.querySelector('.chapter-content-textarea');
+    aiBtn = editorEl.querySelector('#ai-block-btn');
+
+    if (!mountEl || !contentInput) return;
+
+    loadHistory();
+    const editor = createEditor(mountEl, contentInput.value);
+    window.tiptapEditor = editor;
+    mountEl.classList.remove('tiptap-editor--loading');
+    updateToolbar(editor);
+    initSuggestionObserver();
+})();
 
 // ── Undo/redo buttons & Shortcuts ─────────────────────────────────────────
 undoBtn.addEventListener('click', () => {
-    if (!canUndoLocal()) return;
+    if (!canUndoLocal() || !window.tiptapEditor) return;
     lastChangeIsAi = false;
     localHistoryIndex--;
     const oldText = localHistory[localHistoryIndex];
-    editor.commands.setContent(oldText, false);
-    contentInput.value = oldText;
-    contentInput.dispatchEvent(new Event('tiptap-changed'));
-    updateToolbar(editor);
+    window.tiptapEditor.commands.setContent(oldText, false);
+    if (contentInput) {
+        contentInput.value = oldText;
+        contentInput.dispatchEvent(new Event('tiptap-changed'));
+    }
+    updateToolbar(window.tiptapEditor);
 });
 
 redoBtn.addEventListener('click', () => {
-    if (!canRedoLocal()) return;
+    if (!canRedoLocal() || !window.tiptapEditor) return;
     localHistoryIndex++;
     const newText = localHistory[localHistoryIndex];
-    editor.commands.setContent(newText, false);
-    contentInput.value = newText;
-    contentInput.dispatchEvent(new Event('tiptap-changed'));
-    updateToolbar(editor);
+    window.tiptapEditor.commands.setContent(newText, false);
+    if (contentInput) {
+        contentInput.value = newText;
+        contentInput.dispatchEvent(new Event('tiptap-changed'));
+    }
+    updateToolbar(window.tiptapEditor);
 });
 
-mountEl.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', (e) => {
+    if (!mountEl || !mountEl.contains(e.target)) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         e.shiftKey ? redoBtn.click() : undoBtn.click();
@@ -390,16 +508,16 @@ mountEl.addEventListener('keydown', (e) => {
 });
 
 // ── Formatting buttons ────────────────────────────────────────────────────
-fmtButtons.bold.addEventListener('click', () => editor.chain().focus().toggleBold().run());
-fmtButtons.italic.addEventListener('click', () => editor.chain().focus().toggleItalic().run());
-fmtButtons.h1.addEventListener('click', () => editor.chain().focus().toggleHeading({ level: 1 }).run());
-fmtButtons.h2.addEventListener('click', () => editor.chain().focus().toggleHeading({ level: 2 }).run());
-fmtButtons.h3.addEventListener('click', () => editor.chain().focus().toggleHeading({ level: 3 }).run());
-fmtButtons.ul.addEventListener('click', () => editor.chain().focus().toggleBulletList().run());
-fmtButtons.ol.addEventListener('click', () => editor.chain().focus().toggleOrderedList().run());
-fmtButtons.quote.addEventListener('click', () => editor.chain().focus().toggleBlockquote().run());
-fmtButtons.code.addEventListener('click', () => editor.chain().focus().toggleCodeBlock().run());
-document.getElementById('fmt-hr').addEventListener('click', () => editor.chain().focus().setHorizontalRule().run());
+fmtButtons.bold.addEventListener('click', () => window.tiptapEditor?.chain().focus().toggleBold().run());
+fmtButtons.italic.addEventListener('click', () => window.tiptapEditor?.chain().focus().toggleItalic().run());
+fmtButtons.h1.addEventListener('click', () => window.tiptapEditor?.chain().focus().toggleHeading({ level: 1 }).run());
+fmtButtons.h2.addEventListener('click', () => window.tiptapEditor?.chain().focus().toggleHeading({ level: 2 }).run());
+fmtButtons.h3.addEventListener('click', () => window.tiptapEditor?.chain().focus().toggleHeading({ level: 3 }).run());
+fmtButtons.ul.addEventListener('click', () => window.tiptapEditor?.chain().focus().toggleBulletList().run());
+fmtButtons.ol.addEventListener('click', () => window.tiptapEditor?.chain().focus().toggleOrderedList().run());
+fmtButtons.quote.addEventListener('click', () => window.tiptapEditor?.chain().focus().toggleBlockquote().run());
+fmtButtons.code.addEventListener('click', () => window.tiptapEditor?.chain().focus().toggleCodeBlock().run());
+document.getElementById('fmt-hr').addEventListener('click', () => window.tiptapEditor?.chain().focus().setHorizontalRule().run());
 
 // ── AI block button → open modal with block as context ────────────────────
 import { findBlockInMarkdown } from './editor-utils.js';
@@ -407,6 +525,8 @@ import { stripMarkdownBasic, findTextInDoc, applySuggestionToMarkdown } from './
 
 // Highlight DOM nodes for a set of ProseMirror positions, return cleanup fn.
 function highlightBlocks(positions) {
+    const editor = window.tiptapEditor;
+    if (!editor) return () => {};
     const nodes = positions
         .map(pos => { try { return editor.view.nodeDOM(pos); } catch (_) { return null; } })
         .filter(n => n?.nodeType === 1);
@@ -421,8 +541,11 @@ document.getElementById('command-modal').addEventListener('close', () => {
     clearAiHighlight = null;
 });
 
-aiBtn.addEventListener('click', (e) => {
+document.addEventListener('click', (e) => {
+    if (!aiBtn || e.target !== aiBtn) return;
     e.stopPropagation();
+    const editor = window.tiptapEditor;
+    if (!editor) return;
     const { state } = editor;
     const { from, to, empty } = state.selection;
     const md    = editor.storage.markdown.getMarkdown();
@@ -431,37 +554,31 @@ aiBtn.addEventListener('click', (e) => {
     let selStart, selEnd, selText;
     let blockPositions = [];
 
-    console.log('[AI btn] click — empty:', empty, 'activeBlockPos:', activeBlockPos, 'node:', activeBlockNode?.textContent?.slice(0, 40));
     if (empty) {
-        // Cursor only — use active block
-        if (activeBlockPos === null || !activeBlockNode) { console.warn('[AI btn] no active block — pos:', activeBlockPos, 'node:', activeBlockNode); return; }
+        if (activeBlockPos === null || !activeBlockNode) return;
         const nodeText = activeBlockNode.textContent.trim();
         const found = findBlockInMarkdown(lines, nodeText);
-        console.log('[AI btn] nodeText:', nodeText.slice(0, 60), '| found:', !!found);
         if (!found) return;
         selStart = found.start;
         selEnd   = found.end;
         selText  = md.slice(selStart, selEnd);
         blockPositions = [activeBlockPos];
     } else {
-        // Text selection — collect all text blocks within [from, to]
         const blocks = [];
         state.doc.nodesBetween(from, to, (node, pos) => {
             if (node.isTextblock && node.textContent.trim()) {
                 blocks.push({ text: node.textContent.trim(), pos });
             }
         });
-        if (blocks.length === 0) { console.warn('[AI btn] no blocks in selection'); return; }
+        if (blocks.length === 0) return;
 
-        // Find first block, then subsequent blocks searching forward to avoid
-        // false matches when two blocks have identical text.
         const first = findBlockInMarkdown(lines, blocks[0].text);
-        if (!first) { console.warn('[AI btn] first block not found in markdown:', blocks[0].text.slice(0, 60)); return; }
+        if (!first) return;
         let last = first;
         let searchFrom = first.end;
         for (let i = 1; i < blocks.length; i++) {
             const found = findBlockInMarkdown(lines, blocks[i].text, searchFrom);
-            if (!found) { console.warn('[AI btn] block not found:', blocks[i].text.slice(0, 60)); return; }
+            if (!found) return;
             last = found;
             searchFrom = found.end;
         }
@@ -472,9 +589,8 @@ aiBtn.addEventListener('click', (e) => {
         blockPositions = blocks.map(b => b.pos);
     }
 
-    if (!selText) { console.warn('[AI btn] empty selText'); return; }
+    if (!selText) return;
 
-    // Capture positions now so we don't need text-search later
     if (empty) {
         pendingAiPmRange = {
             from: activeBlockPos + 1,
@@ -508,21 +624,25 @@ aiBtn.addEventListener('click', (e) => {
 });
 
 // ── OOB swap: chat agent replaces #document-content textarea ──────────────
-const editorPane = mountEl.closest('.editor-pane');
-new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-            if (node.id === 'document-content') {
-                htmx.process(node);
-                lastChangeIsAi = true;
-                editor.commands.setContent(node.value || '');
+const editorPane = document.querySelector('.editor-pane');
+if (editorPane) {
+    new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node.id === 'document-content') {
+                    htmx.process(node);
+                    lastChangeIsAi = true;
+                    if (window.tiptapEditor) {
+                        window.tiptapEditor.commands.setContent(node.value || '');
+                    }
+                }
             }
         }
-    }
-}).observe(editorPane, { childList: true, subtree: true });
+    }).observe(editorPane, { childList: true, subtree: true });
+}
 
 // ── Responsive toolbar overflow ────────────────────────────────────────────
-const toolbarContainer = document.querySelector('.tiptap-editor');
+const toolbarContainer = document.getElementById('middle-panel-editor');
 if (toolbarContainer) {
     const updateOverflow = () => {
         const w = toolbarContainer.clientWidth;
@@ -539,7 +659,6 @@ if (toolbarContainer) {
 window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
     if (!window.tiptapEditor || !text) return;
     window.tiptapEditor.chain().focus().insertContent(text).run();
-    // Remove the suggestion panel after inserting
     const panel = document.getElementById('bounded-suggestion');
     if (panel) panel.remove();
     const bundlingPanel = document.getElementById('bundling-panel');
@@ -587,23 +706,19 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
         document.body.appendChild(panel);
         _bundlingPanel = panel;
 
-        // Position near the editor
-        const mount = document.getElementById('tiptap-mount');
-        if (mount) {
-            const rect = mount.getBoundingClientRect();
+        const currentMountEl = document.getElementById('tiptap-mount');
+        if (currentMountEl) {
+            const rect = currentMountEl.getBoundingClientRect();
             panel.style.cssText = `position:fixed;z-index:8888;top:${Math.min(rect.top + 80, window.innerHeight - 400)}px;left:${Math.min(rect.right + 8, window.innerWidth - 360)}px;width:340px;`;
         }
 
-        // Load snippets
         fetch(`/api/documents/${docId}/snippets`, {
             headers: { 'HX-Request': 'true' }
         }).then(r => r.text()).then(html => {
             const listEl = panel.querySelector('#bundling-snippets-list');
             if (!listEl) return;
-            // Build a checkbox list from snippet bank HTML
             listEl.innerHTML = '<p class="bundling-snippets-label">Select snippets (optional):</p><div id="bundling-snippet-checkboxes"></div>';
             const checkboxes = panel.querySelector('#bundling-snippet-checkboxes');
-            // Parse snippet IDs from the HTML
             const tmp = document.createElement('div');
             tmp.innerHTML = html;
             const cards = tmp.querySelectorAll('.snippet-card');
@@ -621,7 +736,6 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
             }
         });
 
-        // Intent counter
         const intentInput = panel.querySelector('.bundling-intent-input');
         const intentCount = panel.querySelector('.bundling-intent-count');
         const generateBtn = panel.querySelector('.bundling-generate-btn');
@@ -632,7 +746,6 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
             generateBtn.disabled = len === 0;
         });
 
-        // Generate
         generateBtn.addEventListener('click', async () => {
             const intent = intentInput.value.trim();
             if (!intent) return;
@@ -665,7 +778,6 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
                 const resultEl = panel.querySelector('#bundling-result');
                 if (resultEl) {
                     resultEl.innerHTML = html;
-                    // Trigger the hx-on afterSwap manually
                     const suggestion = resultEl.querySelector('#bounded-suggestion');
                     if (suggestion) {
                         const text = suggestion.dataset.suggestedText;
@@ -678,14 +790,12 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
             }
         });
 
-        // Cancel
         panel.querySelector('.bundling-cancel-btn').addEventListener('click', _removeBundlingPanel);
         panel.querySelector('.bundling-panel-close').addEventListener('click', _removeBundlingPanel);
 
         return panel;
     }
 
-    // Watch TipTap selection events to show bundling panel on heading/empty block
     function _setupBundlingTrigger() {
         if (!window.tiptapEditor) return;
 
@@ -701,13 +811,10 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
                 if (!_bundlingPanel) {
                     _createBundlingPanel(DOC_ID);
                 }
-            } else if (_bundlingPanel) {
-                // Don't auto-close so user can still use it
             }
         });
     }
 
-    // Wait for editor to be initialised
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => setTimeout(_setupBundlingTrigger, 500));
     } else {
@@ -727,7 +834,6 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
     }
 
     document.addEventListener('mouseup', function (e) {
-        // Don't interfere with tooltip click
         if (_saveTooltip && _saveTooltip.contains(e.target)) return;
 
         const sourceBody = document.getElementById('source-view-body');
@@ -738,7 +844,6 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
         const selText = sel ? sel.toString().trim() : '';
         if (!selText) { _removeTooltip(); return; }
 
-        // Calculate approximate char offset from data-char-offset of nearest parent block
         let charOffset = 0;
         let node = sel.anchorNode;
         while (node && node !== sourceBody) {
@@ -761,7 +866,6 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
 
         tooltip.addEventListener('click', function () {
             const docId = DOC_ID;
-            // Find source_id from the source-view-content element
             const sourceViewContent = document.getElementById('source-view-content');
             const sourceId = sourceViewContent ? sourceViewContent.dataset.sourceId : null;
 
@@ -785,7 +889,6 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
                     el.innerHTML = html;
                     snippetList.prepend(el.firstChild);
                 }
-                // Switch to Snippets tab in right panel
                 if (typeof switchRightTab === 'function') switchRightTab('snippets');
             });
             _removeTooltip();
@@ -821,17 +924,14 @@ window.scrollToCharOffset = function scrollToCharOffset(sourceId, offset) {
         }
     }
 
-    // Switch to Source Viewer tab
     if (typeof switchMiddleTab === 'function') switchMiddleTab('source-viewer');
 
-    // If the source is already loaded, scroll directly
     const viewContent = document.getElementById('source-view-content');
     if (viewContent && viewContent.dataset.sourceId === sourceId) {
         _scrollToOffset();
         return;
     }
 
-    // Otherwise, load the source first then scroll
     const target = document.getElementById('source-view-container');
     if (!target) return;
     fetch('/api/sources/' + sourceId + '/view', { headers: { 'HX-Request': 'true' } })
@@ -842,3 +942,9 @@ window.scrollToCharOffset = function scrollToCharOffset(sourceId, offset) {
             _scrollToOffset();
         });
 };
+
+// ── Toolbar dropdown close on click ────────────────────────────────────────
+document.addEventListener('click', () => {
+    const m = document.getElementById('toolbar-more-menu');
+    if (m) m.hidden = true;
+});

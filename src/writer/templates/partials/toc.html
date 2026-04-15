@@ -1,0 +1,10 @@
+<div id="chapter-toc" class="chapter-toc" hx-swap-oob="true"{% if not chapters or chapters|length < 2 %} hidden{% endif %}>
+  <h3 class="chapter-toc-title">Contents</h3>
+  <ol class="chapter-toc-list">
+    {% for ch in chapters %}
+    <li class="chapter-toc-item">
+      <a href="#chapter-{{ ch.id }}" class="chapter-toc-link" onclick="event.preventDefault(); scrollToChapter('{{ ch.id }}')">{{ ch.title }}</a>
+    </li>
+    {% endfor %}
+  </ol>
+</div>

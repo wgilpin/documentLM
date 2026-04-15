@@ -31,7 +31,7 @@ header .brand {
     font-style: italic;
     font-size: 1.2rem;
     font-weight: 700;
-    color: #2563eb;
+    color: #bb924f;
     text-decoration: none;
 }
 
@@ -90,7 +90,7 @@ main:has(.editor-layout) {
 }
 
 .btn-primary {
-    background: #343d96;
+    background: #9b7941;
     color: #fff;
 }
 
@@ -187,12 +187,12 @@ main:has(.editor-layout) {
 }
 
 .right-tab-btn:hover {
-    color: #434ca5;
+    color: #705e43;
 }
 
 .right-tab-btn--active {
-    color: #434ca5;
-    border-bottom-color: #434ca5;
+    color: #705e43;
+    border-bottom-color: #705e43;
     background: #f8f9fa;
 }
 
@@ -240,6 +240,8 @@ main:has(.editor-layout) {
     border-bottom: 1px solid #e2e4e9;
     flex-shrink: 0;
     background: #edeeef;
+    padding-left: 4px;
+    padding-right: 4px;
 }
 
 .middle-tab-btn {
@@ -258,13 +260,14 @@ main:has(.editor-layout) {
 }
 
 .middle-tab-btn:hover {
-    color: #434ca5;
+    color: #705e43;
 }
 
 .middle-tab-btn--active {
-    color: #434ca5;
-    border-bottom-color: #434ca5;
+    color: #705e43;
+    border-bottom-color: #705e43;
     background: #fff;
+    
 }
 
 .middle-panel-body {
@@ -274,6 +277,8 @@ main:has(.editor-layout) {
     gap: 0.75rem;
     overflow-y: auto;
     overflow-x: hidden;
+    padding-left: 4px;
+    padding-right: 4px;
 }
 
 .editor-pane input[type="text"] {
@@ -557,7 +562,7 @@ main:has(.editor-layout) {
 }
 
 .source-type-icon {
-    color: #434ca5;
+    color: #705e43;
     font-size: 1.1rem;
     flex-shrink: 0;
     margin-top: 1px;
@@ -636,8 +641,8 @@ main:has(.editor-layout) {
 }
 
 .tab-btn.active {
-    border-bottom-color: #434ca5;
-    color: #434ca5;
+    border-bottom-color: #705e43;
+    color: #705e43;
 }
 
 /* Specific overrides for Add Source section inputs */
@@ -671,7 +676,7 @@ main:has(.editor-layout) {
 
 .sources-panel .form-group input:focus {
     outline: none;
-    border-bottom-color: #434ca5 !important;
+    border-bottom-color: #705e43 !important;
     box-shadow: none !important;
 }
 
@@ -733,7 +738,7 @@ main:has(.editor-layout) {
 .sources-panel form button[type="submit"] {
     position: relative;
     padding: 0.6rem 1.25rem !important;
-    background: #434ca5 !important;
+    background: #876939 !important;
     color: #ffffff !important;
     border-radius: 0.5rem !important;
     font-weight: 600 !important;
@@ -970,7 +975,7 @@ dialog::backdrop {
 }
 
 .modal-body-input:focus {
-    border-bottom-color: #434ca5;
+    border-bottom-color: #705e43;
 }
 
 .modal-body-input::placeholder {
@@ -984,7 +989,7 @@ dialog::backdrop {
     background: none;
     border: none;
     cursor: pointer;
-    color: #434ca5;
+    color: #705e43;
     display: flex;
     align-items: center;
     padding: 0;
@@ -1102,7 +1107,7 @@ dialog::backdrop {
 .ai-modal-apply {
     padding: 0.5rem 1.5rem;
     border-radius: 0.25rem;
-    background: #434ca5;
+    background: #705e43;
     color: #ffffff;
     border: none;
     font-size: 0.875rem;
@@ -1193,19 +1198,19 @@ dialog::backdrop {
 }
 
 .source-add-summary:hover {
-    border-color: #434ca5;
-    color: #434ca5;
+    border-color: #705e43;
+    color: #705e43;
     border-style: dashed;
 }
 
 details[open] .source-add-summary {
-    border-color: #434ca5;
-    color: #434ca5;
+    border-color: #705e43;
+    color: #705e43;
 }
 
 .source-processing-notice {
     font-size: 0.75rem;
-    color: #434ca5;
+    color: #705e43;
     background: #eef0fb;
     border: 1px solid #c4c5d9;
     border-radius: 4px;
@@ -1265,7 +1270,7 @@ details[open] .source-add-summary {
 }
 
 .source-view-btn:hover {
-    color: #434ca5;
+    color: #705e43;
     background: #eef2ff;
 }
 
@@ -1463,7 +1468,7 @@ details[open] .source-add-summary {
 
 .chat-input-textarea:focus {
     outline: none;
-    border-bottom-color: #434ca5;
+    border-bottom-color: #705e43;
 }
 
 .btn-sm {
@@ -1595,7 +1600,7 @@ details[open] .source-add-summary {
 
 .toolbar-btn--active {
     background: rgba(67, 76, 165, 0.1);
-    color: #434ca5;
+    color: #705e43;
 }
 
 .toolbar-btn--active:hover:not(:disabled) {
@@ -1791,6 +1796,7 @@ details[open] .source-add-summary {
     border-radius: 4px;
     font-size: 0.82rem;
     box-sizing: border-box;
+    margin-bottom: 0.25rem;
 }
 
 .snippet-card {
@@ -1802,6 +1808,7 @@ details[open] .source-add-summary {
     flex-direction: column;
     gap: 0.35rem;
     font-size: 0.8rem;
+    margin-bottom: 0.25rem;
 }
 
 .snippet-card-text {
@@ -1871,8 +1878,245 @@ details[open] .source-add-summary {
         padding: 0 !important;
         box-shadow: none !important;
         overflow: visible !important;
+        padding-left: 4px;
+        padding-right: 4px;
     }
 
     .tiptap-editor { box-shadow: none !important; border: none !important; overflow: visible !important; }
     .tiptap-editor .ProseMirror { padding: 0 !important; }
+}
+
+/* ── Chapter Layout ──────────────────────────────────────────────────────── */
+
+.chapter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    /* margin-bottom: 1rem; */
+}
+
+.chapter-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    background: #fafafa;
+}
+
+.chapter-card:hover {
+    border-color: #b5986c;
+    box-shadow: 0 0 0 1px #705e43;
+}
+
+.chapter-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chapter-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+    color: #1f2937;
+}
+
+.chapter-card-actions {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.chapter-card:hover .chapter-card-actions,
+.chapter-editor .chapter-card-actions {
+    opacity: 1;
+}
+
+.chapter-reorder-btn {
+    padding: 0.15rem;
+}
+
+.chapter-reorder-btn .material-symbols-outlined {
+    font-size: 1.1rem;
+}
+
+.chapter-card-content {
+    margin-top: 0.5rem;
+}
+
+.chapter-content-preview {
+    color: #6b7280;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    max-height: 4.5rem;
+    overflow: hidden;
+}
+
+.chapter-content-placeholder {
+    color: #9ca3af;
+    font-style: italic;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* ── Chapter Editor (active) ──────────────────────────────────────────── */
+
+.chapter-editor {
+    border: 2px solid #bb924f;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.chapter-editor .tiptap-editor {
+    min-height: 200px;
+}
+
+.chapter-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.chapter-title-input {
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    flex: 1;
+    padding: 0.25rem 0;
+    color: #1f2937;
+    outline: none;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.15s;
+}
+
+.chapter-title-input:focus {
+    border-bottom-color: #3b82f6;
+}
+
+/* ── Chapter Brief ───────────────────────────────────────────────────────── */
+
+.chapter-brief {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    background: #f3f4f6;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    margin: 0.5rem 0;
+    font-style: italic;
+    color: #6b7280;
+}
+
+.chapter-brief-text {
+    flex: 1;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.chapter-brief--editable {
+    flex-direction: column;
+}
+
+.chapter-brief-textarea {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.5rem;
+    font-style: italic;
+    color: #6b7280;
+    resize: vertical;
+    background: #fff;
+    font-size: 0.9rem;
+}
+
+.chapter-brief-toggle {
+    padding: 0.15rem;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.chapter-brief-toggle:hover {
+    opacity: 1;
+}
+
+.chapter-brief-toggle--hidden {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin: 0.25rem 0;
+}
+
+.chapter-brief-toggle-label {
+    font-size: 0.8rem;
+}
+
+/* ── Add Chapter Button ──────────────────────────────────────────────────── */
+
+.chapter-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+    justify-content: center;
+    border-style: dashed;
+    color: #6b7280;
+    /* margin-top: 0.5rem; */
+    background-color: #f8e0bc;
+}
+
+.chapter-add-btn:hover {
+    color: #705e43;
+    border-color: #ddb984;
+}
+
+/* ── Table of Contents ───────────────────────────────────────────────────── */
+
+.chapter-toc {
+    /* background: #f9fafb; */
+    /* border: 1px solid #e5e7eb; */
+    /* border-radius: 0.5rem; */
+    padding: 0.75rem 1rem;
+    /* margin-bottom: 1rem; */
+}
+
+.chapter-toc-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.5rem;
+}
+
+.chapter-toc-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    list-style: decimal;
+}
+
+.chapter-toc-item {
+    margin-bottom: 0.25rem;
+}
+
+.chapter-toc-link {
+    color: #96743d;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.chapter-toc-link:hover {
+    text-decoration: underline;
 }

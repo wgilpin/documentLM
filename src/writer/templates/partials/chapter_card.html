@@ -1,0 +1,62 @@
+<div class="chapter-card" id="chapter-{{ chapter.id }}" data-chapter-id="{{ chapter.id }}" data-position="{{ chapter.position }}">
+  <div class="chapter-card-header">
+    <h2 class="chapter-title" onclick="activateChapter('{{ chapter.id }}', '{{ doc_id }}')">{{ chapter.title }}</h2>
+    <div class="chapter-card-actions">
+      {% if chapter.position > 0 %}
+      <button class="btn-icon chapter-reorder-btn" title="Move up"
+              hx-patch="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}/position"
+              hx-ext="json-enc"
+              hx-vals='{"position": {{ chapter.position - 1 }}}'
+              hx-target="#chapter-list"
+              hx-swap="innerHTML">
+        <span class="material-symbols-outlined">arrow_upward</span>
+      </button>
+      {% endif %}
+      <button class="btn-icon chapter-reorder-btn" title="Move down"
+              hx-patch="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}/position"
+              hx-ext="json-enc"
+              hx-vals='{"position": {{ chapter.position + 1 }}}'
+              hx-target="#chapter-list"
+              hx-swap="innerHTML">
+        <span class="material-symbols-outlined">arrow_downward</span>
+      </button>
+      <button class="btn-icon btn-ghost-danger" title="Delete chapter"
+              hx-delete="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}"
+              hx-target="#chapter-list"
+              hx-swap="innerHTML"
+              hx-confirm="Delete chapter '{{ chapter.title }}'? This cannot be undone.">
+        <span class="material-symbols-outlined">delete</span>
+      </button>
+    </div>
+  </div>
+  {% if chapter.brief and chapter.brief_visible %}
+  <div class="chapter-brief">
+    <div class="chapter-brief-text">{{ chapter.brief }}</div>
+    <button class="btn-icon chapter-brief-toggle" title="Hide brief"
+            hx-patch="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}/brief-visibility"
+            hx-ext="json-enc"
+            hx-vals='{"brief_visible": false}'
+            hx-target="#chapter-{{ chapter.id }}"
+            hx-swap="outerHTML">
+      <span class="material-symbols-outlined">visibility_off</span>
+    </button>
+  </div>
+  {% elif chapter.brief and not chapter.brief_visible %}
+  <button class="btn-icon chapter-brief-toggle chapter-brief-toggle--hidden" title="Show brief"
+          hx-patch="/api/documents/{{ doc_id }}/chapters/{{ chapter.id }}/brief-visibility"
+          hx-ext="json-enc"
+          hx-vals='{"brief_visible": true}'
+          hx-target="#chapter-{{ chapter.id }}"
+          hx-swap="outerHTML">
+    <span class="material-symbols-outlined">visibility</span>
+    <span class="chapter-brief-toggle-label">Show brief</span>
+  </button>
+  {% endif %}
+  <div class="chapter-card-content" onclick="activateChapter('{{ chapter.id }}', '{{ doc_id }}')">
+    {% if chapter.content %}
+      <div class="chapter-content-preview">{{ chapter.content[:300] | markdown }}{% if chapter.content|length > 300 %}…{% endif %}</div>
+    {% else %}
+      <p class="chapter-content-placeholder">Click to start writing</p>
+    {% endif %}
+  </div>
+</div>

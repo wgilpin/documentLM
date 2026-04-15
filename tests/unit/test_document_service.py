@@ -44,7 +44,8 @@ class TestCreateDocument:
         with patch("writer.services.document_service.Document") as MockDoc:
             instance = _make_doc(title="My Doc", content="body")
             MockDoc.return_value = instance
-            result = await create_document(db, data, user_id)
+            with patch("writer.services.chapter_service.create_chapter", new_callable=AsyncMock):
+                result = await create_document(db, data, user_id)
 
         assert isinstance(result, DocumentResponse)
 
@@ -59,7 +60,8 @@ class TestCreateDocument:
         with patch("writer.services.document_service.Document") as MockDoc:
             instance = _make_doc(title="My Doc", content="")
             MockDoc.return_value = instance
-            await create_document(db, data, user_id)
+            with patch("writer.services.chapter_service.create_chapter", new_callable=AsyncMock):
+                await create_document(db, data, user_id)
 
         db.add.assert_called_once()
         db.flush.assert_called_once()
@@ -163,5 +165,3 @@ class TestDeleteDocument:
 
         with pytest.raises(DocumentNotFoundError):
             await delete_document(db, uuid.uuid4(), uuid.uuid4())
-
-

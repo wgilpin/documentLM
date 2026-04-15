@@ -25,9 +25,7 @@ async def search_document_corpus(
         "search_document_corpus query=%r user=%s doc=%s top_k=%d", query, user_id, doc_id, top_k
     )
 
-    chunks = query_sources_with_metadata(
-        query, user_id, doc_id, is_private_doc=False, top_k=top_k
-    )
+    chunks = query_sources_with_metadata(query, user_id, doc_id, is_private_doc=False, top_k=top_k)
 
     if not chunks:
         logger.info("search_document_corpus: no results for query=%r", query)

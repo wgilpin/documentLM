@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.logging import get_logger
-from writer.models.db import Document, Snippet, Source
+from writer.models.db import ChapterSnippet, Document, Snippet, Source
 from writer.models.schemas import SnippetCreate, SnippetResponse, SnippetUpdate
 
 logger = get_logger(__name__)
@@ -163,3 +163,71 @@ async def get_snippet_with_source_title(
         "get_snippet_with_source_title: snippet id=%s source_title=%r", snippet_id, source_title
     )
     return response
+
+
+async def assign_snippet_to_chapter(
+    db: AsyncSession,
+    chapter_id: uuid.UUID,
+    snippet_id: uuid.UUID,
+) -> None:
+    """Associate a snippet with a chapter (idempotent via merge)."""
+    logger.info("assign_snippet_to_chapter chapter=%s snippet=%s", chapter_id, snippet_id)
+    junction = ChapterSnippet(chapter_id=chapter_id, snippet_id=snippet_id)
+    await db.merge(junction)
+    await db.flush()
+    logger.info("assign_snippet_to_chapter: assigned")
+
+
+async def unassign_snippet_from_chapter(
+    db: AsyncSession,
+    chapter_id: uuid.UUID,
+    snippet_id: uuid.UUID,
+) -> None:
+    """Remove a snippet's association with a chapter."""
+    logger.info("unassign_snippet_from_chapter chapter=%s snippet=%s", chapter_id, snippet_id)
+    result = await db.execute(
+        select(ChapterSnippet).where(
+            ChapterSnippet.chapter_id == chapter_id,
+            ChapterSnippet.snippet_id == snippet_id,
+        )
+    )
+    junction = result.scalar_one_or_none()
+    if junction is None:
+        logger.info("unassign_snippet_from_chapter: no association found, noop")
+        return
+    await db.delete(junction)
+    await db.flush()
+    logger.info("unassign_snippet_from_chapter: removed")
+
+
+async def list_snippets_by_chapter(
+    db: AsyncSession,
+    chapter_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> list[SnippetResponse]:
+    """List snippets associated with a specific chapter."""
+    logger.info("list_snippets_by_chapter chapter=%s user=%s", chapter_id, user_id)
+    result = await db.execute(
+        select(Snippet)
+        .join(ChapterSnippet, Snippet.id == ChapterSnippet.snippet_id)
+        .where(ChapterSnippet.chapter_id == chapter_id, Snippet.user_id == user_id)
+        .order_by(Snippet.created_at.desc())
+    )
+    snippets = result.scalars().all()
+    logger.info("list_snippets_by_chapter: found %d snippets", len(snippets))
+
+    # Resolve source titles
+    source_ids = {s.source_id for s in snippets if s.source_id is not None}
+    title_map: dict[uuid.UUID, str] = {}
+    if source_ids:
+        src_result = await db.execute(select(Source).where(Source.id.in_(source_ids)))
+        for src in src_result.scalars().all():
+            title_map[src.id] = src.title
+
+    responses: list[SnippetResponse] = []
+    for s in snippets:
+        resp = SnippetResponse.model_validate(s)
+        if s.source_id is not None:
+            resp.source_title = title_map.get(s.source_id)
+        responses.append(resp)
+    return responses

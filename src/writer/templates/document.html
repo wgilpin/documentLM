@@ -118,12 +118,9 @@
         <h1 class="print-title">{{ doc.title }}</h1>
         <input type="text" id="doc-title" value="{{ doc.title }}" hx-put="/api/documents/{{ doc.id }}" hx-ext="json-enc"
             hx-trigger="change"
-            hx-vals='js:{"title": document.getElementById("doc-title").value, "content": document.getElementById("document-content").value}'
+            hx-vals='js:{"title": document.getElementById("doc-title").value}'
             hx-swap="none">
-        <textarea id="document-content" hx-put="/api/documents/{{ doc.id }}" hx-ext="json-enc"
-            hx-trigger="tiptap-changed delay:1s"
-            hx-vals='js:{"content": document.getElementById("document-content").value, "title": document.getElementById("doc-title").value}'
-            hx-swap="none" style="display:none">{{ doc.content | e }}</textarea>
+        <textarea id="document-content" style="display:none">{{ doc.content | e }}</textarea>
 
         <div class="editor-toolbar">
             <button id="undo-btn" class="toolbar-btn" disabled title="Undo" aria-label="Undo">&#8630;</button>
@@ -279,11 +276,28 @@
             </form>
         </dialog>
 
-        <div id="tiptap-mount" class="tiptap-editor tiptap-editor--loading">
-            <button id="ai-block-btn" type="button" style="display:none">AI ✨</button>
+        {% include "partials/toc.html" %}
+
+        <div id="chapter-list" class="chapter-list" data-doc-id="{{ doc.id }}">
+            {% for chapter in chapters %}
+                {% if active_chapter_id and chapter.id == active_chapter_id %}
+                    {% include "partials/chapter_editor.html" %}
+                {% else %}
+                    {% include "partials/chapter_card.html" %}
+                {% endif %}
+            {% endfor %}
         </div>
 
-        <!-- US3: Inline suggestions overlay -->
+        <button class="btn btn-secondary chapter-add-btn"
+                hx-post="/api/documents/{{ doc.id }}/chapters"
+                hx-ext="json-enc"
+                hx-vals='{"title": "Untitled Chapter"}'
+                hx-target="#chapter-list"
+                hx-swap="beforeend">
+            <span class="material-symbols-outlined">add</span> Add Chapter
+        </button>
+
+        <!-- Inline suggestions overlay -->
         <div id="inline-suggestions" hx-get="/api/documents/{{ doc.id }}/suggestions" hx-trigger="load"
             hx-swap="innerHTML">
         </div>
@@ -495,11 +509,6 @@
 
 <script src="/static/editor.bundle.js?v={{ bundle_version }}"></script>
 <script>
-document.addEventListener('click', () => {
-    const m = document.getElementById('toolbar-more-menu');
-    if (m) m.hidden = true;
-});
-
 function exportDoc(format) {
     document.getElementById('toolbar-more-menu').hidden = true;
     const title = document.getElementById('doc-title').value || 'document';
