@@ -20,7 +20,7 @@ from writer.core.logging import configure_logging
 from writer.core.templates import templates
 from writer.models.db import Document, Source, User
 from writer.models.schemas import UserResponse
-from writer.services import document_service, settings_service
+from writer.services import chapter_service, document_service, settings_service
 from writer.services.document_service import DocumentNotFoundError
 
 _BUNDLE_VERSION = int(Path("static/editor.bundle.js").stat().st_mtime)
@@ -141,6 +141,7 @@ CurrentUser = Annotated[UserResponse, Depends(get_current_user)]
 
 # Import and register routers
 from writer.api import auth as auth_router  # noqa: E402
+from writer.api import chapters as chapters_router  # noqa: E402
 from writer.api import chat as chat_router  # noqa: E402
 from writer.api import documents as doc_router  # noqa: E402
 from writer.api import generation as generation_router  # noqa: E402
@@ -151,6 +152,7 @@ from writer.api import sources as src_router  # noqa: E402
 from writer.api import suggestions as sug_router  # noqa: E402
 
 app.include_router(auth_router.router)
+app.include_router(chapters_router.router, prefix="/api/documents", tags=["chapters"])
 app.include_router(doc_router.router, prefix="/api/documents", tags=["documents"])
 app.include_router(src_router.router, prefix="/api/documents", tags=["sources"])
 app.include_router(src_router.source_view_router, prefix="/api/sources", tags=["sources"])
@@ -195,11 +197,15 @@ async def view_document(
             "index.html", {"request": request, "documents": [], "error": "Document not found"}
         )
     user_settings = await settings_service.get_settings(db, current_user.id)
+    chapters = await chapter_service.list_chapters(db, doc_id)
     return templates.TemplateResponse(
         "document.html",
         {
             "request": request,
             "doc": doc,
+            "doc_id": doc_id,
+            "chapters": chapters,
+            "active_chapter_id": chapters[0].id if chapters else None,
             "undo_buffer_size": settings.undo_buffer_size,
             "user_settings": user_settings,
             "bundle_version": _BUNDLE_VERSION,

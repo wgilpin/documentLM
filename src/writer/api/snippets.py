@@ -50,8 +50,12 @@ async def list_snippets(
     db: DbDep,
     current_user: CurrentUser,
     doc_id: uuid.UUID,
+    chapter_id: uuid.UUID | None = None,
 ) -> HTMLResponse | list[SnippetResponse]:
-    snippets = await snippet_service.list_snippets(db, doc_id, current_user.id)
+    if chapter_id is not None:
+        snippets = await snippet_service.list_snippets_by_chapter(db, chapter_id, current_user.id)
+    else:
+        snippets = await snippet_service.list_snippets(db, doc_id, current_user.id)
 
     if request.headers.get("HX-Request"):
         html = _shared_templates.get_template("partials/snippet_bank.html").render(

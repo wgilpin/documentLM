@@ -1876,3 +1876,237 @@ details[open] .source-add-summary {
     .tiptap-editor { box-shadow: none !important; border: none !important; overflow: visible !important; }
     .tiptap-editor .ProseMirror { padding: 0 !important; }
 }
+
+/* ── Chapter Layout ──────────────────────────────────────────────────────── */
+
+.chapter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.chapter-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    background: #fafafa;
+}
+
+.chapter-card:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 1px #93c5fd;
+}
+
+.chapter-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chapter-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+    color: #1f2937;
+}
+
+.chapter-card-actions {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.chapter-card:hover .chapter-card-actions,
+.chapter-editor .chapter-card-actions {
+    opacity: 1;
+}
+
+.chapter-reorder-btn {
+    padding: 0.15rem;
+}
+
+.chapter-reorder-btn .material-symbols-outlined {
+    font-size: 1.1rem;
+}
+
+.chapter-card-content {
+    margin-top: 0.5rem;
+}
+
+.chapter-content-preview {
+    color: #6b7280;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    max-height: 4.5rem;
+    overflow: hidden;
+}
+
+.chapter-content-placeholder {
+    color: #9ca3af;
+    font-style: italic;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* ── Chapter Editor (active) ──────────────────────────────────────────── */
+
+.chapter-editor {
+    border: 2px solid #3b82f6;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.chapter-editor .tiptap-editor {
+    min-height: 200px;
+}
+
+.chapter-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.chapter-title-input {
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    flex: 1;
+    padding: 0.25rem 0;
+    color: #1f2937;
+    outline: none;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.15s;
+}
+
+.chapter-title-input:focus {
+    border-bottom-color: #3b82f6;
+}
+
+/* ── Chapter Brief ───────────────────────────────────────────────────────── */
+
+.chapter-brief {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    background: #f3f4f6;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    margin: 0.5rem 0;
+    font-style: italic;
+    color: #6b7280;
+}
+
+.chapter-brief-text {
+    flex: 1;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.chapter-brief--editable {
+    flex-direction: column;
+}
+
+.chapter-brief-textarea {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.5rem;
+    font-style: italic;
+    color: #6b7280;
+    resize: vertical;
+    background: #fff;
+    font-size: 0.9rem;
+}
+
+.chapter-brief-toggle {
+    padding: 0.15rem;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.chapter-brief-toggle:hover {
+    opacity: 1;
+}
+
+.chapter-brief-toggle--hidden {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin: 0.25rem 0;
+}
+
+.chapter-brief-toggle-label {
+    font-size: 0.8rem;
+}
+
+/* ── Add Chapter Button ──────────────────────────────────────────────────── */
+
+.chapter-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+    justify-content: center;
+    border-style: dashed;
+    color: #6b7280;
+    margin-top: 0.5rem;
+}
+
+.chapter-add-btn:hover {
+    color: #3b82f6;
+    border-color: #3b82f6;
+}
+
+/* ── Table of Contents ───────────────────────────────────────────────────── */
+
+.chapter-toc {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.chapter-toc-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.5rem;
+}
+
+.chapter-toc-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    list-style: decimal;
+}
+
+.chapter-toc-item {
+    margin-bottom: 0.25rem;
+}
+
+.chapter-toc-link {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.chapter-toc-link:hover {
+    text-decoration: underline;
+}

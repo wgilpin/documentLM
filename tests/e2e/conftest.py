@@ -73,6 +73,7 @@ def live_server():
         thread.start()
 
         import time
+
         for _ in range(50):
             try:
                 with socket.create_connection(("127.0.0.1", port), timeout=0.1):

@@ -42,6 +42,13 @@ async def create_document(
     await db.flush()
     await db.refresh(doc)
     logger.info("Created document id=%s", doc.id)
+
+    # Create a default chapter so every document starts with one
+    from writer.models.schemas import ChapterCreate
+    from writer.services.chapter_service import create_chapter
+
+    await create_chapter(db, doc.id, user_id, ChapterCreate(title=data.title))
+
     return DocumentResponse.model_validate(doc)
 
 
@@ -117,6 +124,3 @@ async def toggle_privacy(
     except Exception as exc:
         logger.error("toggle_privacy: ChromaDB update failed for doc=%s: %s", doc_id, exc)
     return DocumentResponse.model_validate(doc)
-
-
-

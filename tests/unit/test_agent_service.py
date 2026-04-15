@@ -295,5 +295,3 @@ class TestInvokePlannerVectorRetrieval:
         assert call_args.args[0] == overview
         assert call_args.args[1] == user_id
         assert call_args.args[2] == source.document_id
-
-

@@ -216,3 +216,39 @@ class BoundedGenerateRequest(BaseModel):
 
 class BoundedGenerationResponse(BaseModel):
     suggested_text: str
+
+
+# ── Chapter schemas ──────────────────────────────────────────────────────────
+
+
+class ChapterCreate(BaseModel):
+    title: str = "Untitled Chapter"
+    brief: str | None = None
+
+
+class ChapterUpdate(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    brief: str | None = None
+
+
+class ChapterResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    title: str
+    brief: str | None
+    brief_visible: bool
+    content: str
+    position: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChapterPositionUpdate(BaseModel):
+    position: int
+
+
+class ChapterBriefVisibilityUpdate(BaseModel):
+    brief_visible: bool

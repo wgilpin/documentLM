@@ -17,7 +17,18 @@ from documentlm_core.models.db import (  # noqa: F401
     Source,
     User,
 )
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +43,8 @@ from writer.models.enums import (
 )
 
 __all__ = [
+    "Chapter",
+    "ChapterSnippet",
     "ChatMessage",
     "ChatRole",
     "ChatSession",
@@ -142,4 +155,51 @@ class UserSettings(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+
+class Chapter(Base):
+    __tablename__ = "chapters"
+    __table_args__ = (
+        UniqueConstraint("document_id", "position", name="uq_chapters_document_position"),
+        Index("chapters_document_position_idx", "document_id", "position"),
+        Index("chapters_document_user_idx", "document_id", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False, default="Untitled Chapter")
+    brief: Mapped[str | None] = mapped_column(Text, nullable=True)
+    brief_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class ChapterSnippet(Base):
+    __tablename__ = "chapter_snippets"
+    __table_args__ = (Index("chapter_snippets_snippet_idx", "snippet_id"),)
+
+    chapter_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("chapters.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    snippet_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("snippets.id", ondelete="CASCADE"),
+        primary_key=True,
     )

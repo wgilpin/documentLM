@@ -7,7 +7,8 @@
       "Read(//Users/will/projects/**)",
       "Bash(uv add:*)",
       "Bash(uv sync:*)",
-      "Bash(awk '{print $2}')"
+      "Bash(awk '{print $2}')",
+      "mcp__chrome-devtools__get_console_message"
     ],
     "additionalDirectories": [
       "/Users/will/projects/documentlm-core",
