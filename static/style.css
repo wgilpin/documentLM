@@ -187,12 +187,12 @@ main:has(.editor-layout) {
 }
 
 .right-tab-btn:hover {
-    color: #434ca5;
+    color: #705e43;
 }
 
 .right-tab-btn--active {
-    color: #434ca5;
-    border-bottom-color: #434ca5;
+    color: #705e43;
+    border-bottom-color: #705e43;
     background: #f8f9fa;
 }
 
@@ -240,6 +240,8 @@ main:has(.editor-layout) {
     border-bottom: 1px solid #e2e4e9;
     flex-shrink: 0;
     background: #edeeef;
+    padding-left: 4px;
+    padding-right: 4px;
 }
 
 .middle-tab-btn {
@@ -258,13 +260,14 @@ main:has(.editor-layout) {
 }
 
 .middle-tab-btn:hover {
-    color: #434ca5;
+    color: #705e43;
 }
 
 .middle-tab-btn--active {
-    color: #434ca5;
-    border-bottom-color: #434ca5;
+    color: #705e43;
+    border-bottom-color: #705e43;
     background: #fff;
+    
 }
 
 .middle-panel-body {
@@ -274,6 +277,8 @@ main:has(.editor-layout) {
     gap: 0.75rem;
     overflow-y: auto;
     overflow-x: hidden;
+    padding-left: 4px;
+    padding-right: 4px;
 }
 
 .editor-pane input[type="text"] {
@@ -557,7 +562,7 @@ main:has(.editor-layout) {
 }
 
 .source-type-icon {
-    color: #434ca5;
+    color: #705e43;
     font-size: 1.1rem;
     flex-shrink: 0;
     margin-top: 1px;
@@ -636,8 +641,8 @@ main:has(.editor-layout) {
 }
 
 .tab-btn.active {
-    border-bottom-color: #434ca5;
-    color: #434ca5;
+    border-bottom-color: #705e43;
+    color: #705e43;
 }
 
 /* Specific overrides for Add Source section inputs */
@@ -671,7 +676,7 @@ main:has(.editor-layout) {
 
 .sources-panel .form-group input:focus {
     outline: none;
-    border-bottom-color: #434ca5 !important;
+    border-bottom-color: #705e43 !important;
     box-shadow: none !important;
 }
 
@@ -970,7 +975,7 @@ dialog::backdrop {
 }
 
 .modal-body-input:focus {
-    border-bottom-color: #434ca5;
+    border-bottom-color: #705e43;
 }
 
 .modal-body-input::placeholder {
@@ -984,7 +989,7 @@ dialog::backdrop {
     background: none;
     border: none;
     cursor: pointer;
-    color: #434ca5;
+    color: #705e43;
     display: flex;
     align-items: center;
     padding: 0;
@@ -1102,7 +1107,7 @@ dialog::backdrop {
 .ai-modal-apply {
     padding: 0.5rem 1.5rem;
     border-radius: 0.25rem;
-    background: #434ca5;
+    background: #705e43;
     color: #ffffff;
     border: none;
     font-size: 0.875rem;
@@ -1193,19 +1198,19 @@ dialog::backdrop {
 }
 
 .source-add-summary:hover {
-    border-color: #434ca5;
-    color: #434ca5;
+    border-color: #705e43;
+    color: #705e43;
     border-style: dashed;
 }
 
 details[open] .source-add-summary {
-    border-color: #434ca5;
-    color: #434ca5;
+    border-color: #705e43;
+    color: #705e43;
 }
 
 .source-processing-notice {
     font-size: 0.75rem;
-    color: #434ca5;
+    color: #705e43;
     background: #eef0fb;
     border: 1px solid #c4c5d9;
     border-radius: 4px;
@@ -1265,7 +1270,7 @@ details[open] .source-add-summary {
 }
 
 .source-view-btn:hover {
-    color: #434ca5;
+    color: #705e43;
     background: #eef2ff;
 }
 
@@ -1463,7 +1468,7 @@ details[open] .source-add-summary {
 
 .chat-input-textarea:focus {
     outline: none;
-    border-bottom-color: #434ca5;
+    border-bottom-color: #705e43;
 }
 
 .btn-sm {
@@ -1595,7 +1600,7 @@ details[open] .source-add-summary {
 
 .toolbar-btn--active {
     background: rgba(67, 76, 165, 0.1);
-    color: #434ca5;
+    color: #705e43;
 }
 
 .toolbar-btn--active:hover:not(:disabled) {
@@ -1791,6 +1796,7 @@ details[open] .source-add-summary {
     border-radius: 4px;
     font-size: 0.82rem;
     box-sizing: border-box;
+    margin-bottom: 0.25rem;
 }
 
 .snippet-card {
@@ -1802,6 +1808,7 @@ details[open] .source-add-summary {
     flex-direction: column;
     gap: 0.35rem;
     font-size: 0.8rem;
+    margin-bottom: 0.25rem;
 }
 
 .snippet-card-text {
@@ -1871,6 +1878,8 @@ details[open] .source-add-summary {
         padding: 0 !important;
         box-shadow: none !important;
         overflow: visible !important;
+        padding-left: 4px;
+        padding-right: 4px;
     }
 
     .tiptap-editor { box-shadow: none !important; border: none !important; overflow: visible !important; }
@@ -1883,7 +1892,7 @@ details[open] .source-add-summary {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    margin-bottom: 1rem;
+    /* margin-bottom: 1rem; */
 }
 
 .chapter-card {
@@ -2064,7 +2073,7 @@ details[open] .source-add-summary {
     justify-content: center;
     border-style: dashed;
     color: #6b7280;
-    margin-top: 0.5rem;
+    /* margin-top: 0.5rem; */
     background-color: #f8e0bc;
 }
 
@@ -2076,9 +2085,9 @@ details[open] .source-add-summary {
 /* ── Table of Contents ───────────────────────────────────────────────────── */
 
 .chapter-toc {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
+    /* background: #f9fafb; */
+    /* border: 1px solid #e5e7eb; */
+    /* border-radius: 0.5rem; */
     padding: 0.75rem 1rem;
     /* margin-bottom: 1rem; */
 }
