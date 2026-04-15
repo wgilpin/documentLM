@@ -642,7 +642,7 @@ if (editorPane) {
 }
 
 // ── Responsive toolbar overflow ────────────────────────────────────────────
-const toolbarContainer = document.querySelector('.tiptap-editor');
+const toolbarContainer = document.getElementById('middle-panel-editor');
 if (toolbarContainer) {
     const updateOverflow = () => {
         const w = toolbarContainer.clientWidth;
