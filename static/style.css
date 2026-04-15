@@ -31,7 +31,7 @@ header .brand {
     font-style: italic;
     font-size: 1.2rem;
     font-weight: 700;
-    color: #2563eb;
+    color: #bb924f;
     text-decoration: none;
 }
 
@@ -90,7 +90,7 @@ main:has(.editor-layout) {
 }
 
 .btn-primary {
-    background: #343d96;
+    background: #9b7941;
     color: #fff;
 }
 
@@ -733,7 +733,7 @@ main:has(.editor-layout) {
 .sources-panel form button[type="submit"] {
     position: relative;
     padding: 0.6rem 1.25rem !important;
-    background: #434ca5 !important;
+    background: #876939 !important;
     color: #ffffff !important;
     border-radius: 0.5rem !important;
     font-weight: 600 !important;
@@ -1896,8 +1896,8 @@ details[open] .source-add-summary {
 }
 
 .chapter-card:hover {
-    border-color: #93c5fd;
-    box-shadow: 0 0 0 1px #93c5fd;
+    border-color: #b5986c;
+    box-shadow: 0 0 0 1px #705e43;
 }
 
 .chapter-card-header {
@@ -1959,7 +1959,7 @@ details[open] .source-add-summary {
 /* ── Chapter Editor (active) ──────────────────────────────────────────── */
 
 .chapter-editor {
-    border: 2px solid #3b82f6;
+    border: 2px solid #bb924f;
     border-radius: 0.5rem;
     padding: 0.75rem 1rem;
     background: #fff;
@@ -2065,11 +2065,12 @@ details[open] .source-add-summary {
     border-style: dashed;
     color: #6b7280;
     margin-top: 0.5rem;
+    background-color: #f8e0bc;
 }
 
 .chapter-add-btn:hover {
-    color: #3b82f6;
-    border-color: #3b82f6;
+    color: #705e43;
+    border-color: #ddb984;
 }
 
 /* ── Table of Contents ───────────────────────────────────────────────────── */
@@ -2079,7 +2080,7 @@ details[open] .source-add-summary {
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
     padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
+    /* margin-bottom: 1rem; */
 }
 
 .chapter-toc-title {
@@ -2102,7 +2103,7 @@ details[open] .source-add-summary {
 }
 
 .chapter-toc-link {
-    color: #3b82f6;
+    color: #96743d;
     text-decoration: none;
     font-size: 0.9rem;
 }
