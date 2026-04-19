@@ -103,7 +103,7 @@
         </div>
 
         {% if chapters and chapters | length > 0 %}
-        <label class="source-filter-label" for="source-filter">Filter:
+        <label class="source-filter-label" for="source-filter">Chapter:
             <select id="source-filter" name="scope" class="source-filter-select"
                     hx-get="/api/documents/{{ doc.id }}/sources"
                     hx-target="#source-list"

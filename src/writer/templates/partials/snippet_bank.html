@@ -14,7 +14,7 @@
   <div id="search-results-container" class="search-results-container"></div>
 
   {% if chapters and chapters | length > 0 %}
-  <label class="snippet-filter-label" for="snippet-filter">Filter:
+  <label class="snippet-filter-label" for="snippet-filter">Chapter:
     <select id="snippet-filter" name="scope" class="snippet-filter-select"
             hx-get="/api/documents/{{ doc_id }}/snippets"
             hx-target="#snippet-bank-container"
