@@ -17,6 +17,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-13
 - Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, ChromaDB, `pymupdf4llm` (new) (015-bounded-generation)
 - PostgreSQL (Docker) + ChromaDB (local persistent directory) (015-bounded-generation)
 - PostgreSQL (Docker container) + ChromaDB (local persistent directory) (016-document-chapters)
+- Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, Jinja2, Alembic (017-chapter-scoped-research)
+- PostgreSQL (Docker container) — one new table (`chapter_sources`); `chapter_snippets` already exists (017-chapter-scoped-research)
 
 - Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x (async), asyncpg, Alembic, Jinja2 (001-document-workbench-mvp)
 
@@ -57,9 +59,9 @@ docker-compose up --build                 # full stack
 Python 3.13+: Follow standard conventions
 
 ## Recent Changes
+- 017-chapter-scoped-research: Added Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, Jinja2, Alembic
 - 016-document-chapters: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
 - 015-bounded-generation: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, ChromaDB, `pymupdf4llm` (new)
-- 014-google-deep-research-import: Added Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
 
 
 <!-- MANUAL ADDITIONS START -->

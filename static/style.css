@@ -604,6 +604,149 @@ main:has(.editor-layout) {
     margin-top: 0.2rem;
 }
 
+.chapter-picker {
+    margin: 0.5rem 0;
+    font-size: 0.8rem;
+}
+
+.chapter-picker-summary {
+    cursor: pointer;
+    font-weight: 500;
+    padding: 0.25rem 0;
+}
+
+.chapter-picker-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-top: 0.35rem;
+    padding-left: 0.5rem;
+}
+
+.chapter-picker-option {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.chapter-picker-option input[type="checkbox"] {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.chapter-picker-actions {
+    margin-top: 0.5rem;
+}
+
+.source-chapter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.3rem;
+}
+
+.source-chapter-chip {
+    display: inline-block;
+    font-size: 0.65rem;
+    background: #eef2ff;
+    color: #4338ca;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    line-height: 1.4;
+}
+
+.source-filter-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: #747688;
+    margin: 0.5rem 0 0.25rem;
+}
+
+.source-filter-select {
+    flex: 1;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.4rem;
+}
+
+.source-empty-state {
+    font-size: 0.8rem;
+    color: #747688;
+    padding: 0.75rem;
+    text-align: center;
+    list-style: none;
+}
+
+.source-chapter-edit-popover:empty {
+    display: none;
+}
+
+.source-chapter-edit-popover {
+    margin-top: 0.4rem;
+    padding: 0.5rem;
+    border: 1px solid #c4c5d9;
+    border-radius: 0.4rem;
+    background: #fafafe;
+}
+
+.snippet-chapter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.3rem;
+}
+
+.snippet-chapter-chip {
+    display: inline-block;
+    font-size: 0.65rem;
+    background: #eef2ff;
+    color: #4338ca;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    line-height: 1.4;
+}
+
+.snippet-filter-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: #747688;
+    margin: 0.5rem 0.75rem 0.25rem;
+}
+
+.snippet-filter-select {
+    flex: 1;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.4rem;
+}
+
+.snippet-chapter-edit-popover:empty {
+    display: none;
+}
+
+.snippet-chapter-edit-popover {
+    margin-top: 0.4rem;
+    padding: 0.5rem;
+    border: 1px solid #c4c5d9;
+    border-radius: 0.4rem;
+    background: #fafafe;
+}
+
+.search-result-add-details {
+    margin-top: 0.4rem;
+}
+
+.search-result-add-summary {
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.8rem;
+    padding: 0.25rem 0;
+}
+
 .source-item .type-badge {
     font-size: 0.7rem;
     background: #e0f2fe;

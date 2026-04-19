@@ -45,6 +45,7 @@ from writer.models.enums import (
 __all__ = [
     "Chapter",
     "ChapterSnippet",
+    "ChapterSource",
     "ChatMessage",
     "ChatRole",
     "ChatSession",
@@ -201,5 +202,21 @@ class ChapterSnippet(Base):
     snippet_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("snippets.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+
+class ChapterSource(Base):
+    __tablename__ = "chapter_sources"
+    __table_args__ = (Index("chapter_sources_source_idx", "source_id"),)
+
+    chapter_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("chapters.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("sources.id", ondelete="CASCADE"),
         primary_key=True,
     )

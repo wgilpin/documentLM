@@ -1,13 +1,22 @@
 """Snippet CRUD service."""
 
 import uuid
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from writer.core.logging import get_logger
-from writer.models.db import ChapterSnippet, Document, Snippet, Source
-from writer.models.schemas import SnippetCreate, SnippetResponse, SnippetUpdate
+from writer.models.db import Chapter, ChapterSnippet, Document, Snippet, Source
+from writer.models.schemas import (
+    FilterScope,
+    FilterScopeAll,
+    FilterScopeChapter,
+    FilterScopeDocLevel,
+    SnippetCreate,
+    SnippetResponse,
+    SnippetUpdate,
+)
 
 logger = get_logger(__name__)
 
@@ -22,6 +31,32 @@ class DocumentNotFoundError(Exception):
     def __init__(self, document_id: uuid.UUID) -> None:
         super().__init__(f"Document {document_id} not found")
         self.document_id = document_id
+
+
+class ChapterDocumentMismatchError(Exception):
+    """Raised when an attempted association crosses documents."""
+
+    def __init__(self, chapter_id: uuid.UUID, item_id: uuid.UUID) -> None:
+        super().__init__(
+            f"chapter {chapter_id} does not belong to the same document as item {item_id}"
+        )
+        self.chapter_id = chapter_id
+        self.item_id = item_id
+
+
+async def _fetch_chapter_ids_for_snippets(
+    db: AsyncSession, snippet_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, list[uuid.UUID]]:
+    """Batch-load chapter_ids keyed by snippet_id."""
+    if not snippet_ids:
+        return {}
+    result = await db.execute(
+        select(ChapterSnippet).where(ChapterSnippet.snippet_id.in_(list(snippet_ids)))
+    )
+    mapping: dict[uuid.UUID, list[uuid.UUID]] = {sid: [] for sid in snippet_ids}
+    for row in result.scalars().all():
+        mapping.setdefault(row.snippet_id, []).append(row.chapter_id)
+    return mapping
 
 
 async def create_snippet(
@@ -52,7 +87,17 @@ async def create_snippet(
     await db.refresh(snippet)
     logger.info("create_snippet: created snippet id=%s", snippet.id)
 
+    if data.chapter_ids:
+        await replace_snippet_chapter_associations(
+            db,
+            snippet.id,
+            data.chapter_ids,
+            document_id=document_id,
+            user_id=user_id,
+        )
+
     response = SnippetResponse.model_validate(snippet)
+    response.chapter_ids = list(data.chapter_ids)
     if snippet.source_id is not None:
         src_result = await db.execute(select(Source).where(Source.id == snippet.source_id))
         source = src_result.scalar_one_or_none()
@@ -72,10 +117,9 @@ async def list_snippets(
         .where(Snippet.document_id == document_id, Snippet.user_id == user_id)
         .order_by(Snippet.created_at.desc())
     )
-    snippets = result.scalars().all()
+    snippets = list(result.scalars().all())
     logger.info("list_snippets: found %d snippets", len(snippets))
 
-    # Resolve source titles in one query
     source_ids = {s.source_id for s in snippets if s.source_id is not None}
     title_map: dict[uuid.UUID, str] = {}
     if source_ids:
@@ -83,11 +127,14 @@ async def list_snippets(
         for src in src_result.scalars().all():
             title_map[src.id] = src.title
 
+    chapter_map = await _fetch_chapter_ids_for_snippets(db, [s.id for s in snippets])
+
     responses: list[SnippetResponse] = []
     for s in snippets:
         resp = SnippetResponse.model_validate(s)
         if s.source_id is not None:
             resp.source_title = title_map.get(s.source_id)
+        resp.chapter_ids = chapter_map.get(s.id, [])
         responses.append(resp)
     return responses
 
@@ -157,8 +204,11 @@ async def get_snippet_with_source_title(
         if source is not None:
             source_title = source.title
 
+    chapter_map = await _fetch_chapter_ids_for_snippets(db, [snippet.id])
+
     response = SnippetResponse.model_validate(snippet)
     response.source_title = source_title
+    response.chapter_ids = chapter_map.get(snippet.id, [])
     logger.info(
         "get_snippet_with_source_title: snippet id=%s source_title=%r", snippet_id, source_title
     )
@@ -213,10 +263,9 @@ async def list_snippets_by_chapter(
         .where(ChapterSnippet.chapter_id == chapter_id, Snippet.user_id == user_id)
         .order_by(Snippet.created_at.desc())
     )
-    snippets = result.scalars().all()
+    snippets = list(result.scalars().all())
     logger.info("list_snippets_by_chapter: found %d snippets", len(snippets))
 
-    # Resolve source titles
     source_ids = {s.source_id for s in snippets if s.source_id is not None}
     title_map: dict[uuid.UUID, str] = {}
     if source_ids:
@@ -224,10 +273,132 @@ async def list_snippets_by_chapter(
         for src in src_result.scalars().all():
             title_map[src.id] = src.title
 
+    chapter_map = await _fetch_chapter_ids_for_snippets(db, [s.id for s in snippets])
+
     responses: list[SnippetResponse] = []
     for s in snippets:
         resp = SnippetResponse.model_validate(s)
         if s.source_id is not None:
             resp.source_title = title_map.get(s.source_id)
+        resp.chapter_ids = chapter_map.get(s.id, [])
         responses.append(resp)
     return responses
+
+
+async def replace_snippet_chapter_associations(
+    db: AsyncSession,
+    snippet_id: uuid.UUID,
+    chapter_ids: Sequence[uuid.UUID],
+    *,
+    document_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> None:
+    """Atomically replace the full set of chapter associations for `snippet_id`."""
+    logger.info(
+        "replace_snippet_chapter_associations snippet=%s doc=%s new_set=%d",
+        snippet_id,
+        document_id,
+        len(chapter_ids),
+    )
+    target = list(chapter_ids)
+
+    valid_ids: set[uuid.UUID] = set()
+    if target:
+        chap_result = await db.execute(
+            select(Chapter).where(
+                Chapter.id.in_(target),
+                Chapter.document_id == document_id,
+            )
+        )
+        valid_ids = {c.id for c in chap_result.scalars().all()}
+        for cid in target:
+            if cid not in valid_ids:
+                logger.error(
+                    "replace_snippet_chapter_associations: chapter %s not in doc %s",
+                    cid,
+                    document_id,
+                )
+                raise ChapterDocumentMismatchError(cid, snippet_id)
+
+    existing_result = await db.execute(
+        select(ChapterSnippet).where(ChapterSnippet.snippet_id == snippet_id)
+    )
+    existing_rows = list(existing_result.scalars().all())
+    existing_ids = {row.chapter_id for row in existing_rows}
+    target_set = set(target)
+
+    for row in existing_rows:
+        if row.chapter_id not in target_set:
+            await db.delete(row)
+
+    for cid in target:
+        if cid not in existing_ids:
+            await db.merge(ChapterSnippet(chapter_id=cid, snippet_id=snippet_id))
+
+    await db.flush()
+    logger.info(
+        "replace_snippet_chapter_associations: removed=%d added=%d",
+        sum(1 for r in existing_rows if r.chapter_id not in target_set),
+        sum(1 for c in target if c not in existing_ids),
+    )
+    _ = user_id  # parity with source side; reserved for future auth
+
+
+async def list_snippets_by_scope(
+    db: AsyncSession,
+    document_id: uuid.UUID,
+    user_id: uuid.UUID,
+    scope: FilterScope,
+) -> list[SnippetResponse]:
+    """List snippets filtered by scope (all / doc-level / chapter:<uuid>)."""
+    logger.info("list_snippets_by_scope doc=%s user=%s scope=%r", document_id, user_id, scope)
+
+    if isinstance(scope, FilterScopeChapter):
+        chap_result = await db.execute(
+            select(Chapter).where(
+                Chapter.id == scope.chapter_id, Chapter.document_id == document_id
+            )
+        )
+        if chap_result.scalar_one_or_none() is None:
+            logger.warning(
+                "list_snippets_by_scope: stale/unknown chapter %s in doc %s — degrading to all",
+                scope.chapter_id,
+                document_id,
+            )
+            return await list_snippets(db, document_id, user_id)
+        return await list_snippets_by_chapter(db, scope.chapter_id, user_id)
+
+    if isinstance(scope, FilterScopeDocLevel):
+        src_result = await db.execute(
+            select(Snippet)
+            .outerjoin(ChapterSnippet, Snippet.id == ChapterSnippet.snippet_id)
+            .where(
+                Snippet.document_id == document_id,
+                Snippet.user_id == user_id,
+                ChapterSnippet.snippet_id.is_(None),
+            )
+            .order_by(Snippet.created_at.desc())
+        )
+        snippets = list(src_result.scalars().all())
+
+        source_ids = {s.source_id for s in snippets if s.source_id is not None}
+        title_map: dict[uuid.UUID, str] = {}
+        if source_ids:
+            src_q = await db.execute(select(Source).where(Source.id.in_(source_ids)))
+            for src in src_q.scalars().all():
+                title_map[src.id] = src.title
+
+        # chapter_ids batch — always empty for doc-level, but keep shape uniform
+        await _fetch_chapter_ids_for_snippets(db, [s.id for s in snippets])
+
+        responses: list[SnippetResponse] = []
+        for s in snippets:
+            resp = SnippetResponse.model_validate(s)
+            if s.source_id is not None:
+                resp.source_title = title_map.get(s.source_id)
+            resp.chapter_ids = []
+            responses.append(resp)
+        return responses
+
+    assert isinstance(scope, FilterScopeAll)
+    return await list_snippets(db, document_id, user_id)

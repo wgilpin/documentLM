@@ -21,7 +21,25 @@
   {% if snippet.tag %}
   <div class="snippet-tag">{{ snippet.tag }}</div>
   {% endif %}
+  {% if snippet.chapter_ids %}
+  <div class="snippet-chapter-chips">
+    {% for cid in snippet.chapter_ids %}
+      {% set _title = (chapter_id_to_title or {}).get(cid) %}
+      {% if _title %}
+      <span class="snippet-chapter-chip">{{ _title }}</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
   <div class="snippet-actions">
+    {% if chapter_id_to_title and chapter_id_to_title | length > 0 %}
+    <button class="btn-icon snippet-tag-btn" title="Edit chapter tags"
+            hx-get="/api/documents/{{ snippet.document_id }}/snippets/{{ snippet.id }}/chapters/edit"
+            hx-target="next .snippet-chapter-edit-popover"
+            hx-swap="innerHTML">
+      <span class="material-symbols-outlined">sell</span>
+    </button>
+    {% endif %}
     <button class="btn-ghost-danger btn-icon"
             hx-delete="/api/snippets/{{ snippet.id }}"
             hx-target="#snippet-{{ snippet.id }}"
@@ -31,4 +49,5 @@
       <span class="material-symbols-outlined">delete</span>
     </button>
   </div>
+  <div class="snippet-chapter-edit-popover"></div>
 </div>

@@ -8,11 +8,14 @@
       "Bash(uv add:*)",
       "Bash(uv sync:*)",
       "Bash(awk '{print $2}')",
-      "mcp__chrome-devtools__get_console_message"
+      "mcp__chrome-devtools__get_console_message",
+      "Bash(.specify/scripts/bash/create-new-feature.sh --json --short-name \"chapter-scoped-research\" \"Add chapter-scoped organisation for sources and snippets \\(Phase 1: manual tagging\\)\")",
+      "Bash(.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)"
     ],
     "additionalDirectories": [
       "/Users/will/projects/documentlm-core",
-      "/Users/will/projects/document-projects/documentLM-core"
+      "/Users/will/projects/document-projects/documentLM-core",
+      "/Users/will/projects/document-projects/documentLM"
     ]
   }
 }

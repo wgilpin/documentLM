@@ -2,6 +2,7 @@
 <div class="search-results" id="search-results">
   <div class="search-results-header">{{ search.results | length }} result{% if search.results | length != 1 %}s{% endif %} for "{{ search.query }}"</div>
   {% for item in search.results %}
+  {% set _form_id = "search-add-form-" ~ loop.index %}
   <div class="search-result-card">
     <div class="search-result-text">{{ item.text }}</div>
     <div class="search-result-source">
@@ -11,6 +12,20 @@
         <span class="material-symbols-outlined">my_location</span>
       </button>
     </div>
+    {% if chapters and chapters | length > 0 %}
+    <details class="search-result-add-details">
+      <summary class="search-result-add-summary">Add to Bank</summary>
+      <form id="{{ _form_id }}"
+            hx-post="/api/documents/{{ doc_id }}/snippets"
+            hx-ext="json-enc"
+            hx-vals='js:{text: {{ item.text | tojson }}, source_id: {{ item.source_id | string | tojson }}, chapter_ids: Array.from(document.querySelectorAll("#{{ _form_id }} input[name=chapter_ids]:checked")).map(e=>e.value)}'
+            hx-target="#snippet-list"
+            hx-swap="afterbegin">
+        {% include "partials/chapter_picker.html" %}
+        <button type="submit" class="btn btn-sm">Add with chapters</button>
+      </form>
+    </details>
+    {% else %}
     <button class="btn btn-sm search-result-add-btn"
             hx-post="/api/documents/{{ doc_id }}/snippets"
             hx-ext="json-enc"
@@ -20,6 +35,7 @@
             title="Add to Snippet Bank">
       Add to Bank
     </button>
+    {% endif %}
   </div>
   {% endfor %}
 </div>

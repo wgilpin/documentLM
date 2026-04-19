@@ -10,9 +10,27 @@
     <div class="source-info">
       <div class="source-title">{{ source.title }}</div>
       <div class="source-date">{{ source.source_type.value }} · {{ source.created_at.strftime('%b %d') }}{% if source.error_message %} · <span class="source-badge-warning">{{ source.error_message }}</span>{% endif %}</div>
+      {% if source.chapter_ids %}
+      <div class="source-chapter-chips">
+        {% for cid in source.chapter_ids %}
+          {% set _title = (chapter_id_to_title or {}).get(cid) %}
+          {% if _title %}
+          <span class="source-chapter-chip">{{ _title }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
   </div>
   <div class="source-actions">
+    {% if chapter_id_to_title and chapter_id_to_title | length > 0 %}
+    <button class="btn-icon source-tag-btn" title="Edit chapter tags"
+            hx-get="/api/documents/{{ doc_id }}/sources/{{ source.id }}/chapters/edit"
+            hx-target="next .source-chapter-edit-popover"
+            hx-swap="innerHTML">
+      <span class="material-symbols-outlined">sell</span>
+    </button>
+    {% endif %}
     {% if not source.error_message %}
     <!-- View in Source Viewer tab -->
     <button class="btn-icon source-view-btn" title="Open in Source Viewer"
@@ -49,4 +67,5 @@
       <span class="material-symbols-outlined">delete</span>
     </button>
   </div>
+  <div class="source-chapter-edit-popover"></div>
 </li>

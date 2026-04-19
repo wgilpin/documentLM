@@ -13,13 +13,31 @@
 
   <div id="search-results-container" class="search-results-container"></div>
 
+  {% if chapters and chapters | length > 0 %}
+  <label class="snippet-filter-label" for="snippet-filter">Filter:
+    <select id="snippet-filter" name="scope" class="snippet-filter-select"
+            hx-get="/api/documents/{{ doc_id }}/snippets"
+            hx-target="#snippet-bank-container"
+            hx-swap="innerHTML"
+            hx-trigger="change"
+            hx-include="this">
+      {% set _scope = active_scope or 'all' %}
+      <option value="all" {% if _scope == 'all' %}selected{% endif %}>All</option>
+      <option value="doc-level" {% if _scope == 'doc-level' %}selected{% endif %}>Document-level only</option>
+      {% for chapter in chapters %}
+      <option value="chapter:{{ chapter.id }}" {% if _scope == 'chapter:' ~ chapter.id|string %}selected{% endif %}>{{ chapter.title }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
+
   <div class="snippet-list" id="snippet-list">
     {% if snippets %}
       {% for snippet in snippets %}
         {% include "partials/snippet_card.html" %}
       {% endfor %}
     {% else %}
-      <p class="snippet-bank-empty">No snippets yet. Highlight text in Source Viewer and save it here.</p>
+      <p class="snippet-bank-empty">No snippets match the current filter. Highlight text in Source Viewer and save it here.</p>
     {% endif %}
   </div>
 </div>

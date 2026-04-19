@@ -437,6 +437,25 @@ window.activateChapter = function activateChapter(chapterId, docId) {
             updateToolbar(editor);
         }
     });
+
+    // spec-017 US3: refilter source-list + snippet-bank to the new chapter,
+    // and update the filter <select>s so they reflect the current default.
+    const scope = 'chapter:' + chapterId;
+    const sourceFilter = document.getElementById('source-filter');
+    if (sourceFilter) sourceFilter.value = scope;
+    const snippetFilter = document.getElementById('snippet-filter');
+    if (snippetFilter) snippetFilter.value = scope;
+
+    if (window.htmx) {
+        htmx.ajax('GET', `/api/documents/${docId}/sources?scope=${encodeURIComponent(scope)}`, {
+            target: '#source-list',
+            swap: 'innerHTML',
+        });
+        htmx.ajax('GET', `/api/documents/${docId}/snippets?scope=${encodeURIComponent(scope)}`, {
+            target: '#snippet-bank-container',
+            swap: 'innerHTML',
+        });
+    }
 };
 
 window.scrollToChapter = function scrollToChapter(chapterId) {
@@ -857,19 +876,52 @@ window.insertBoundedSuggestion = function insertBoundedSuggestion(text) {
         _removeTooltip();
         const tooltip = document.createElement('div');
         tooltip.className = 'snippet-save-tooltip';
-        tooltip.textContent = 'Save to Scratchpad';
-        tooltip.style.cssText = 'position:fixed;z-index:9999;background:#1a1a2e;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:0.85rem;';
+        tooltip.style.cssText = 'position:fixed;z-index:9999;background:#1a1a2e;color:#fff;padding:6px 12px;border-radius:6px;font-size:0.85rem;min-width:160px;';
         tooltip.style.left = e.clientX + 'px';
         tooltip.style.top = (e.clientY - 36) + 'px';
+
+        // Read chapters from snippet-bank-container[data-chapters] (set by document.html)
+        let chapters = [];
+        const snippetBankContainer = document.getElementById('snippet-bank-container');
+        if (snippetBankContainer && snippetBankContainer.dataset.chapters) {
+            try {
+                chapters = JSON.parse(snippetBankContainer.dataset.chapters);
+            } catch (err) {
+                chapters = [];
+            }
+        }
+
+        let checkboxesHtml = '';
+        if (chapters.length > 0) {
+            checkboxesHtml = '<div class="snippet-save-tooltip-chapters" style="margin-bottom:6px;max-height:140px;overflow:auto;">';
+            for (const ch of chapters) {
+                const idAttr = ch.id.replace(/"/g, '&quot;');
+                const titleEsc = String(ch.title)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                checkboxesHtml += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" value="' + idAttr + '" class="tooltip-chapter-cb">' + titleEsc + '</label>';
+            }
+            checkboxesHtml += '</div>';
+        }
+        tooltip.innerHTML = checkboxesHtml +
+            '<button type="button" class="snippet-save-btn" style="background:#4338ca;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;width:100%;">Save to Scratchpad</button>';
         document.body.appendChild(tooltip);
         _saveTooltip = tooltip;
 
-        tooltip.addEventListener('click', function () {
+        const saveBtn = tooltip.querySelector('.snippet-save-btn');
+        saveBtn.addEventListener('click', function () {
             const docId = DOC_ID;
             const sourceViewContent = document.getElementById('source-view-content');
             const sourceId = sourceViewContent ? sourceViewContent.dataset.sourceId : null;
 
-            const payload = { text: selText, char_offset: charOffset };
+            const selectedChapterIds = Array.from(
+                tooltip.querySelectorAll('.tooltip-chapter-cb:checked')
+            ).map(cb => cb.value);
+
+            const payload = {
+                text: selText,
+                char_offset: charOffset,
+                chapter_ids: selectedChapterIds,
+            };
             if (sourceId) payload.source_id = sourceId;
 
             fetch('/api/documents/' + docId + '/snippets', {
