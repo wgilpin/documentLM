@@ -1,43 +1,44 @@
 /* Global helpers — must be non-module scope (called from onclick / hx-on:: attributes) */
 
 (function () {
-    const STORAGE_KEY = 'sidebar-width';
-    const MIN_SIDEBAR = 200;
-    const MAX_SIDEBAR = 600;
+    const STORAGE_KEY = 'sources-panel-width';
+    const MIN_WIDTH = 200;
+    const MAX_WIDTH = 600;
+    const CSS_VAR = '--sources-panel-width';
 
-    function initResizeHandle() {
-        const handle = document.getElementById('resize-handle');
-        const layout = handle && handle.closest('.editor-layout');
-        if (!handle || !layout) return;
+    function setWidth(w) {
+        document.documentElement.style.setProperty(CSS_VAR, w + 'px');
+    }
 
-        function setWidth(w) {
-            layout.style.gridTemplateColumns = `256px 1fr 5px ${w}px`;
-        }
+    function initSourcesResizeHandle() {
+        const handle = document.getElementById('sources-resize-handle');
+        if (!handle) return;
 
         const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
-        if (saved && saved >= MIN_SIDEBAR && saved <= MAX_SIDEBAR) {
+        if (saved && saved >= MIN_WIDTH && saved <= MAX_WIDTH) {
             setWidth(saved);
         }
 
-        let startX, startWidth;
-
         handle.addEventListener('mousedown', function (e) {
             e.preventDefault();
-            startX = e.clientX;
-            const cols = getComputedStyle(layout).gridTemplateColumns.split(' ');
-            startWidth = parseInt(cols[cols.length - 1], 10);
             handle.classList.add('resize-handle--dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
 
-            function onMove(e) {
-                const delta = startX - e.clientX;
-                const newWidth = Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, startWidth + delta));
-                setWidth(newWidth);
+            function onMove(ev) {
+                const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, ev.clientX));
+                setWidth(w);
             }
 
             function onUp() {
                 handle.classList.remove('resize-handle--dragging');
-                const final = parseInt(getComputedStyle(layout).gridTemplateColumns.split(' ').pop(), 10);
-                localStorage.setItem(STORAGE_KEY, final);
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                const current = parseInt(
+                    getComputedStyle(document.documentElement).getPropertyValue(CSS_VAR),
+                    10
+                );
+                if (current) localStorage.setItem(STORAGE_KEY, current);
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
             }
@@ -48,9 +49,9 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initResizeHandle);
+        document.addEventListener('DOMContentLoaded', initSourcesResizeHandle);
     } else {
-        initResizeHandle();
+        initSourcesResizeHandle();
     }
 }());
 
@@ -101,6 +102,13 @@ document.addEventListener('click', function (e) {
     if (e.target.tagName === 'IMG' && e.target.closest('.source-view-body')) {
         e.target.classList.toggle('source-img--expanded');
     }
+});
+
+/* Close any open source-menu <details> when clicking outside it. */
+document.addEventListener('click', function (e) {
+    document.querySelectorAll('details.source-menu[open]').forEach(function (d) {
+        if (!d.contains(e.target)) d.open = false;
+    });
 });
 
 function lockEditor()   { window.tiptapEditor?.setEditable(false); }

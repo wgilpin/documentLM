@@ -173,26 +173,25 @@ async def edit_snippet_chapters_form(
         raise HTTPException(status_code=404, detail="Snippet not found")
 
     chapters = await chapter_service.list_chapters(db, doc_id)
+    selected = set(snippet.chapter_ids)
     form_id = f"snippet-chapters-form-{snippet_id}"
-    picker_html = _shared_templates.get_template("partials/chapter_picker.html").render(
-        {
-            "chapters": chapters,
-            "selected_chapter_ids": list(snippet.chapter_ids),
-            "form_id": form_id,
-            "request": request,
-        }
+    options_html = "".join(
+        f'<label class="chapter-picker-option">'
+        f'<input type="checkbox" name="chapter_ids" value="{c.id}"'
+        f'{" checked" if c.id in selected else ""}>'
+        f"<span>{c.title}</span></label>"
+        for c in chapters
     )
     form_html = (
-        f'<form id="{form_id}" class="snippet-chapters-edit-form" '
+        f'<form id="{form_id}" class="chapter-picker-list-form" '
         f'hx-put="/api/documents/{doc_id}/snippets/{snippet_id}/chapters" '
         f'hx-ext="json-enc" '
-        f'hx-vals="js:{{chapter_ids: Array.from(document.querySelectorAll('
+        f'hx-trigger="change from:input" '
+        f"hx-vals=\"js:{{chapter_ids: Array.from(document.querySelectorAll("
         f"'#{form_id} input[name=chapter_ids]:checked')).map(e=>e.value)}}\" "
         f'hx-target="#snippet-{snippet_id}" hx-swap="outerHTML">'
-        f"{picker_html}"
-        f'<div class="chapter-picker-actions">'
-        f'<button type="submit" class="btn btn-primary btn-sm">Apply</button>'
-        f"</div></form>"
+        f'<div class="chapter-picker-list">{options_html}</div>'
+        f"</form>"
     )
     return HTMLResponse(form_html)
 
