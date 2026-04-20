@@ -1,14 +1,17 @@
 <div id="snippet-bank" class="snippet-bank">
   <div class="snippet-bank-search">
-    <input type="text"
+    <input type="search"
+           id="search-input"
            class="snippet-search-input"
-           placeholder="Search sources…"
+           placeholder="Search sources and snippets…"
            hx-get="/api/documents/{{ doc_id }}/search"
-           hx-trigger="input changed delay:400ms, search"
+           hx-trigger="input changed delay:400ms[this.value.trim().length > 0], search[this.value.trim().length > 0]"
            hx-target="#search-results-container"
            hx-swap="innerHTML"
+           hx-include="#search-scope-select"
            name="q"
            autocomplete="off">
+    {% include "partials/search_scope.html" %}
   </div>
 
   <div id="search-results-container" class="search-results-container"></div>

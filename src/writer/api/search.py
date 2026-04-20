@@ -1,4 +1,4 @@
-"""Semantic search API endpoint."""
+"""Semantic search API — dual-group search with chapter scoping."""
 
 import uuid
 from typing import Annotated
@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from writer.core.auth import get_current_user
 from writer.core.database import get_db
 from writer.core.templates import templates as _shared_templates
-from writer.models.schemas import SearchResponse, UserResponse
+from writer.models.schemas import SearchV2Response, UserResponse
 from writer.services import chapter_service, search_service
+from writer.services.filter_scope import FilterScopeParseError, parse_filter_scope
 
 router = APIRouter()
 
@@ -26,16 +27,23 @@ async def search_corpus(
     current_user: CurrentUser,
     doc_id: uuid.UUID,
     q: Annotated[str, Query()] = "",
+    scope: Annotated[str, Query()] = "all",
     top_k: Annotated[int, Query(ge=1, le=20)] = 10,
-) -> HTMLResponse | SearchResponse:
+) -> HTMLResponse | SearchV2Response:
     if not q.strip():
         raise HTTPException(status_code=400, detail="Query parameter 'q' is required")
 
-    result = await search_service.search_document_corpus(
+    try:
+        parsed_scope = parse_filter_scope(scope)
+    except FilterScopeParseError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    result = await search_service.search_document_dual(
         query=q.strip(),
         user_id=current_user.id,
         doc_id=doc_id,
         session=db,
+        scope=parsed_scope,
         top_k=top_k,
     )
 

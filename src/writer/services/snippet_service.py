@@ -1,8 +1,10 @@
 """Snippet CRUD service."""
 
+import asyncio
 import uuid
 from collections.abc import Sequence
 
+from fastapi import BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,8 +19,74 @@ from writer.models.schemas import (
     SnippetResponse,
     SnippetUpdate,
 )
+from writer.services import vector_store
 
 logger = get_logger(__name__)
+
+
+async def _embed_snippet_async(
+    snippet_id: uuid.UUID,
+    document_id: uuid.UUID,
+    text: str,
+    user_id: uuid.UUID,
+    source_id: uuid.UUID | None,
+    is_private: bool,
+) -> None:
+    """Run snippet embedding in a worker thread; swallow errors with an ERROR log."""
+    try:
+        await asyncio.to_thread(
+            vector_store.index_snippet,
+            snippet_id,
+            document_id,
+            text,
+            user_id,
+            source_id,
+            is_private,
+        )
+    except Exception as exc:  # noqa: BLE001 — FR-022: snippet stays saved on embed failure
+        logger.error(
+            "embed_snippet failed snippet=%s doc=%s user=%s: %s",
+            snippet_id,
+            document_id,
+            user_id,
+            exc,
+        )
+
+
+def _schedule_embed(
+    background_tasks: BackgroundTasks | None,
+    *,
+    snippet_id: uuid.UUID,
+    document_id: uuid.UUID,
+    text: str,
+    user_id: uuid.UUID,
+    source_id: uuid.UUID | None,
+    is_private: bool,
+) -> None:
+    """Register the embed step on BackgroundTasks (preferred) or run it inline."""
+    if background_tasks is not None:
+        background_tasks.add_task(
+            _embed_snippet_async,
+            snippet_id,
+            document_id,
+            text,
+            user_id,
+            source_id,
+            is_private,
+        )
+        return
+    # Fallback: run inline via asyncio. We still swallow exceptions so the write path
+    # never fails because of a vector-store hiccup (FR-022).
+    try:
+        vector_store.index_snippet(snippet_id, document_id, text, user_id, source_id, is_private)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "embed_snippet (inline) failed snippet=%s doc=%s user=%s: %s",
+            snippet_id,
+            document_id,
+            user_id,
+            exc,
+        )
 
 
 class SnippetNotFoundError(Exception):
@@ -64,12 +132,14 @@ async def create_snippet(
     document_id: uuid.UUID,
     user_id: uuid.UUID,
     data: SnippetCreate,
+    background_tasks: BackgroundTasks | None = None,
 ) -> SnippetResponse:
     logger.info("create_snippet doc=%s user=%s", document_id, user_id)
     doc_result = await db.execute(
         select(Document).where(Document.id == document_id, Document.user_id == user_id)
     )
-    if doc_result.scalar_one_or_none() is None:
+    document = doc_result.scalar_one_or_none()
+    if document is None:
         logger.error("create_snippet: document %s not found for user %s", document_id, user_id)
         raise DocumentNotFoundError(document_id)
 
@@ -103,6 +173,17 @@ async def create_snippet(
         source = src_result.scalar_one_or_none()
         if source is not None:
             response.source_title = source.title
+
+    _schedule_embed(
+        background_tasks,
+        snippet_id=snippet.id,
+        document_id=document_id,
+        text=data.text,
+        user_id=user_id,
+        source_id=data.source_id,
+        is_private=bool(getattr(document, "is_private", False)),
+    )
+
     return response
 
 
@@ -152,6 +233,15 @@ async def delete_snippet(
     if snippet is None:
         logger.error("delete_snippet: snippet %s not found for user %s", snippet_id, user_id)
         raise SnippetNotFoundError(snippet_id)
+    try:
+        await asyncio.to_thread(vector_store.delete_snippet_embedding, snippet_id, user_id)
+    except Exception as exc:  # noqa: BLE001 — row deletion must succeed even if vector store is down
+        logger.error(
+            "delete_snippet: vector delete failed snippet=%s user=%s: %s",
+            snippet_id,
+            user_id,
+            exc,
+        )
     await db.delete(snippet)
     await db.flush()
     logger.info("delete_snippet: deleted snippet id=%s", snippet_id)

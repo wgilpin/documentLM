@@ -226,15 +226,46 @@ class SnippetResponse(BaseModel):
     chapter_ids: list[uuid.UUID] = []
 
 
-class SearchResultItem(BaseModel):
-    text: str
+SearchScope = FilterScope
+
+
+class SourceResult(BaseModel):
     source_id: uuid.UUID
-    source_title: str  # resolved by service from DB
+    title: str
+    excerpt: str
+    score: float
+    in_scope: bool = True
 
 
-class SearchResponse(BaseModel):
-    results: list[SearchResultItem]
+class SnippetResult(BaseModel):
+    snippet_id: uuid.UUID
+    text: str
+    source_id: uuid.UUID | None = None
+    source_title: str | None = None
+    chapter_ids: list[uuid.UUID] = []
+    score: float
+    in_scope: bool = True
+
+
+class SpilloverCounts(BaseModel):
+    out_of_scope_count: int = 0
+
+
+class SourceGroupPayload(BaseModel):
+    in_scope: list[SourceResult] = []
+    out_of_scope_count: int = 0
+
+
+class SnippetGroupPayload(BaseModel):
+    in_scope: list[SnippetResult] = []
+    out_of_scope_count: int = 0
+
+
+class SearchV2Response(BaseModel):
     query: str
+    scope: FilterScope
+    sources: SourceGroupPayload
+    snippets: SnippetGroupPayload
 
 
 class BoundedGenerateRequest(BaseModel):

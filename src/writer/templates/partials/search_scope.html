@@ -1,0 +1,30 @@
+{#
+  Scope selector for semantic search. Hidden when the document has no chapters (FR-017).
+
+  Context:
+    chapters         : list[ChapterResponse]
+    active_chapter_id: UUID | None            — focused chapter (from caret context)
+    doc_id           : UUID
+#}
+{% if chapters and chapters | length > 0 %}
+<div class="search-scope" data-active-chapter="{{ active_chapter_id or '' }}">
+  <label for="search-scope-select" class="search-scope-label">Scope</label>
+  <select id="search-scope-select"
+          name="scope"
+          class="search-scope-select"
+          hx-get="/api/documents/{{ doc_id }}/search"
+          hx-trigger="change"
+          hx-include="#search-input"
+          hx-target="#search-results"
+          hx-swap="outerHTML">
+    <option value="all" {% if not active_chapter_id %}selected{% endif %}>Entire document</option>
+    {% if active_chapter_id %}
+    {% for chapter in chapters %}
+      {% if chapter.id == active_chapter_id %}
+      <option value="chapter:{{ chapter.id }}" selected>This chapter — {{ chapter.title }}</option>
+      {% endif %}
+    {% endfor %}
+    {% endif %}
+  </select>
+</div>
+{% endif %}

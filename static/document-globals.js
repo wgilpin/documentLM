@@ -1,22 +1,20 @@
 /* Global helpers — must be non-module scope (called from onclick / hx-on:: attributes) */
 
 (function () {
-    const STORAGE_KEY = 'sources-panel-width';
     const MIN_WIDTH = 200;
     const MAX_WIDTH = 600;
-    const CSS_VAR = '--sources-panel-width';
 
-    function setWidth(w) {
-        document.documentElement.style.setProperty(CSS_VAR, w + 'px');
+    function setWidth(cssVar, w) {
+        document.documentElement.style.setProperty(cssVar, w + 'px');
     }
 
-    function initSourcesResizeHandle() {
-        const handle = document.getElementById('sources-resize-handle');
+    function initResizeHandle(opts) {
+        const handle = document.getElementById(opts.handleId);
         if (!handle) return;
 
-        const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+        const saved = parseInt(localStorage.getItem(opts.storageKey), 10);
         if (saved && saved >= MIN_WIDTH && saved <= MAX_WIDTH) {
-            setWidth(saved);
+            setWidth(opts.cssVar, saved);
         }
 
         handle.addEventListener('mousedown', function (e) {
@@ -26,8 +24,11 @@
             document.body.style.userSelect = 'none';
 
             function onMove(ev) {
-                const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, ev.clientX));
-                setWidth(w);
+                const raw = opts.fromRight
+                    ? window.innerWidth - ev.clientX
+                    : ev.clientX;
+                const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, raw));
+                setWidth(opts.cssVar, w);
             }
 
             function onUp() {
@@ -35,10 +36,10 @@
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
                 const current = parseInt(
-                    getComputedStyle(document.documentElement).getPropertyValue(CSS_VAR),
+                    getComputedStyle(document.documentElement).getPropertyValue(opts.cssVar),
                     10
                 );
-                if (current) localStorage.setItem(STORAGE_KEY, current);
+                if (current) localStorage.setItem(opts.storageKey, current);
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
             }
@@ -48,10 +49,25 @@
         });
     }
 
+    function initAllHandles() {
+        initResizeHandle({
+            handleId: 'sources-resize-handle',
+            storageKey: 'sources-panel-width',
+            cssVar: '--sources-panel-width',
+            fromRight: false,
+        });
+        initResizeHandle({
+            handleId: 'right-resize-handle',
+            storageKey: 'right-panel-width',
+            cssVar: '--right-panel-width',
+            fromRight: true,
+        });
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSourcesResizeHandle);
+        document.addEventListener('DOMContentLoaded', initAllHandles);
     } else {
-        initSourcesResizeHandle();
+        initAllHandles();
     }
 }());
 

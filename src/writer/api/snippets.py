@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,9 +45,12 @@ async def create_snippet(
     current_user: CurrentUser,
     doc_id: uuid.UUID,
     data: SnippetCreate,
+    background_tasks: BackgroundTasks,
 ) -> HTMLResponse | SnippetResponse:
     try:
-        snippet = await snippet_service.create_snippet(db, doc_id, current_user.id, data)
+        snippet = await snippet_service.create_snippet(
+            db, doc_id, current_user.id, data, background_tasks=background_tasks
+        )
         await db.commit()
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found") from exc
@@ -94,6 +97,12 @@ async def list_snippets(
 
     if request.headers.get("HX-Request"):
         title_map = await _build_chapter_title_map(db, doc_id)
+        active_chapter_id: uuid.UUID | None = None
+        if scope.startswith("chapter:"):
+            try:
+                active_chapter_id = uuid.UUID(scope[len("chapter:") :])
+            except ValueError:
+                active_chapter_id = None
         html = _shared_templates.get_template("partials/snippet_bank.html").render(
             {
                 "snippets": snippets,
@@ -102,6 +111,7 @@ async def list_snippets(
                 "chapter_id_to_title": title_map,
                 "chapters": await chapter_service.list_chapters(db, doc_id),
                 "active_scope": scope,
+                "active_chapter_id": active_chapter_id,
             }
         )
         return HTMLResponse(html)
@@ -178,7 +188,7 @@ async def edit_snippet_chapters_form(
     options_html = "".join(
         f'<label class="chapter-picker-option">'
         f'<input type="checkbox" name="chapter_ids" value="{c.id}"'
-        f'{" checked" if c.id in selected else ""}>'
+        f"{' checked' if c.id in selected else ''}>"
         f"<span>{c.title}</span></label>"
         for c in chapters
     )
@@ -187,7 +197,7 @@ async def edit_snippet_chapters_form(
         f'hx-put="/api/documents/{doc_id}/snippets/{snippet_id}/chapters" '
         f'hx-ext="json-enc" '
         f'hx-trigger="change from:input" '
-        f"hx-vals=\"js:{{chapter_ids: Array.from(document.querySelectorAll("
+        f'hx-vals="js:{{chapter_ids: Array.from(document.querySelectorAll('
         f"'#{form_id} input[name=chapter_ids]:checked')).map(e=>e.value)}}\" "
         f'hx-target="#snippet-{snippet_id}" hx-swap="outerHTML">'
         f'<div class="chapter-picker-list">{options_html}</div>'
