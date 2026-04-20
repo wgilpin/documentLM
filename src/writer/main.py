@@ -198,6 +198,7 @@ async def view_document(
         )
     user_settings = await settings_service.get_settings(db, current_user.id)
     chapters = await chapter_service.list_chapters(db, doc_id)
+    chapter_id_to_title = {c.id: c.title for c in chapters}
     return templates.TemplateResponse(
         "document.html",
         {
@@ -205,6 +206,7 @@ async def view_document(
             "doc": doc,
             "doc_id": doc_id,
             "chapters": chapters,
+            "chapter_id_to_title": chapter_id_to_title,
             "active_chapter_id": chapters[0].id if chapters else None,
             "undo_buffer_size": settings.undo_buffer_size,
             "user_settings": user_settings,

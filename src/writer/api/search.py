@@ -11,7 +11,7 @@ from writer.core.auth import get_current_user
 from writer.core.database import get_db
 from writer.core.templates import templates as _shared_templates
 from writer.models.schemas import SearchResponse, UserResponse
-from writer.services import search_service
+from writer.services import chapter_service, search_service
 
 router = APIRouter()
 
@@ -40,8 +40,14 @@ async def search_corpus(
     )
 
     if request.headers.get("HX-Request"):
+        chapters = await chapter_service.list_chapters(db, doc_id)
         html = _shared_templates.get_template("partials/search_results.html").render(
-            {"search": result, "doc_id": doc_id, "request": request}
+            {
+                "search": result,
+                "doc_id": doc_id,
+                "request": request,
+                "chapters": chapters,
+            }
         )
         return HTMLResponse(html)
     return result

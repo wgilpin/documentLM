@@ -1,0 +1,27 @@
+{#
+  Reusable chapter picker: disclosure + checkbox per chapter.
+  Form field name is `chapter_ids` (multiple values).
+
+  Context:
+    chapters               : list[ChapterResponse]   — required; renders nothing when empty
+    selected_chapter_ids   : list[uuid.UUID] | set   — defaults to empty
+    form_id                : str | None              — optional `form=` binding for popover use
+#}
+{% if chapters and chapters | length > 0 %}
+{% set _selected = selected_chapter_ids or [] %}
+<details class="chapter-picker">
+  <summary class="chapter-picker-summary">Chapters</summary>
+  <div class="chapter-picker-options">
+    {% for chapter in chapters %}
+    <label class="chapter-picker-option">
+      <input type="checkbox"
+             name="chapter_ids"
+             value="{{ chapter.id }}"
+             {% if form_id %}form="{{ form_id }}"{% endif %}
+             {% if chapter.id in _selected %}checked{% endif %}>
+      <span>{{ chapter.title }}</span>
+    </label>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}

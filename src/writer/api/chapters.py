@@ -244,3 +244,48 @@ async def unassign_snippet_from_chapter(
 
     await snippet_service.unassign_snippet_from_chapter(db, chapter_id, snippet_id)
     await db.commit()
+
+
+# ── Source-Chapter Association Endpoints (spec 017, US1) ────────────────────
+
+
+@router.post(
+    "/{doc_id}/chapters/{chapter_id}/sources/{source_id}",
+    status_code=status.HTTP_201_CREATED,
+    response_model=None,
+)
+async def assign_source_to_chapter(
+    db: DbDep,
+    current_user: CurrentUser,
+    doc_id: uuid.UUID,
+    chapter_id: uuid.UUID,
+    source_id: uuid.UUID,
+) -> None:
+    from writer.services import source_service
+    from writer.services.source_service import ChapterDocumentMismatchError
+
+    try:
+        await source_service.assign_source_to_chapter(db, chapter_id, source_id)
+        await db.commit()
+    except ChapterDocumentMismatchError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+
+
+@router.delete(
+    "/{doc_id}/chapters/{chapter_id}/sources/{source_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
+async def unassign_source_from_chapter(
+    db: DbDep,
+    current_user: CurrentUser,
+    doc_id: uuid.UUID,
+    chapter_id: uuid.UUID,
+    source_id: uuid.UUID,
+) -> None:
+    from writer.services import source_service
+
+    await source_service.unassign_source_from_chapter(db, chapter_id, source_id)
+    await db.commit()

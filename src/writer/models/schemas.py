@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from documentlm_core.models.schemas import UserResponse  # noqa: F401
 from pydantic import BaseModel, ConfigDict, Field
@@ -80,6 +80,7 @@ class SourceCreate(BaseModel):
     title: str
     content: str = ""
     url: str | None = None
+    chapter_ids: list[uuid.UUID] = []
 
 
 class SourceResponse(BaseModel):
@@ -95,6 +96,32 @@ class SourceResponse(BaseModel):
     error_message: str | None
     file_path: str | None = None
     created_at: datetime
+    chapter_ids: list[uuid.UUID] = []
+
+
+class ChapterAssociationUpdate(BaseModel):
+    """Replace-set semantics for retroactive tag editing."""
+
+    chapter_ids: list[uuid.UUID]
+
+
+class FilterScopeAll(BaseModel):
+    kind: Literal["all"] = "all"
+
+
+class FilterScopeDocLevel(BaseModel):
+    kind: Literal["doc-level"] = "doc-level"
+
+
+class FilterScopeChapter(BaseModel):
+    kind: Literal["chapter"] = "chapter"
+    chapter_id: uuid.UUID
+
+
+FilterScope = Annotated[
+    FilterScopeAll | FilterScopeDocLevel | FilterScopeChapter,
+    Field(discriminator="kind"),
+]
 
 
 class CommentCreate(BaseModel):
@@ -175,6 +202,7 @@ class SnippetCreate(BaseModel):
     char_offset: int = 0
     note: str | None = None
     tag: str | None = None
+    chapter_ids: list[uuid.UUID] = []
 
 
 class SnippetUpdate(BaseModel):
@@ -195,6 +223,7 @@ class SnippetResponse(BaseModel):
     created_at: datetime
     # source_title is joined and populated by the service layer (not from ORM directly)
     source_title: str | None = None
+    chapter_ids: list[uuid.UUID] = []
 
 
 class SearchResultItem(BaseModel):
