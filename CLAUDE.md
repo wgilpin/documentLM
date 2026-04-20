@@ -19,6 +19,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-13
 - PostgreSQL (Docker container) + ChromaDB (local persistent directory) (016-document-chapters)
 - Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, Jinja2, Alembic (017-chapter-scoped-research)
 - PostgreSQL (Docker container) — one new table (`chapter_sources`); `chapter_snippets` already exists (017-chapter-scoped-research)
+- Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, ChromaDB (existing, per-user persistent client), `nlp-utils` (existing, for snippet chunk parity), Jinja2, Alembic (no schema migration this phase — backfill only) (018-semantic-search)
+- PostgreSQL (Docker container) — **no new tables** (reuses `chapter_sources` + `chapter_snippets` from 017). ChromaDB local persistent directory gains snippet documents inside the existing per-user collection, distinguished by a new `entity_type` metadata key. (018-semantic-search)
 
 - Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x (async), asyncpg, Alembic, Jinja2 (001-document-workbench-mvp)
 
@@ -59,9 +61,9 @@ docker-compose up --build                 # full stack
 Python 3.13+: Follow standard conventions
 
 ## Recent Changes
+- 018-semantic-search: Added Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, ChromaDB (existing, per-user persistent client), `nlp-utils` (existing, for snippet chunk parity), Jinja2, Alembic (no schema migration this phase — backfill only)
 - 017-chapter-scoped-research: Added Python 3.13+ + FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, Jinja2, Alembic
 - 016-document-chapters: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg
-- 015-bounded-generation: Added Python 3.13+ + google-adk (local), FastAPI, HTMX, Pydantic v2, SQLAlchemy 2.x / asyncpg, ChromaDB, `pymupdf4llm` (new)
 
 
 <!-- MANUAL ADDITIONS START -->
