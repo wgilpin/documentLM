@@ -351,6 +351,7 @@
 
     <!-- COL 3: Right panel (AI Assistant + Snippets, tabbed) -->
     {% if doc %}
+    <div id="right-resize-handle" class="right-resize-handle" role="separator" aria-label="Resize right panel" aria-orientation="vertical"></div>
     <div class="chat-panel">
         <div class="right-panel-tabs">
             <button class="right-tab-btn right-tab-btn--active" id="right-tab-chat"
@@ -530,6 +531,8 @@
 </dialog>
 
 <script src="/static/document-globals.js"></script>
+<script src="/static/snippet-goto.js"></script>
+<script src="/static/search-scope.js"></script>
 
 <script src="/static/editor.bundle.js?v={{ bundle_version }}"></script>
 <script>

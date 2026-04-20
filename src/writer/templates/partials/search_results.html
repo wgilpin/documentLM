@@ -1,44 +1,116 @@
-{% if search.results %}
-<div class="search-results" id="search-results">
-  <div class="search-results-header">{{ search.results | length }} result{% if search.results | length != 1 %}s{% endif %} for "{{ search.query }}"</div>
-  {% for item in search.results %}
-  {% set _form_id = "search-add-form-" ~ loop.index %}
-  <div class="search-result-card">
-    <div class="search-result-text">{{ item.text }}</div>
-    <div class="search-result-source">
-      {{ item.source_title }}
-      <button class="btn-icon snippet-goto-btn" title="Go to source"
-              onclick="scrollToCharOffset('{{ item.source_id }}', 0)">
-        <span class="material-symbols-outlined">my_location</span>
+{#
+  Dual-group semantic search results: Sources + Snippets.
+
+  Context:
+    search   : SearchV2Response
+    doc_id   : UUID
+    chapters : list[ChapterResponse]   — required for the "Add to Bank" chapter picker
+#}
+{% set _scope = search.scope %}
+{% set _scope_kind = _scope.kind if _scope else "all" %}
+<div id="search-results" class="search-results" data-scope="{{ _scope_kind }}" data-query="{{ search.query }}">
+  {% if search.sources.in_scope or search.snippets.in_scope %}
+  <div class="search-results-header">Results for "{{ search.query }}"</div>
+  {% else %}
+  <div class="search-results-empty">No results for "{{ search.query }}"</div>
+  {% endif %}
+
+  <section class="search-results-group" data-group="sources">
+    <header class="search-results-group-header">
+      Sources <span class="count">{{ search.sources.in_scope | length }}</span>
+    </header>
+    {% for item in search.sources.in_scope %}
+    {% set _form_id = "search-add-form-" ~ loop.index %}
+    <div class="search-result-card search-result-source"
+         data-source-id="{{ item.source_id }}"
+         data-in-scope="{{ 'true' if item.in_scope else 'false' }}">
+      <div class="search-result-text">{{ item.excerpt }}</div>
+      <div class="search-result-source-line">
+        <span class="search-result-source-title">{{ item.title }}</span>
+        <span class="search-result-score">{{ '%.2f' | format(item.score) }}</span>
+        <button class="btn-icon search-goto-btn" title="Go to source"
+                onclick="scrollToCharOffset('{{ item.source_id }}', 0)">
+          <span class="material-symbols-outlined">my_location</span>
+        </button>
+      </div>
+      {% if chapters and chapters | length > 0 %}
+      <details class="search-result-add-details">
+        <summary class="search-result-add-summary">Add to Bank</summary>
+        <form id="{{ _form_id }}"
+              hx-post="/api/documents/{{ doc_id }}/snippets"
+              hx-ext="json-enc"
+              hx-vals='js:{text: {{ item.excerpt | tojson }}, source_id: {{ item.source_id | string | tojson }}, chapter_ids: Array.from(document.querySelectorAll("#{{ _form_id }} input[name=chapter_ids]:checked")).map(e=>e.value)}'
+              hx-target="#snippet-list"
+              hx-swap="afterbegin">
+          {% include "partials/chapter_picker.html" %}
+          <button type="submit" class="btn btn-sm">Add with chapters</button>
+        </form>
+      </details>
+      {% else %}
+      <button class="btn btn-sm search-result-add-btn"
+              hx-post="/api/documents/{{ doc_id }}/snippets"
+              hx-ext="json-enc"
+              hx-vals='{"text": {{ item.excerpt | tojson }}, "source_id": {{ item.source_id | string | tojson }}}'
+              hx-target="#snippet-list"
+              hx-swap="afterbegin"
+              title="Add to Snippet Bank">
+        Add to Bank
       </button>
+      {% endif %}
     </div>
-    {% if chapters and chapters | length > 0 %}
-    <details class="search-result-add-details">
-      <summary class="search-result-add-summary">Add to Bank</summary>
-      <form id="{{ _form_id }}"
-            hx-post="/api/documents/{{ doc_id }}/snippets"
-            hx-ext="json-enc"
-            hx-vals='js:{text: {{ item.text | tojson }}, source_id: {{ item.source_id | string | tojson }}, chapter_ids: Array.from(document.querySelectorAll("#{{ _form_id }} input[name=chapter_ids]:checked")).map(e=>e.value)}'
-            hx-target="#snippet-list"
-            hx-swap="afterbegin">
-        {% include "partials/chapter_picker.html" %}
-        <button type="submit" class="btn btn-sm">Add with chapters</button>
-      </form>
-    </details>
-    {% else %}
-    <button class="btn btn-sm search-result-add-btn"
-            hx-post="/api/documents/{{ doc_id }}/snippets"
-            hx-ext="json-enc"
-            hx-vals='{"text": {{ item.text | tojson }}, "source_id": {{ item.source_id | string | tojson }}}'
-            hx-target="#snippet-list"
-            hx-swap="afterbegin"
-            title="Add to Snippet Bank">
-      Add to Bank
-    </button>
+    {% endfor %}
+    {% if _scope_kind == 'chapter' and search.sources.out_of_scope_count > 0 %}
+    <p class="search-spillover">
+      {{ search.sources.in_scope | length }} in this chapter,
+      {{ search.sources.out_of_scope_count }} in other chapters
+      <a href="#"
+         class="search-broaden"
+         data-broaden="all">Show all</a>
+    </p>
     {% endif %}
-  </div>
-  {% endfor %}
+  </section>
+
+  <section class="search-results-group" data-group="snippets">
+    <header class="search-results-group-header">
+      Snippets <span class="count">{{ search.snippets.in_scope | length }}</span>
+    </header>
+    {% for item in search.snippets.in_scope %}
+    <div class="search-result-card search-result-snippet"
+         data-snippet-id="{{ item.snippet_id }}"
+         data-in-scope="{{ 'true' if item.in_scope else 'false' }}">
+      <div class="search-result-text">{{ item.text }}</div>
+      <div class="search-result-source-line">
+        {% if item.source_title %}
+        <span class="search-result-source-title">{{ item.source_title }}</span>
+        {% endif %}
+        <span class="search-result-chapter-label">
+          {% if item.chapter_ids %}
+            {% set _cmap = {} %}
+            {% for c in chapters %}{% set _ = _cmap.update({c.id: c.title}) %}{% endfor %}
+            {% set _labels = [] %}
+            {% for cid in item.chapter_ids %}{% set _ = _labels.append(_cmap.get(cid, cid | string)) %}{% endfor %}
+            {{ _labels | join(', ') }}
+          {% else %}
+            document-level
+          {% endif %}
+        </span>
+        <span class="search-result-score">{{ '%.2f' | format(item.score) }}</span>
+        <button class="btn-icon search-goto-btn search-snippet-goto"
+                title="Go to snippet"
+                data-snippet-target="snippet-{{ item.snippet_id }}">
+          <span class="material-symbols-outlined">my_location</span>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+    {% if _scope_kind == 'chapter' and search.snippets.out_of_scope_count > 0 %}
+    <p class="search-spillover">
+      {{ search.snippets.in_scope | length }} in this chapter,
+      {{ search.snippets.out_of_scope_count }} in other chapters
+      <a href="#"
+         class="search-broaden"
+         data-broaden="all">Show all</a>
+    </p>
+    {% endif %}
+  </section>
 </div>
-{% else %}
-<div class="search-results-empty">No results for "{{ search.query }}"</div>
-{% endif %}

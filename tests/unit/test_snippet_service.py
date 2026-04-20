@@ -597,6 +597,101 @@ class TestListSnippetsChapterIds:
         assert len(result) == 1
         assert result[0].chapter_ids == [chapter_id]
 
+
+class TestCreateSnippetEmbedding:
+    async def test_create_snippet_schedules_background_embed(self) -> None:
+        """Create passes the embed step to BackgroundTasks when one is provided."""
+        from fastapi import BackgroundTasks
+
+        from writer.models.schemas import SnippetCreate
+        from writer.services.snippet_service import create_snippet
+
+        doc_id = uuid.uuid4()
+        user_id = uuid.uuid4()
+        doc_obj = MagicMock(id=doc_id, is_private=False)
+        snippet_obj = _make_snippet(document_id=doc_id, user_id=user_id)
+
+        doc_result = _exec_scalar(doc_obj)
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=doc_result)
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+
+        bg = BackgroundTasks()
+
+        with patch("writer.services.snippet_service.Snippet", return_value=snippet_obj):
+            data = SnippetCreate(text="Embed me")
+            await create_snippet(db, doc_id, user_id, data, background_tasks=bg)
+
+        # One background task should be registered for embedding.
+        assert len(bg.tasks) >= 1
+
+    async def test_create_snippet_embed_failure_does_not_raise(self) -> None:
+        """If the embed step raises, create_snippet still returns the SnippetResponse."""
+        from writer.models.schemas import SnippetCreate, SnippetResponse
+        from writer.services.snippet_service import create_snippet
+
+        doc_id = uuid.uuid4()
+        user_id = uuid.uuid4()
+        doc_obj = MagicMock(id=doc_id, is_private=False)
+        snippet_obj = _make_snippet(document_id=doc_id, user_id=user_id)
+
+        doc_result = _exec_scalar(doc_obj)
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=doc_result)
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+
+        # background_tasks=None → synchronous embed path, which must swallow exceptions.
+        with (
+            patch("writer.services.snippet_service.Snippet", return_value=snippet_obj),
+            patch(
+                "writer.services.snippet_service.vector_store.index_snippet",
+                side_effect=RuntimeError("embedding service unavailable"),
+            ),
+        ):
+            data = SnippetCreate(text="Will fail to embed")
+            result = await create_snippet(db, doc_id, user_id, data, background_tasks=None)
+
+        assert isinstance(result, SnippetResponse)
+
+
+class TestDeleteSnippetEmbedding:
+    async def test_delete_snippet_calls_embedding_delete(self) -> None:
+        from writer.services.snippet_service import delete_snippet
+
+        user_id = uuid.uuid4()
+        snippet_id = uuid.uuid4()
+        snippet_obj = _make_snippet(id=snippet_id, user_id=user_id)
+        db = _make_db(scalar_result=snippet_obj)
+
+        with patch(
+            "writer.services.snippet_service.vector_store.delete_snippet_embedding"
+        ) as mock_delete_emb:
+            await delete_snippet(db, snippet_id, user_id)
+
+        mock_delete_emb.assert_called_once_with(snippet_id, user_id)
+        db.delete.assert_called_once_with(snippet_obj)
+
+    async def test_delete_snippet_survives_embedding_delete_error(self) -> None:
+        """If removing the vector fails, the snippet row is still deleted."""
+        from writer.services.snippet_service import delete_snippet
+
+        user_id = uuid.uuid4()
+        snippet_id = uuid.uuid4()
+        snippet_obj = _make_snippet(id=snippet_id, user_id=user_id)
+        db = _make_db(scalar_result=snippet_obj)
+
+        with patch(
+            "writer.services.snippet_service.vector_store.delete_snippet_embedding",
+            side_effect=RuntimeError("chroma down"),
+        ):
+            await delete_snippet(db, snippet_id, user_id)
+
+        db.delete.assert_called_once_with(snippet_obj)
+
     async def test_list_by_chapter_populates_chapter_ids(self) -> None:
         from writer.services.snippet_service import list_snippets_by_chapter
 

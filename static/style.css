@@ -124,6 +124,7 @@ main:has(.editor-layout) {
 
 :root {
     --sources-panel-width: 256px;
+    --right-panel-width: 320px;
 
     /* Color tokens — collapsed palette */
     --color-bg: #d9dbe0;
@@ -176,7 +177,7 @@ main:has(.editor-layout) {
     position: fixed;
     right: 0;
     top: 64px;
-    width: 320px;
+    width: var(--right-panel-width, 320px);
     height: calc(100vh - 64px);
     display: flex;
     flex-direction: column;
@@ -184,6 +185,25 @@ main:has(.editor-layout) {
     border-left: 1px solid var(--color-border);
     overflow: hidden;
     z-index: 10;
+}
+
+/* Draggable resize handle between editor-pane and chat-panel */
+.right-resize-handle {
+    position: fixed;
+    top: 64px;
+    right: var(--right-panel-width, 320px);
+    width: 5px;
+    height: calc(100vh - 64px);
+    cursor: col-resize;
+    background: transparent;
+    z-index: 20;
+    transform: translateX(2px);
+    transition: background 0.15s;
+}
+
+.right-resize-handle:hover,
+.right-resize-handle.resize-handle--dragging {
+    background: var(--color-info-bg);
 }
 
 /* Right pane tabs (AI Assistant / Snippets) */
@@ -250,7 +270,7 @@ main:has(.editor-layout) {
 .editor-pane {
     flex: 1;
     margin-left: var(--sources-panel-width, 256px);
-    margin-right: 320px;
+    margin-right: var(--right-panel-width, 320px);
     background: var(--color-surface);
     display: flex;
     flex-direction: column;
@@ -2090,6 +2110,73 @@ details[open] .source-add-summary {
     gap: 0.35rem;
     font-size: 0.8rem;
     margin-bottom: 0.25rem;
+    transition: box-shadow 0.4s ease, background-color 0.4s ease;
+}
+
+.snippet-card-flash {
+    background-color: var(--color-accent-soft, #fff2a6);
+    box-shadow: 0 0 0 2px var(--color-accent, #d4af00);
+}
+
+/* Dual-group search UI. Client-side CSS driven by [data-scope] + [data-in-scope]
+   handles the "Show all" broaden action without a backend round trip (SC-005). */
+.search-results[data-scope="chapter"] [data-in-scope="false"] {
+    display: none;
+}
+
+.search-results-group {
+    margin-bottom: 1rem;
+}
+
+.search-results-group-header {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.3rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.search-results-group-header .count {
+    color: var(--color-text);
+    font-weight: 400;
+    margin-left: 0.3rem;
+}
+
+.search-spillover {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    margin: 0.3rem 0;
+}
+
+.search-spillover .search-broaden {
+    margin-left: 0.4rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.search-result-snippet {
+    border-left: 2px solid var(--color-accent, #d4af00);
+}
+
+.search-result-chapter-label {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    margin-right: 0.4rem;
+}
+
+.search-result-score {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    margin-right: 0.4rem;
+}
+
+.search-result-source-line {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
 }
 
 .snippet-card-text {
